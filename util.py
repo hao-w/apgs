@@ -4,7 +4,7 @@ from autograd import grad
 from functools import reduce
 import autograd.numpy.random as npr
 import matplotlib.pyplot as plt
-from scipy.stats import multivariate_normal, gamma, invgamma 
+from scipy.stats import multivariate_normal, gamma, invgamma
 from scipy.special import digamma, polygamma
 from scipy.special import gamma as gafun
 
@@ -22,7 +22,7 @@ def generate_video(image_length, time_length):
         if rand_pt == 19:
             rand_dir = 1
 
-        if rand_dir == 0:        
+        if rand_dir == 0:
             rand_pt += 1
         else:
             rand_pt -= 1
@@ -74,20 +74,24 @@ def init_hyper(K):
     sigma_x0_b = np.ones(K)
     return alpha_a_0, alpha_b_0, r_a_0, r_b_0, rho_a, rho_b, mu_x0_0_sigma_diag, sigma_x0_a, sigma_x0_b
 
-def init_hsss(N, K):
+def init_hsss(mu_x0, video, N, T, K):
     ## randomly initialize ss
-    W_A = npr.randn(K, K)
+    W_A = np.eye(K)
     # G_A = 0
     # M~ = 0
-    S_A = npr.randn(K, K)
-    W_C = npr.randn(K, K)
+    S_A = np.eye(K)
+    W_C = np.eye(K)
     # G_C = 0
     S_C = np.zeros((K, N))
+#    for t in range(T):
+#       yt = video[:, t]
+#        yt.shape = (N, 1)
+#        S_C += np.dot(mu_x0, yt.T)
     return W_A, S_A, W_C, S_C
 
 def infer_qs(W_A, S_A, W_C, S_C, Y_hat, alpha, r, rho_a, rho_b, N, T):
     # q(B) = 0
-    # q(A) 
+    # q(A)
     q_sigma_A = inv(np.diag(alpha) + W_A)
     q_mu_A = np.dot(q_sigma_A, S_A) # each col is a mean vector
 
@@ -97,9 +101,9 @@ def infer_qs(W_A, S_A, W_C, S_C, Y_hat, alpha, r, rho_a, rho_b, N, T):
     G_ss = np.diagonal(G)
 
     #q(rho)
-    q_rho_a  = (rho_a + (T / 2) ) * np.ones((N)) # each element is a shape parameter
+    q_rho_a  = (rho_a + (T / 2) ) * np.ones(N) # each element is a shape parameter
     q_rho_b = rho_b + (G_ss / 2) # each element is a scale inv parameter
-    
+
     # q_sigma_C = (1 / rho_s)  * sigma_C
     q_mu_C = np.dot(sigma_C, S_C) # each col is a mean vector
     return q_sigma_A, q_mu_A, sigma_C, q_rho_a, q_rho_b, q_mu_C
@@ -109,6 +113,7 @@ def natstats(q_rho_a, q_rho_b, S_A, S_C, q_sigma_A, sigma_C, N, K):
     E_ATA = np.dot(E_A.T, E_A) + K * q_sigma_A
     E_rho_s = np.divide(q_rho_a, q_rho_b)
     E_log_rho_s = digamma(q_rho_a) - np.log(q_rho_b)
+
     E_R_inv = np.diag(E_rho_s)
     E_C = np.dot(S_C.T, sigma_C)
     E_R_inv_C = np.dot(E_R_inv, E_C)
@@ -124,7 +129,7 @@ def update_marginals(Mu_xt, Sigma_xt, Sigma_star, Psi, Eta, N, T, K, E_A, E_CT_R
         eta_t = Eta[t]
         sigma_xt = Sigma_xt[t]
         mu_xt = Mu_xt[t]
-        
+
         if t == 0:
             Gamma_t = sigma_xt
             Omega_t = mu_xt
@@ -135,7 +140,7 @@ def update_marginals(Mu_xt, Sigma_xt, Sigma_star, Psi, Eta, N, T, K, E_A, E_CT_R
             Gamma_ttp1s[t] = Gamma_ttp1
         elif t == T:
             Gamma_t = sigma_xt
-            Omega_t = mu_xt    
+            Omega_t = mu_xt
 
         else:
             term1 = inv(sigma_xt)
@@ -155,16 +160,21 @@ def update_marginals(Mu_xt, Sigma_xt, Sigma_star, Psi, Eta, N, T, K, E_A, E_CT_R
 def eigen(a, B):
     return np.dot(np.dot(a.T, B), a)
 
-def KL_gamma(q_a, q_b, p_a, p_b):
-    kl_gamma = q_a * np.log(q_b) - p_a * np.log(p_b) - np.log(gafun(q_a)) + np.log(gafun(p_a)) + (q_a - p_a) * (digamma(q_a) - np.log(q_b)) - q_a * (1 - np.divide(p_b, q_b))
+def KL_gamma(p_a, p_b, q_a, q_b):
+    t1 = np.multiply(q_a, np.log(np.divide(p_b, q_b)))
+    t2 = np.log(gafun(q_a)) - np.log(gafun(p_a))
+    t3 = np.multiply((p_a - q_a), digamma(p_a))
+    t4 = np.multiply(q_b - p_b, np.divide(p_a,p_b))
+    kl_gamma = t1 + t2 + t3 + t4
     return kl_gamma.sum()
-    
+
 def KL_gaussian(q_mu, q_cov, p_cov):
     term1 = np.log(det(np.dot(q_cov, inv(p_cov))))
     dim_k = q_cov.shape[0]
     term2_full = np.eye(dim_k) - np.dot((q_cov + np.dot(q_mu, q_mu.T)), inv(p_cov))
     term2 = np.diag(term2_full).sum()
-    return (1 / 2) * (term1 + term2)
+    return (- 1 / 2) * (term1 + term2)
+
 
 def KL_A(q_mu_A, q_sigma_A, p_sigma_A, K):
     kl_A = 0.0

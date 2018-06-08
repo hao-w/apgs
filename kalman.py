@@ -23,10 +23,14 @@ def forward_step(mu_last, sigma_last, yt, K, *natstats_list):
     yt_mu = np.dot(yt_sigma, \
                   reduce(np.dot, [E_R_inv_C, sigma_xt, E_A, sigma_star_last, inv(sigma_last), mu_last]))
     # log of yt
-    log_yt = -(1 / 2) * (np.log(2*np.pi) - np.sum(E_log_rho_s) \
-                       - np.log(det(reduce(np.dot, [inv(sigma_last), sigma_star_last, sigma_xt]))) + eigen(mu_last, inv(sigma_last)) \
-                       - eigen(mu_xt, inv(sigma_xt)) + eigen(yt, E_R_inv) \
-                       - eigen(np.dot(inv(sigma_last), mu_last), sigma_star_last))
+    t1 = np.log(2*np.pi) - np.sum(E_log_rho_s)
+    t2 = np.log(det(reduce(np.dot, [inv(sigma_last), sigma_star_last, sigma_xt])))
+    t3 = eigen(mu_last, inv(sigma_last))
+    t4 = eigen(mu_xt, inv(sigma_xt))
+    t5 = eigen(yt, E_R_inv)
+    t6 = eigen(np.dot(inv(sigma_last), mu_last), sigma_star_last)
+    
+    log_yt = -(1 / 2) * (t1 - t2 + t3 - t4 + t5 - t6)
     
     return mu_xt, sigma_xt, sigma_star_last, yt_mu, yt_sigma, log_yt
 
