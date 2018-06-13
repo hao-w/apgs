@@ -56,7 +56,7 @@ def compute_yhat(video, N, T):
         Y_hat += np.dot(y, y.T)
     return Y_hat
 
-def init_hyper(K):
+def init_hyper(N, K):
     ## hyperprior for alpha, gamma
     ## b is inverse of scale!!!
     alpha_a_0 = np.ones(K)
@@ -65,11 +65,13 @@ def init_hyper(K):
     r_a_0 = np.ones(K)
     r_b_0 = np.ones(K)
 
+    rhos = np.ones(N)
+
     mu_x0_0_sigma_diag = np.ones(K)
 
     sigma_x0_a = np.ones(K)
     sigma_x0_b = np.ones(K)
-    return alpha_a_0, alpha_b_0, r_a_0, r_b_0, mu_x0_0_sigma_diag, sigma_x0_a, sigma_x0_b
+    return alpha_a_0, alpha_b_0, r_a_0, r_b_0, rhos, mu_x0_0_sigma_diag, sigma_x0_a, sigma_x0_b
 
 def init_hsss(mu_x0, video, N, T, K):
     ## randomly initialize ss
@@ -86,7 +88,7 @@ def init_hsss(mu_x0, video, N, T, K):
 #        S_C += np.dot(mu_x0, yt.T)
     return W_A, S_A, W_C, S_C
 
-def infer_qs(W_A, S_A, W_C, S_C, Y_hat, alpha, r, rhos, N, T):
+def infer_qs(W_A, S_A, W_C, S_C, Y_hat, alpha, r, rho_a, rho_b, N, T):
     # q(B) = 0
     # q(A)
     q_sigma_A = inv(np.diag(alpha) + W_A)
@@ -94,42 +96,28 @@ def infer_qs(W_A, S_A, W_C, S_C, Y_hat, alpha, r, rhos, N, T):
 
     # q(C|rho)
     sigma_C = inv(np.diag(r) + W_C)
-#    G = Y_hat - eigen(S_C, sigma_C)
-#    G_ss = np.diagonal(G)
+    G = Y_hat - eigen(S_C, sigma_C)
+    G_ss = np.diagonal(G)
 
-#    #q(rho)
-#    q_rho_a  = (rho_a + (T / 2) ) * np.ones(N) # each element is a shape parameter
-#    q_rho_b = rho_b + (G_ss / 2) # each element is a scale inv parameter
+    #q(rho)
+    q_rho_a  = (rho_a + (T / 2) ) * np.ones(N) # each element is a shape parameter
+    q_rho_b = rho_b + (G_ss / 2) # each element is a scale inv parameter
 
     # q_sigma_C = (1 / rho_s)  * sigma_C
     q_mu_C = np.dot(sigma_C, S_C) # each col is a mean vector
-    return q_sigma_A, q_mu_A, sigma_C, q_mu_C
+    return q_sigma_A, q_mu_A, sigma_C, q_rho_a, q_rho_b, q_mu_C
 
-
-def init_qs(alpha, r, N, T, K):
-    # q(B) = 0
-    # q(A)
-    q_sigma_A = np.diag(1.0 / alpha)
-    q_mu_A = np.array([[1, 1], [0, 1]]) # each col is a mean vector
-
-    # q(C|rho)
-    sigma_C = np.diag(1.0 / r)
-
-    q_mu_C = np.array([[1], [0]]) # each col is a mean vector
-    return q_sigma_A, q_mu_A, sigma_C, q_mu_C
-
-
-def natstats(rhos, S_A, S_C, q_sigma_A, sigma_C, N, K):
+def natstats(q_rho_a, q_rho_b, S_A, S_C, q_sigma_A, sigma_C, N, K):
     E_A = np.dot(S_A.T, q_sigma_A)
     E_ATA = np.dot(E_A.T, E_A) + K * q_sigma_A
-#    E_rho_s = np.divide(q_rho_a, q_rho_b)
-#    E_log_rho_s = digamma(q_rho_a) - np.log(q_rho_b)
+    E_rho_s = np.divide(q_rho_a, q_rho_b)
+    E_log_rho_s = digamma(q_rho_a) - np.log(q_rho_b)
 
-    E_R_inv = np.diag(rhos)
+    E_R_inv = np.diag(E_rho_s)
     E_C = np.dot(S_C.T, sigma_C)
     E_R_inv_C = np.dot(E_R_inv, E_C)
     E_CT_R_inv_C = np.dot(E_C.T, E_R_inv_C) + N * sigma_C
-    return E_A, E_ATA, E_R_inv, E_C, E_R_inv_C, E_CT_R_inv_C
+    return E_A, E_ATA, E_rho_s, E_log_rho_s, E_R_inv, E_C, E_R_inv_C, E_CT_R_inv_C
 
 def update_marginals(Mu_xt, Sigma_xt, Sigma_star, Psi, Eta, N, T, K, E_A, E_CT_R_inv_C):
     Gamma_ts = np.zeros((T+1, K, K))
@@ -198,23 +186,15 @@ def KL_A(q_mu_A, q_sigma_A, p_sigma_A, K):
     return kl_A
 
 
-def KL_C(q_mu_C, sigma_C, p_sigma_C, N):
+def KL_C(q_mu_C, q_rhos, sigma_C, p_sigma_C, N):
     kl_C = 0.0
     for s in range(N):
-        kl_C += KL_gaussian(q_mu_C[:, s], sigma_C, p_sigma_C)
+        q_sigma_C = (sigma_C / q_rhos[s])
+        kl_C += KL_gaussian(q_mu_C[:, s], q_sigma_C, p_sigma_C)
     return kl_C
 
 
-def newton(a, b, c, d, tol=1e-6):
-    error = 10
-    while(error > tol):
-        term1 = digamma(a) - np.log(a) + np.log(d) - c
-        term2 = a * polygamma(1, a) - 1
-        a_new = a * np.exp(- term1 / term2)
-        error = abs(a_new - a)
-        a = a_new
-    b_new = a_new / d
-    return a_new, b_new
+
 
 
 def update_hsss(Gamma_ts, Omega_ts, Gamma_ttp1s, video, N, T):
@@ -237,7 +217,7 @@ def update_hsss(Gamma_ts, Omega_ts, Gamma_ttp1s, video, N, T):
     return W_A, S_A, W_C, S_C
 
 
-def update_hyper(Gamma_ts, Omega_ts, S_A, S_C, q_sigma_A, sigma_C, E_R_inv, N):
+def update_hyper(Gamma_ts, Omega_ts, S_A, S_C, q_sigma_A, sigma_C, E_R_inv, E_rho_s, E_log_rho_s, N, rho_a, rho_b):
     ## linear system
     alpha_new_full = q_sigma_A +  reduce(np.dot, [q_sigma_A, S_A, S_A.T, q_sigma_A])
     alpha_new = 1.0 / np.diag(alpha_new_full)
