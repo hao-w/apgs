@@ -243,3 +243,13 @@ def output_transition(alpha_trans_hat):
     A = alpha_trans_hat.data.numpy()
     A = (A.T / A.sum(1)).T
     return A
+
+def plot_results(Y, final_mus, final_covs):
+    fig, ax = plt.subplots(figsize=(4, 4))
+    ax.set_xlim(-5, 15)
+    ax.set_ylim(-5, 15)
+    ax.plot(Y[:,0], Y[:,1], 'ro')
+    plot_cov_ellipse(cov=final_covs[0], pos=final_mus[0], nstd=2, ax=ax, alpha=0.5)
+    plot_cov_ellipse(cov=final_covs[1], pos=final_mus[1], nstd=2, ax=ax, alpha=0.5)
+    plot_cov_ellipse(cov=final_covs[2], pos=final_mus[2], nstd=2, ax=ax, alpha=0.5)
+    plt.show()

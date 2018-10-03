@@ -44,7 +44,7 @@ def transition(A, old_hidden, new_hidden):
 def intialization(T, num_series, Boundary):
     x0 = Boundary * np.random.random(num_series) * np.random.choice([-1,1], size=num_series)
     y0 = Boundary * np.random.random(num_series) * np.random.choice([-1,1], size=num_series)
-    init_v = np.random.random((num_series, 2)) 
+    init_v = np.random.random((num_series, 2))
     v_norm = ((init_v **2 ).sum(1)) ** 0.5 ## compute norm for each initial velocity
     init_v = init_v / v_norm[:, None] ## to make the velocity lying on the unit circle
     init_v_rand_dir = init_v * np.random.choice([-1,1], size=(num_series,2))
@@ -76,6 +76,7 @@ def generate_data(T, dt, init_state, Boundary, signal_noise_ratio):
 #         push_notebook(handle=target)
 #         time.sleep(0.2)
     Disp = (STATE[1:] - STATE[:T])[:, :2]
-
-    A = A / A.sum(1)[:, None]
+    A_sum = A.sum(1)
+    np.place(A_sum, A_sum==0, 1)
+    A = A / A_sum[:, None]
     return STATE, Disp, A
