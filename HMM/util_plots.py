@@ -183,6 +183,6 @@ def plot_circle_transition_colorcode(num_series, init_v, final_mus, final_covs, 
     ax9.imshow(As_true_ave[None, 3,:], cmap='Reds', vmin=0, vmax=vmax)
 
     if save_flag:
-        fig.savefig('baseline_results_v3.pdf', bbox_inches='tight')
-        fig.savefig('baseline_results_v3.svg', bbox_inches='tight')
-        fig.savefig('baseline_results_v3.png', dpi=600, bbox_inches='tight')
+        fig.savefig('baseline_results_1003.pdf', bbox_inches='tight')
+        fig.savefig('baseline_results_1003.svg', bbox_inches='tight')
+        fig.savefig('baseline_results_1003.png', dpi=600, bbox_inches='tight')
