@@ -50,6 +50,55 @@ def gibbs_local(Pi, A, mu_ks, cov_ks, Y, T, D, K):
             Pi_post = torch.exp(Pi_post - log_sum_exp(Pi_post))
             Zs[t] = cat(Pi_post).sample()
     return Zs
+# 
+# def smc_hmm_adapted(Pi, A, mu_ks, cov_ks, Y, T, D, K, num_particles=10):
+#     Zs = torch.zeros((T, num_particles, K))
+#     log_weights = torch.zeros((T, num_particles))
+#     decode_onehot = torch.arange(K).float().unsqueeze(-1)
+#     for t in range(T):
+#         if t == 0:
+#             Pi_post = torch.zeros(K).float()
+#             for k in range(K):
+#                 Pi_post[k] = Categorical(Pi).log_prob(torch.Tensor([k])) + MultivariateNormal(mu_ks[k], cov_ks[k]).log_prob(Y[t])
+#             Pi_post = torch.exp(Pi_post - log_sum_exp(Pi_post))
+#             Zs[t] = cat(Pi_post).sample()
+#             for n in range(num_particles):
+#                 Zs[t, n] = cat(Pi).sample()
+#                 label = torch.mm(Zs[t, n].unsqueeze(0), decode_onehot).int().item()
+#                 log_weights[t, n] = MultivariateNormal(mu_ks[label], cov_ks[label]).log_prob(Y[t])
+#         else:
+#             ## resampling
+#             reweight = torch.exp(log_weights[t-1] - log_sum_exp(log_weights[t-1]))
+#             alpha_t_1s = Categorical(reweight).sample((num_particles,))
+#             Zs[t-1] = Zs[t-1][alpha_t_1s]
+#             for n in range(num_particles):
+#                 label = torch.mm(Zs[t-1, n].unsqueeze(0), decode_onehot).int().item()
+#                 Zs[t, n] = cat(A[label]).sample()
+#                 label = torch.mm(Zs[t, n].unsqueeze(0), decode_onehot).int().item()
+#                 log_weights[t, n] = MultivariateNormal(mu_ks[label], cov_ks[label]).log_prob(Y[t])
+#     return Zs, log_weights
+
+def smc_hmm(Pi, A, mu_ks, cov_ks, Y, T, D, K, num_particles=10):
+    Zs = torch.zeros((T, num_particles, K))
+    log_weights = torch.zeros((T, num_particles))
+    decode_onehot = torch.arange(K).float().unsqueeze(-1)
+    for t in range(T):
+        if t == 0:
+            for n in range(num_particles):
+                Zs[t, n] = cat(Pi).sample()
+                label = torch.mm(Zs[t, n].unsqueeze(0), decode_onehot).int().item()
+                log_weights[t, n] = MultivariateNormal(mu_ks[label], cov_ks[label]).log_prob(Y[t])
+        else:
+            ## resampling
+            reweight = torch.exp(log_weights[t-1] - log_sum_exp(log_weights[t-1]))
+            alpha_t_1s = Categorical(reweight).sample((num_particles,))
+            Zs[t-1] = Zs[t-1][alpha_t_1s]
+            for n in range(num_particles):
+                label = torch.mm(Zs[t-1, n].unsqueeze(0), decode_onehot).int().item()
+                Zs[t, n] = cat(A[label]).sample()
+                label = torch.mm(Zs[t, n].unsqueeze(0), decode_onehot).int().item()
+                log_weights[t, n] = MultivariateNormal(mu_ks[label], cov_ks[label]).log_prob(Y[t])
+    return Zs, log_weights
 
 def stats(Zs, Y, D, K):
     N_ks = Zs.sum(0)
@@ -58,14 +107,15 @@ def stats(Zs, Y, D, K):
 
     Zs_expanded = Zs.repeat(D, 1, 1)
     for k in range(K):
-        Y_ks[k] = torch.mul(Zs_expanded[:, :, k].transpose(0,1), Y).sum(0) / N_ks[k]
-        Zs_expanded2 = Zs_expanded[:, :, k].repeat(D, 1, 1).permute(2, 1, 0)
-        Y_diff = Y - Y_ks[k]
-        Y_bmm = torch.bmm(Y_diff.unsqueeze(2), Y_diff.unsqueeze(1))
-        S_ks[k] = torch.mul(Zs_expanded2, Y_bmm).sum(0) / (N_ks[k])
+        if N_ks[k].item() != 0:
+            Y_ks[k] = torch.mul(Zs_expanded[:, :, k].transpose(0,1), Y).sum(0) / N_ks[k]
+            Zs_expanded2 = Zs_expanded[:, :, k].repeat(D, 1, 1).permute(2, 1, 0)
+            Y_diff = Y - Y_ks[k]
+            Y_bmm = torch.bmm(Y_diff.unsqueeze(2), Y_diff.unsqueeze(1))
+            S_ks[k] = torch.mul(Zs_expanded2, Y_bmm).sum(0) / (N_ks[k])
     return N_ks, Y_ks, S_ks
 
-## compute the I[z_t=i]I[z_t-1=j] by vectorization 
+## compute the I[z_t=i]I[z_t-1=j] by vectorization
 def pairwise(Zs, T):
     return torch.bmm(Zs[:T-1].unsqueeze(-1), Zs[1:].unsqueeze(1))
 
