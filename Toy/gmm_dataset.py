@@ -4,8 +4,8 @@ from scipy.stats import multivariate_normal, multinomial
 from matplotlib.patches import Ellipse
 
 K = 3
-T = 500
-A = np.array([[0.9, 0.05, 0.05], [0.05, 0.9, 0.05], [0.05, 0.05, 0.9]])
+T = 100
+A = np.array([[0.5, 0.25, 0.25], [0.25, 0.5, 0.25], [0.25, 0.25, 0.5]])
 mus = np.array([[1,1], [2,10], [10, 5.5]])
 cov1 = np.expand_dims(np.array([[3, 0],[0, 0.5]]), 0)
 cov2 = np.expand_dims(np.array([[1, 0.7],[0.7, 1]]), 0)
@@ -17,7 +17,7 @@ def sample_state(P):
     s = np.nonzero(multinomial.rvs(1, P, size=1, random_state=None)[0])[0][0]
     return s
 
-def sampling():
+def sampling_hmm():
     Xs = []
     for t in range(T):
         if t == 0:
@@ -30,6 +30,15 @@ def sampling():
             xt = multivariate_normal.rvs(mus[zt], covs[zt])
             Xs.append(xt)
             ztp1 = sample_state(A[zt])
+    Xs = np.asarray(Xs)
+    return Xs
+
+def sampling_gmm():
+    Xs = []
+    for t in range(T):
+        zt = sample_state(Pi)
+        xt = multivariate_normal.rvs(mus[zt], covs[zt])
+        Xs.append(xt)
     Xs = np.asarray(Xs)
     return Xs
 
