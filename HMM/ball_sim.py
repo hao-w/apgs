@@ -12,10 +12,10 @@ class ball_sim():
         self.dt = dt
         if obs_cov is None:
             self.obs_cov = obs_std*to.eye(self.d)
-            ??
+            
 
         self.frames = frames
-        self.box_length = box_lenght?
+        self.box_length = box_lenght
         self.X0 = to.zeros(3*self.d)
         self.X0[2:4] = to.randn(2)
 
