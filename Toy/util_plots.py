@@ -3,6 +3,18 @@ from matplotlib.patches import Ellipse
 import numpy as np
 import matplotlib.gridspec as gridspec
 
+def plot_kl_est(KLs_true, KLs_est):
+    fig, ax = plt.subplots(figsize=(8, 8))
+    x = np.arange(KLs_true.shape[0])
+    ax.plot(x, KLs_true, 'r-o', label='true KL')
+    ax.plot(x, KLs_est, 'b-o', label='Estimate KL')
+    ax.legend()
+    ax.set_xlabel('epochs')
+    ax.set_ylabel('KL')
+    plt.show()
+    
+    
+    
 def plot_cov_ellipse(cov, pos, nstd=2, ax=None, **kwargs):
     def eigsorted(cov):
         vals, vecs = np.linalg.eigh(cov)
@@ -43,7 +55,7 @@ def plot_velocity_circle(v):
     ax.set_ylabel('y velocity')
     ax.legend(loc='upper center', bbox_to_anchor=(0.5, 1.15), ncol=4)
 
-def plot_transition(As_pred, As_true, vmax, T, num_series, Boundary, signal_noise_ratio, fs):
+def plot_transition(As_pred, As_true, vmax, T, num_series=None, Boundary=None, signal_noise_ratio=None, fs=None):
     As_infer = As_pred / As_pred.sum(-1)[:, :, None]
     As_infer = As_infer.mean(0)
     fig3 = plt.figure(figsize=(fs,fs))
@@ -51,13 +63,13 @@ def plot_transition(As_pred, As_true, vmax, T, num_series, Boundary, signal_nois
     infer_plot = ax1.imshow(As_infer, cmap='Greys', vmin=0, vmax=vmax)
     ax1.set_xticks([])
     ax1.set_yticks([])
-    ax1.set_title('inferred averaged transition matrix')
+    ax1.set_title('variational')
     ax2 = fig3.add_subplot(2, 1, 2)
     As_true_ave = As_true.mean(0)
     true_plot = ax2.imshow(As_true_ave, cmap='Greys', vmin=0, vmax=vmax)
     ax2.set_xticks([])
     ax2.set_yticks([])
-    ax2.set_title('true averaged transition matrix')
+    ax2.set_title('conjugate posterior')
     # cbaxes = fig3.add_axes([0.95, 0.32, 0.02, 0.36])
     # cb = plt.colorbar(true_plot, cax = cbaxes)
     # fig3.savefig('transition_plot T=%d_series=%d_boundary=%d_ratio=%f.png' % (T, num_series, Boundary, signal_noise_ratio))

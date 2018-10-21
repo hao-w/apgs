@@ -13,6 +13,18 @@ from probtorch.util import log_sum_exp
 import time
 
 
+def initial_trans(alpha_trans_0, K):
+    A = torch.zeros((K, K)).float()
+    for k in range(K):
+        A[k] = Dirichlet(alpha_trans_0[k]).sample()
+    return A
+
+def make_cov(L):
+    L_star = L.tril(-1) + L.diag().pow(2.0).diag()
+    C = torch.matmul(L, L.t())
+    E = torch.diag(C).pow(-0.5).diag()
+    return torch.matmul(E, torch.matmul(C, E))
+
 
 def pirors(Y, T, D, K):
     ## set up prior
@@ -31,27 +43,83 @@ def pirors(Y, T, D, K):
 def quad(a, B):
     return torch.mm(torch.mm(a.transpose(0, 1), B), a)
 
-def smc_hmm(Pi, A, mu_ks, cov_ks, Y, T, D, K, num_particles=1):
-    Zs = torch.zeros((T, num_particles, K))
-    log_weights = torch.zeros((T, num_particles))
+def csmc_hmm(Z_ret, Pi, A, mu_ks, cov_ks, Y, T, D, K, num_particles=1):
+    Zs = torch.zeros((num_particles, T, K))
+    log_weights = torch.zeros((num_particles, T))
     decode_onehot = torch.arange(K).float().unsqueeze(-1)
+    log_normalizer = torch.zeros(1).float()
+    for t in range(T):
+        if t == 0:
+            Zs[-1, t] = Z_ret[t]
+            label = Z_ret[t].nonzero().item()
+            likelihood = MultivariateNormal(mu_ks[label], cov_ks[label]).log_prob(Y[t])
+            log_weights[-1, t] = likelihood
+            for n in range(num_particles-1):
+                sample_z = cat(Pi).sample()
+                Zs[n, t] = sample_z
+                label = sample_z.nonzero().item()
+                likelihood = MultivariateNormal(mu_ks[label], cov_ks[label]).log_prob(Y[t])
+                log_weights[n, t] = likelihood
+        else:
+            reweight = torch.exp(log_weights[:, t-1] - log_sum_exp(log_weights[:, t-1]))
+            ancesters = Categorical(reweight).sample((num_particles-1,))
+            Zs[:-1] = Zs[ancesters]
+            Zs[-1, t] = Z_ret[t]
+            label = Z_ret[t].nonzero().item()
+            likelihood = MultivariateNormal(mu_ks[label], cov_ks[label]).log_prob(Y[t])
+            log_weights[-1, t] = likelihood
+            for n in range(num_particles-1):
+                label = torch.mm(Zs[n, t-1].unsqueeze(0), decode_onehot).int().item()
+                sample_z = cat(A[label]).sample()
+                Zs[n, t] = sample_z
+                label = sample_z.nonzero().item()
+                likelihood = MultivariateNormal(mu_ks[label], cov_ks[label]).log_prob(Y[t])
+                log_weights[n, t] = likelihood
+        log_normalizer += log_sum_exp(log_weights[:, t]) - torch.log(torch.FloatTensor([num_particles]))
+
+
+    return Zs, log_weights, log_normalizer
+
+def smc_hmm(Pi, A, mu_ks, cov_ks, Y, T, D, K, num_particles=1):
+    Zs = torch.zeros((num_particles, T, K))
+    log_weights = torch.zeros((num_particles, T))
+    decode_onehot = torch.arange(K).float().unsqueeze(-1)
+    log_normalizer = torch.zeros(1).float()
     for t in range(T):
         if t == 0:
             for n in range(num_particles):
-                Zs[t, n] = cat(Pi).sample()
-                label = torch.mm(Zs[t, n].unsqueeze(0), decode_onehot).int().item()
-                log_weights[t, n] = MultivariateNormal(mu_ks[label], cov_ks[label]).log_prob(Y[t])
+                sample_z = cat(Pi).sample()
+                Zs[n, t] = sample_z
+                label = sample_z.nonzero().item()
+                likelihood = MultivariateNormal(mu_ks[label], cov_ks[label]).log_prob(Y[t])
+                log_weights[n, t] = likelihood
+
+
         else:
             ## resampling
-            reweight = torch.exp(log_weights[t-1] - log_sum_exp(log_weights[t-1]))
-            alpha_t_1s = Categorical(reweight).sample((num_particles,))
-            Zs[t-1] = Zs[t-1][alpha_t_1s]
+            reweight = torch.exp(log_weights[:, t-1] - log_sum_exp(log_weights[:, t-1]))
+            ancesters = Categorical(reweight).sample((num_particles,))
+            Zs = Zs[ancesters]
             for n in range(num_particles):
-                label = torch.mm(Zs[t-1, n].unsqueeze(0), decode_onehot).int().item()
-                Zs[t, n] = cat(A[label]).sample()
-                label = torch.mm(Zs[t, n].unsqueeze(0), decode_onehot).int().item()
-                log_weights[t, n] = MultivariateNormal(mu_ks[label], cov_ks[label]).log_prob(Y[t])
-    return Zs, log_weights
+                label = torch.mm(Zs[n, t-1].unsqueeze(0), decode_onehot).int().item()
+                sample_z = cat(A[label]).sample()
+                Zs[n, t] = sample_z
+                label = sample_z.nonzero().item()
+                likelihood = MultivariateNormal(mu_ks[label], cov_ks[label]).log_prob(Y[t])
+                log_weights[n, t] = likelihood
+        log_normalizer += log_sum_exp(log_weights[:, t]) - torch.log(torch.FloatTensor([num_particles]))
+        #
+        # for n in range(num_particles):
+        #     path = torch.mm(Zs[n, :t+1], decode_onehot).data.numpy()
+        #     plt.plot(path, 'r-o')
+        # plt.show()
+
+    return Zs, log_weights, log_normalizer
+
+def resampling_smc(Zs, log_weights):
+    reweight = log_weights[:, -1] - log_sum_exp(log_weights[:, -1])
+    ancester = Categorical(reweight).sample().item()
+    return Zs[ancester]
 
 def stats(Zs, Y, D, K):
     N_ks = Zs.sum(0)
@@ -72,6 +140,8 @@ def stats(Zs, Y, D, K):
 def pairwise(Zs, T):
     return torch.bmm(Zs[:T-1].unsqueeze(-1), Zs[1:].unsqueeze(1))
 
+
+    return
 def gibbs_global(Zs, alpha_init_0, nu_0, W_0, m_0, beta_0, N_ks, Y_ks, S_ks, T, D, K):
     ## Zs is N * K tensor where each row is one-hot encoding of a sample of latent state
     ## sample /pi
@@ -113,3 +183,50 @@ def log_joint(alpha_init_0, alpha_trans_0, nu_0, W_0, m_0, beta_0, Zs, Pi, A, mu
         log_joint_prob += MultivariateNormal(m_0, cov_ks[k] / beta_0).log_prob(mu_ks[k])# prior of mu_ks
         log_joint_prob += invwishart.logpdf(cov_ks[k].data.numpy(), nu_0, W_0.data.numpy())# prior of cov_ks
     return log_joint_prob
+
+
+def inclusive_kl(A_samples, latents_dirs, alpha_init_0, alpha_trans_0, nu_0, W_0, m_0, beta_0, Zs, Pi, mu_ks, cov_ks, Y, T, D, K, num_particles):
+    log_p_joint = torch.zeros(num_particles)
+    for n in range(num_particles):
+        A = A_samples[:, n, :]
+        log_p_joint[n] = log_joint(alpha_init_0, alpha_trans_0, nu_0, W_0, m_0, beta_0, Zs, Pi, A, mu_ks, cov_ks, Y, T, D, K).item()
+
+    log_p_cond = torch.zeros((K, num_particles))
+    alpha_trans_hat = alpha_trans_0 + pairwise(Zs, T).sum(0)
+    kl = 0.0
+    for k in range(K):
+        log_p_cond[k] = Dirichlet(alpha_trans_hat[k]).log_prob(A_samples[k])
+        kl += kl_dirichlet(alpha_trans_hat[k], latents_dirs[k])
+    #
+    log_p_cond = log_p_cond.sum(0)
+    log_q = torch.zeros((K, num_particles))
+    for k in range(K):
+        log_q[k] = Dirichlet(latents_dirs[k]).log_prob(A_samples[k])
+    log_q = log_q.sum(0)
+    log_weights = log_p_joint - log_q - log_sum_exp(log_p_joint - log_q)
+    log_weights = log_weights.detach()
+    weights = torch.exp(log_weights)
+    loss_inference = - torch.mul(weights, log_q).sum()
+    ess = (1. / (weights ** 2 ).sum()).item()
+    kl_est = torch.mul(weights, log_p_cond - log_q).sum().detach().item()
+    return loss_inference, kl, kl_est, ess, weights
+
+def log_q_hmm(latents_dirs, A_samples, K):
+    log_q = torch.zeros(K)
+    for k in range(K):
+        log_q[k] = Dirichlet(latents_dirs[k]).log_prob(A_samples[k])
+    return log_q.sum()
+
+def kl_dirichlets(alpha_trans_0, Zs, T, K):
+    alpha_trans_hat = alpha_trans_0 + pairwise(Zs, T).sum(0)
+    kl = 0.0
+    for k in range(K):
+        kl += kl_dirichlet(alpha_trans_hat[k], latents_dirs[k])
+    return kl
+
+def kl_dirichlet(alpha1, alpha2):
+    A = torch.lgamma(alpha1.sum()) - torch.lgamma(alpha2.sum())
+    B = (torch.lgamma(alpha1) - torch.lgamma(alpha2)).sum()
+    C = (torch.mul(alpha1 - alpha2, torch.digamma(alpha1) - torch.digamma(alpha1.sum()))).sum()
+    kl = A - B + C
+    return kl
