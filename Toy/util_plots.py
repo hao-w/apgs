@@ -12,9 +12,9 @@ def plot_kl_est(KLs_true, KLs_est):
     ax.set_xlabel('epochs')
     ax.set_ylabel('KL')
     plt.show()
-    
-    
-    
+
+
+
 def plot_cov_ellipse(cov, pos, nstd=2, ax=None, **kwargs):
     def eigsorted(cov):
         vals, vecs = np.linalg.eigh(cov)
@@ -34,14 +34,14 @@ def plot_cov_ellipse(cov, pos, nstd=2, ax=None, **kwargs):
     ax.add_artist(ellip)
     return ellip
 
-def plot_clusters(Xs, mus, covs):
+def plot_clusters(Xs, mus, covs, K):
     fig, ax = plt.subplots(figsize=(4, 4))
-    ax.set_xlim(-5, 15)
-    ax.set_ylim(-5, 15)
+    # ax.set_xlim(-5, 15)
+    # ax.set_ylim(-5, 15)
+    ax.axis('equal')
     ax.plot(Xs[:,0], Xs[:,1], 'ro')
-    plot_cov_ellipse(cov=covs[0], pos=mus[0], nstd=2, ax=ax, alpha=0.5)
-    plot_cov_ellipse(cov=covs[1], pos=mus[1], nstd=2, ax=ax, alpha=0.5)
-    plot_cov_ellipse(cov=covs[2], pos=mus[2], nstd=2, ax=ax, alpha=0.5)
+    for k in range(K):
+        plot_cov_ellipse(cov=covs[k], pos=mus[k], nstd=2, ax=ax, alpha=0.5)
     plt.show()
 
 def plot_velocity_circle(v):
@@ -118,8 +118,8 @@ def plot_circle_transition(init_v, final_mus, final_covs, As_pred, As_true, K, f
         fig.savefig('baseline_results.pdf')
         fig.savefig('baseline_results.svg')
         fig.savefig('baseline_results.png', dpi=600)
-        
-        
+
+
 def plot_circle_transition_colorcode(num_series, init_v, final_mus, final_covs, As_pred, As_true, K, fs, vmax, width_space, height_space, cov_flag, legend_flag, save_flag):
 
     As_infer = As_pred / As_pred.sum(-1)[:, :, None]

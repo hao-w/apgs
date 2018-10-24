@@ -3,9 +3,10 @@ from bokeh.plotting import figure, output_notebook, show
 from bokeh.models import Range1d
 from bokeh.io import push_notebook, show, output_notebook
 from scipy.stats import multivariate_normal as mvn
+import time
 
-def step(state, dt, box_bound, signal_noise_ratio, mu_ks):
-    xy_new = state[ :2] + mvn.rvs(mean=state[2: ] * dt, cov=mu_ks)
+def step(state, box_bound, mu_ks):
+    xy_new = state[ :2] + mvn.rvs(mean=state[2: ], cov=mu_ks)
     while(True):
         if xy_new[0] < box_bound[0]:
             x_over = abs(box_bound[0] - xy_new[0])
@@ -28,7 +29,7 @@ def step(state, dt, box_bound, signal_noise_ratio, mu_ks):
             break
     return state
 
-def compute_hidden(velocity):
+def compute_state(velocity):
     if velocity[0] > 0 and velocity[1] > 0:
         return 0
     if velocity[0] > 0 and velocity[1] < 0:
@@ -38,47 +39,58 @@ def compute_hidden(velocity):
     if velocity[0] < 0 and velocity[1] > 0:
         return 3
 
-def transition(A, old_hidden, new_hidden):
-    A[old_hidden, new_hidden] += 1
-    return A
+def intialization(init_v, Boundary):
+    init_state = np.zeros(4)
+    init_state[0] = Boundary * np.random.random() * np.random.choice([-1,1])
+    init_state[1] = Boundary * np.random.random() * np.random.choice([-1,1])
 
-def intialization(T, num_series, Boundary):
-    x0 = Boundary * np.random.random(num_series) * np.random.choice([-1,1], size=num_series)
-    y0 = Boundary * np.random.random(num_series) * np.random.choice([-1,1], size=num_series)
-    init_v = np.random.random((num_series, 2))
-    v_norm = ((init_v **2 ).sum(1)) ** 0.5 ## compute norm for each initial velocity
-    init_v = init_v / v_norm[:, None] *10 ## to make the velocity lying on the unit circle
-    init_v_rand_dir = init_v * np.random.choice([-1,1], size=(num_series,2))
-    return x0, y0, init_v, init_v_rand_dir
+    init_state[2:] = init_v
+    return init_state
 
-def generate_data(T, dt, init_state, Boundary, signal_noise_ratio):
-    mu_ks = np.array([[1, 0], [0, 1]]) * signal_noise_ratio
+def generate_seq(T, dt, Boundary, init_v, noise_cov):
     A = np.zeros((4,4))
     STATE = np.zeros((T+1, 4)) # since I want to make the displacement of length T, I need the coordinates of length T+1
+    init_state = intialization(init_v, Boundary)
     box_bound = np.array([-1, 1, -1, 1]) * Boundary
-#     plot = figure(plot_width=300, plot_height=300)
-#     plot.x_range = Range1d(box_bound[0], box_bound[1])
-#     plot.y_range = Range1d(box_bound[2], box_bound[3])
-#     c = plot.circle(x=[init_state[0]], y=[init_state[1]])
-#     target = show(plot, notebook_handle=True)
-    state = init_state
-    STATE[0] = state
-#     old_hidden = init_hidden(init_state[2:])
+    Zs = np.zeros((T, 4))
+    # plot = figure(plot_width=300, plot_height=300)
+    # plot.x_range = Range1d(box_bound[0], box_bound[1])
+    # plot.y_range = Range1d(box_bound[2], box_bound[3])
+    # c = plot.circle(x=[init_state[0]], y=[init_state[1]])
+    # target = show(plot, notebook_handle=True)
+
+    STATE[0] = init_state
+    # old_hidden = compute_state(init_state[2:])
     for i in range(T):
-        state = step(state, dt, box_bound, signal_noise_ratio, mu_ks)
-#         print(state[2:])
+        state = step(STATE[i], box_bound, noise_cov)
         STATE[i+1] = state
-        if i == 0:
-            old_hidden = compute_hidden(state[2:])
-        new_hidden = compute_hidden(state[2:])
-        A = transition(A, old_hidden, new_hidden)
-        old_hidden = new_hidden
-#         c.data_source.data['x'] = [state[0]]
-#         c.data_source.data['y'] = [state[1]]
-#         push_notebook(handle=target)
-#         time.sleep(0.2)
+        new_state = compute_state(state[2:])
+        Zs[i, new_state] = 1
+        if i != 0:
+            A[old_state, new_state] += 1
+        old_state = new_state
+        # c.data_source.data['x'] = [state[0]]
+        # c.data_source.data['y'] = [state[1]]
+        # push_notebook(handle=target)
+        # time.sleep(0.2)
     Disp = (STATE[1:] - STATE[:T])[:, :2]
+
+    np.place(A, A==0, 1 / T)
     A_sum = A.sum(1)
-    np.place(A_sum, A_sum==0, 1)
     A = A / A_sum[:, None]
-    return STATE, Disp, A
+    Zs = np.array(Zs)
+    return STATE, Disp, A, Zs
+
+def generate_datasets(num_series, T, dt, Boundary, noise_cov):
+    noise_cov = np.array([[1, 0], [0, 1]]) * noise_cov
+    init_v = np.random.random(2) * np.random.choice([-1,1], size=2)
+    v_norm = ((init_v ** 2 ).sum()) ** 0.5 ## compute norm for each initial velocity
+    init_v = init_v / v_norm * dt ## to make the velocity lying on a circle
+
+    init_state = intialization(Boundary)
+    STATEs = np.zeros((num_series, T+1, 4))
+    Disps = np.zeros((num_series, T, D))
+    As_true = np.zeros((num_series, 4, 4))
+    Zs_true = np.zeros((num_series, T, 4))
+    for s in range(num_series):
+        STATEs[s], Disps[s], As_true[s], Zs_true[s] = generate_seq(T, dt, Boundary, init_v, noise_cov)
