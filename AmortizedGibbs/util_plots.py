@@ -1,8 +1,38 @@
+import torch
 import matplotlib.pyplot as plt
 from matplotlib.patches import Ellipse
 import numpy as np
 import matplotlib.gridspec as gridspec
 
+
+def plot_dirs(dirs_pred, dirs_true, vmax):
+    fig3 = plt.figure(figsize=(6,6))
+    ax1 = fig3.add_subplot(1, 2, 1)
+    infer_plot = ax1.imshow(dirs_pred, cmap='viridis', vmin=0, vmax=vmax)
+    ax1.set_xticks([])
+    ax1.set_yticks([])
+    ax1.set_title('variational')
+    ax2 = fig3.add_subplot(1, 2, 2)
+    true_plot = ax2.imshow(dirs_true, cmap='viridis', vmin=0, vmax=vmax)
+    ax2.set_xticks([])
+    ax2.set_yticks([])
+    ax2.set_title('conjugate posterior')
+    cax = fig3.add_axes([1.0, 0.33, 0.03, 0.5])
+    fig3.colorbar(true_plot, cax=cax, orientation='vertical')
+    # cbaxes = fig3.add_axes([0.95, 0.32, 0.02, 0.36])
+    # cb = plt.colorbar(true_plot, cax = cbaxes)
+    # fig3.savefig('transition_plot T=%d_series=%d_boundary=%d_ratio=%f.png' % (T, num_series, Boundary, signal_noise_ratio))
+
+def plot_smc_sample(Zs_true, Zs_ret):
+    ret_index = torch.nonzero(Zs_ret).data.numpy()
+    true_index = torch.nonzero(Zs_true).data.numpy()
+    fig, ax = plt.subplots(figsize=(4, 4))
+    ax.plot(true_index[:,0], true_index[:,1], 'ro', label='truth')
+    ax.plot(ret_index[:,0], ret_index[:,1], 'bo', label='sample')
+    ax.legend(loc='upper right', bbox_to_anchor=(1.5, 0.1))
+    plt.show()
+
+    
 def plot_kl_est(KLs_true, KLs_est):
     fig, ax = plt.subplots(figsize=(8, 8))
     x = np.arange(KLs_true.shape[0])

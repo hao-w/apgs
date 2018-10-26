@@ -81,16 +81,16 @@ def generate_seq(T, dt, Boundary, init_v, noise_cov):
     Zs = np.array(Zs)
     return STATE, Disp, A, Zs
 
-def generate_datasets(num_series, T, dt, Boundary, noise_cov):
-    noise_cov = np.array([[1, 0], [0, 1]]) * noise_cov
+def generate_datasets(num_series, T, D, dt, Boundary, noise_factor):
+    noise_cov = np.array([[1, 0], [0, 1]]) * noise_factor
     init_v = np.random.random(2) * np.random.choice([-1,1], size=2)
     v_norm = ((init_v ** 2 ).sum()) ** 0.5 ## compute norm for each initial velocity
     init_v = init_v / v_norm * dt ## to make the velocity lying on a circle
 
-    init_state = intialization(Boundary)
     STATEs = np.zeros((num_series, T+1, 4))
     Disps = np.zeros((num_series, T, D))
     As_true = np.zeros((num_series, 4, 4))
     Zs_true = np.zeros((num_series, T, 4))
     for s in range(num_series):
         STATEs[s], Disps[s], As_true[s], Zs_true[s] = generate_seq(T, dt, Boundary, init_v, noise_cov)
+    return STATEs, Disps, As_true
