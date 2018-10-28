@@ -5,33 +5,32 @@ from torch.distributions.multivariate_normal import MultivariateNormal
 from torch.distributions.one_hot_categorical import OneHotCategorical as cat
 from torch.distributions.categorical import Categorical
 
-def csmc_hmm(Z_ret, Pi, A, mu_ks, cov_ks, Y, T, D, K, num_particles_smc):
-    Zs = torch.zeros((num_particles_smc, T, K))
-    log_weights = torch.zeros((num_particles_smc, T))
-    decode_onehot = torch.arange(K).float().unsqueeze(-1)
-    log_normalizer = torch.zeros(1).float()
+def csmc_hmm_v(Z_ret, Pi, As, mu_ks, cov_ks, Y, T, D, K, num_particles_smc, num_particles_rws):
+    ##Z_ret is rws-by-T-by-K
+    Zs = torch.zeros((num_particles_rws, num_particles_smc, T, K))
+    log_weights = torch.zeros((num_particles_rws, num_particles_smc, T))
+    log_normalizers = torch.zeros(num_particles_rws).float()
     for t in range(T):
         if t == 0:
-            Zs[-1, t] = Z_ret[t]
-            label = Z_ret[t].nonzero().item()
-            sample_zs = cat(Pi).sample((num_particles_smc-1,))
-            Zs[:-1, t, :] = sample_zs
-            labels = Zs[:, t, :].nonzero()[:, 1]
-            likelihoods = MultivariateNormal(mu_ks[labels], cov_ks[labels]).log_prob(Y[t])
-            log_weights[:, t] = likelihoods
+            Zs[:, -1, t, :] = Z_ret[:, t, :]
+            sample_zs = cat(Pi).sample((num_particles_rws, num_particles_smc-1))
+            Zs[:, :-1, t, :] = sample_zs
+            labels = Zs[:, :, t, :].nonzero()[:, -1]
+            likelihoods = MultivariateNormal(mu_ks[labels], cov_ks[labels]).log_prob(Y[t]).view(num_particles_rws, num_particles_smc)
+            log_weights[:, :, t] = likelihoods
         else:
-            reweight = torch.exp(log_weights[:, t-1] - logsumexp(log_weights[:, t-1]))
-            ancesters = Categorical(reweight).sample((num_particles_smc-1,))
-            Zs[:-1] = Zs[ancesters]
-            Zs[-1, t] = Z_ret[t]
-            labels = Zs[:-1, t-1, :].nonzero()[:, 1]
-            sample_zs = cat(A[labels]).sample()
-            Zs[:-1, t, :] = sample_zs
-            labels = Zs[:, t, :].nonzero()[:, 1]
-            likelihoods = MultivariateNormal(mu_ks[labels], cov_ks[labels]).log_prob(Y[t])
-            log_weights[:, t] = likelihoods
-        log_normalizer += logsumexp(log_weights[:, t]) - torch.log(torch.FloatTensor([num_particles_smc]))
-    return Zs, log_weights, log_normalizer
+            reweight = torch.exp(log_weights[:, :, t-1] - logsumexp(log_weights[:, :, t-1], dim=1).unsqueeze(1))
+            inds = Categorical(reweight).sample((num_particles_smc-1,)).transpose(0,1).unsqueeze(-1).unsqueeze(-1).repeat(1, 1, T, K)
+            Zs[:, :-1, :, :] = torch.gather(Zs, 1, inds)
+            labels = Zs[:, :-1, t-1, :].nonzero()
+            sample_zs = cat(As[labels[:,0], labels[:, -1]]).sample().view(num_particles_rws, num_particles_smc-1, K)
+            Zs[:, :-1, t, :] = sample_zs
+            Zs[:, -1, t, :] = Z_ret[:, t, :]
+            labels = Zs[:, :, t, :].nonzero()[:, -1]
+            likelihoods = MultivariateNormal(mu_ks[labels], cov_ks[labels]).log_prob(Y[t]).view(num_particles_rws, num_particles_smc)
+            log_weights[:, :, t] = likelihoods
+        log_normalizers = log_normalizers + (logsumexp(log_weights[:, :, t], dim=1) - torch.log(torch.FloatTensor([num_particles_smc])) )
+    return Zs, log_weights, log_normalizers
 
 # def csmc_hmm(Z_ret, Pi, A, mu_ks, cov_ks, Y, T, D, K, num_particles=1):
 #     Zs = torch.zeros((num_particles, T, K))
@@ -70,8 +69,6 @@ def csmc_hmm(Z_ret, Pi, A, mu_ks, cov_ks, Y, T, D, K, num_particles_smc):
 #         log_normalizer += logsumexp(log_weights[:, t]) - torch.log(torch.FloatTensor([num_particles]))
 #     return Zs, log_weights, log_normalizer
 
-
-
 def smc_hmm_v(Pi, As, mu_ks, cov_ks, Y, T, D, K, num_particles_smc, num_particles_rws):
     Zs = torch.zeros((num_particles_rws, num_particles_smc, T, K))
     log_weights = torch.zeros((num_particles_rws, num_particles_smc, T))
@@ -101,6 +98,15 @@ def resampling_smc_v(Zs, log_weights, num_particles_rws):
     inds = Categorical(reweight).sample()
     Z_ret = Zs[torch.arange(num_particles_rws), inds]
     return Z_ret
+
+def log_joint_smc_v(Z_ret, Pi, A_samples, mu_ks, cov_ks, Y, T, D, K, num_particles_rws):
+    log_joint = torch.zeros(1).float()
+    labels = Z_ret.nonzero()[:, 1]
+    log_joint += (MultivariateNormal(mu_ks[labels], cov_ks[labels]).log_prob(Y)).sum()
+    log_joint += cat(Pi).log_prob(Z_ret[0])
+    log_joint += (cat(A_samples[labels[:-1]]).log_prob(Z_ret[1:])).sum()
+    return log_joint
+
 
 def smc_hmm(Pi, A, mu_ks, cov_ks, Y, T, D, K, num_particles=1):
     Zs = torch.zeros((num_particles, T, K))
