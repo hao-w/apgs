@@ -100,12 +100,15 @@ def resampling_smc_v(Zs, log_weights, num_particles_rws):
     return Z_ret
 
 def log_joint_smc_v(Z_ret, Pi, A_samples, mu_ks, cov_ks, Y, T, D, K, num_particles_rws):
-    log_joint = torch.zeros(1).float()
-    labels = Z_ret.nonzero()[:, 1]
-    log_joint += (MultivariateNormal(mu_ks[labels], cov_ks[labels]).log_prob(Y)).sum()
-    log_joint += cat(Pi).log_prob(Z_ret[0])
-    log_joint += (cat(A_samples[labels[:-1]]).log_prob(Z_ret[1:])).sum()
-    return log_joint
+    log_joints = torch.zeros(num_particles_rws).float()
+    labels = Z_ret.nonzero()
+    labels_trans = (labels.view(num_particles_rws, T, -1)[:, :-1, :]).view(num_particles_rws*(T-1), -1)
+    Z_ret_trans = Z_ret[:, 1:, :].view(num_particles_rws*(T-1), -1)
+    Ys = Y.repeat(num_particles_rws, 1, 1).view(num_particles_rws*T, D)
+    log_joints = log_joints + (MultivariateNormal(mu_ks[labels[:,-1]], cov_ks[labels[:,-1]]).log_prob(Ys)).view(num_particles_rws, T).sum(1)
+    log_joints = log_joints + cat(Pi).log_prob(Z_ret[:, 0, :])
+    log_joints = log_joints + (cat(A_samples[labels_trans[:,0], labels_trans[:-1]]).log_prob(Z_ret_trans).view(num_particles_rws, T-1).sum(1))
+    return log_joints
 
 
 def smc_hmm(Pi, A, mu_ks, cov_ks, Y, T, D, K, num_particles=1):

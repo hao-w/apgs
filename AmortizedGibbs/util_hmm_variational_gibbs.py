@@ -35,6 +35,18 @@ def log_joint(alpha_trans_0, Zs, Pi, A, mu_ks, cov_ks, Y, T, D, K):
     log_joint_prob += (Dirichlet(alpha_trans_0).log_prob(A)).sum() ## prior of A
     return log_joint_prob
 
+def log_joint_v(alpha_trans_0, Z_ret, Pi, A_samples, mu_ks, cov_ks, Y, T, D, K, num_particles_rws):
+    log_joints = torch.zeros(num_particles_rws).float()
+    labels = Z_ret.nonzero()
+    labels_trans = (labels.view(num_particles_rws, T, -1)[:, :-1, :]).view(num_particles_rws*(T-1), -1)
+    Z_ret_trans = Z_ret[:, 1:, :].view(num_particles_rws*(T-1), -1)
+    Ys = Y.repeat(num_particles_rws, 1, 1).view(num_particles_rws*T, D)
+    log_joints = log_joints + (MultivariateNormal(mu_ks[labels[:,-1]], cov_ks[labels[:,-1]]).log_prob(Ys)).view(num_particles_rws, T).sum(1)
+    log_joints = log_joints + cat(Pi).log_prob(Z_ret[:, 0, :])
+    log_joints = log_joints + (cat(A_samples[labels_trans[:,0], labels_trans[:-1]]).log_prob(Z_ret_trans).view(num_particles_rws, T-1).sum(1))
+    log_joints = log_joints + Dirichlet(alpha_trans_0).log_prob(A_samples).sum(1)
+    return log_joints
+
 # def log_joint(alpha_trans_0, Zs, Pi, A, mu_ks, cov_ks, Y, T, D, K):
 #     log_joint_prob = 0.0
 #     decode_onehot = torch.arange(K).repeat(T, 1).float()
@@ -116,10 +128,10 @@ def kl_dirichlet(alpha1, alpha2):
 
 def rws2(enc, alpha_trans_0, Pi, mu_ks, cov_ks, Y, T, D, K, num_particles_rws, num_particles_smc, mcmc_steps):
     # log_weight_rwss = torch.zeros(num_particles_rws)
-    log_p_joints = torch.zeros(num_particles_rws)
+    # log_p_joints = torch.zeros(num_particles_rws)
     # log_normalizers = torch.zeros(num_particles_rws)
     # log_p_smcs = torch.zeros(num_particles_rws)
-    log_qs = torch.zeros(num_particles_rws)
+    # log_qs = torch.zeros(num_particles_rws)
     kls = torch.zeros(num_particles_rws)
     # rws-by-K-K
     A_samples = A_init.repeat(num_particles_rws, 1, 1)
@@ -149,10 +161,9 @@ def rws2(enc, alpha_trans_0, Pi, mu_ks, cov_ks, Y, T, D, K, num_particles_rws, n
         Z_ret_pair = torch.cat((Z_ret[:, :T-1, :].unsqueeze(0), Z_ret[:, 1:, :].unsqueeze(0)), 0).permute(1, 2, 0, -1).contiguous().view(-1, -1, 2*K)
 
     log_p_smcss = log_joint_smc_v(Z_ret, Pi, A_samples, mu_ks, cov_ks, Y, T, D, K).detach()
-
-    kls = kl_dirichlets_v(alpha_trans_0, latents_dirs[l], Z_ret, T, K)
-
-    log_p_joints = log_joint_v(alpha_trans_0, Z_ret, Pi, A_samples, mu_ks, cov_ks, Y, T, D, K).detach()
+    for l in range(num_particles_rws):
+        kls[l] = kl_dirichlets_v(alpha_trans_0, latents_dirs[l], Z_ret, T, K)
+    log_p_joints = log_joint_v(alpha_trans_0, Z_ret, Pi, A_samples, mu_ks, cov_ks, Y, T, D, K, num_particles_rws).detach()
 
     log_qs = log_q_hmm_v(latents_dirs, A_samples, K, num_particles_rws)
 
