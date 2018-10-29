@@ -4,24 +4,49 @@ from matplotlib.patches import Ellipse
 import numpy as np
 import matplotlib.gridspec as gridspec
 
+def pairwise(Zs, T):
+    return torch.bmm(Zs[:T-1].unsqueeze(-1), Zs[1:].unsqueeze(1))
 
-def plot_dirs(dirs_pred, dirs_true, vmax):
-    fig3 = plt.figure(figsize=(6,6))
+def plot_dirs(enc, alpha_trans_0, Z_ret, Zs_true, T, K, num_particles_rws, vmax):
+    Z_ret_pair = torch.cat((Z_ret[:, :T-1, :].unsqueeze(1), Z_ret[:, 1:, :].unsqueeze(1)), 1)
+    ind = np.random.randint(num_particles_rws)
+    latents_dir, A_sample = enc(Z_ret_pair[ind].transpose(0,1).contiguous().view(T-1, 2*K))
+    conjugate_post = alpha_trans_0 + pairwise(torch.from_numpy(Zs_true).float(), T).sum(0)
+    print('variational : ')
+    print(latents_dir)
+    print('conjugate posterior :')
+    print(conjugate_post)
+
+    fig3 = plt.figure(figsize=(12,6))
     ax1 = fig3.add_subplot(1, 2, 1)
-    infer_plot = ax1.imshow(dirs_pred, cmap='viridis', vmin=0, vmax=vmax)
+    infer_plot = ax1.imshow(latents_dir.data.numpy(), cmap='viridis', vmin=0, vmax=vmax)
     ax1.set_xticks([])
     ax1.set_yticks([])
     ax1.set_title('variational')
     ax2 = fig3.add_subplot(1, 2, 2)
-    true_plot = ax2.imshow(dirs_true, cmap='viridis', vmin=0, vmax=vmax)
+    true_plot = ax2.imshow(conjugate_post.data.numpy(), cmap='viridis', vmin=0, vmax=vmax)
     ax2.set_xticks([])
     ax2.set_yticks([])
     ax2.set_title('conjugate posterior')
-    cax = fig3.add_axes([1.0, 0.33, 0.03, 0.5])
+    cax = fig3.add_axes([1.0, 0.15, 0.03, 0.7])
     fig3.colorbar(true_plot, cax=cax, orientation='vertical')
     # cbaxes = fig3.add_axes([0.95, 0.32, 0.02, 0.36])
     # cb = plt.colorbar(true_plot, cax = cbaxes)
     # fig3.savefig('transition_plot T=%d_series=%d_boundary=%d_ratio=%f.png' % (T, num_series, Boundary, signal_noise_ratio))
+
+def plot_results(EUBOs, log_qs, KLs, ESSs, num_particles_rws):
+    fig, ax = plt.subplots(figsize=(16, 8))
+    ax1 = fig.add_subplot(1,2,1)
+    x = np.arange(len(EUBOs))
+    ax1.plot(EUBOs, 'r-', label='eubo')
+    ax1.plot(log_qs, 'b-', label='- log_q')
+    ax1.plot(KLs, 'g-', label='KL')
+    ax1.legend()
+    ax1.set_xlabel('epochs')
+    ax2 = fig.add_subplot(1,2,2)
+    ax2.plot(np.array(ESSs) / num_particles_rws)
+    plt.show()
+
 
 def plot_smc_sample(Zs_true, Zs_ret):
     ret_index = torch.nonzero(Zs_ret).data.numpy()
@@ -31,19 +56,6 @@ def plot_smc_sample(Zs_true, Zs_ret):
     ax.plot(ret_index[:,0], ret_index[:,1], 'bo', label='sample')
     ax.legend(loc='upper right', bbox_to_anchor=(1.5, 0.1))
     plt.show()
-
-    
-def plot_kl_est(KLs_true, KLs_est):
-    fig, ax = plt.subplots(figsize=(8, 8))
-    x = np.arange(KLs_true.shape[0])
-    ax.plot(x, KLs_true, 'r-o', label='true KL')
-    ax.plot(x, KLs_est, 'b-o', label='Estimate KL')
-    ax.legend()
-    ax.set_xlabel('epochs')
-    ax.set_ylabel('KL')
-    plt.show()
-
-
 
 def plot_cov_ellipse(cov, pos, nstd=2, ax=None, **kwargs):
     def eigsorted(cov):

@@ -1,3 +1,4 @@
+import torch
 import numpy as np
 from bokeh.plotting import figure, output_notebook, show
 from bokeh.models import Range1d
@@ -38,6 +39,12 @@ def compute_state(velocity):
         return 2
     if velocity[0] < 0 and velocity[1] > 0:
         return 3
+
+def init_velocity(dt):
+    init_v = np.random.random(2) * np.random.choice([-1,1], size=2)
+    v_norm = ((init_v ** 2 ).sum()) ** 0.5 ## compute norm for each initial velocity
+    init_v = init_v / v_norm * dt ## to make the velocity lying on a circle
+    return init_v
 
 def intialization(init_v, Boundary):
     init_state = np.zeros(4)
@@ -94,3 +101,16 @@ def generate_datasets(num_series, T, D, dt, Boundary, noise_factor):
     for s in range(num_series):
         STATEs[s], Disps[s], As_true[s], Zs_true[s] = generate_seq(T, dt, Boundary, init_v, noise_cov)
     return STATEs, Disps, As_true
+
+def generate_seq_T(T, K, dt, Boundary, init_v, noise_cov):
+    STATE, Disp, A_true, Zs_true = generate_seq(T, dt, Boundary, init_v, noise_cov)
+    ## true global variables
+    cov_true = np.tile(noise_cov, (K, 1, 1))
+    dirs = np.array([[1, 1], [1, -1], [-1, -1], [-1, 1]])
+    mu_true = np.tile(np.absolute(init_v), (K, 1)) * dirs
+    Pi_true = np.ones(K) * (1/K)
+    cov_ks = torch.from_numpy(cov_true).float()
+    mu_ks = torch.from_numpy(mu_true).float()
+    Pi = torch.from_numpy(Pi_true).float()
+    Y = torch.from_numpy(Disp).float()
+    return mu_ks, cov_ks, Pi, Y, A_true, Zs_true
