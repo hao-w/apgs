@@ -6,6 +6,7 @@ from torch.distributions.dirichlet import Dirichlet
 from torch.distributions.multivariate_normal import MultivariateNormal
 from torch.distributions.one_hot_categorical import OneHotCategorical as cat
 from torch.distributions.categorical import Categorical
+from smc_v import *
 from smc import *
 
 def initial_trans(alpha_trans_0, K, num_particles_rws):
@@ -69,7 +70,7 @@ def rws(enc, alpha_trans_0, Pi, mu_ks, cov_ks, Y, T, D, K, num_particles_rws, nu
         Z_ret_pairwise = torch.cat((Z_ret[:T-1].unsqueeze(0), Z_ret[1:].unsqueeze(0)), 0).transpose(0, 1).contiguous().view(T-1, 2*K)
         for m in range(mcmc_steps):
             A_prev = A_samples
-            latents_dirs, A_samples = enc(Z_ret_pairwise, alpha_trans_0.sum().item(), T)
+            latents_dirs, A_samples = enc(Z_ret_pairwise)
             log_p_joint_curr = log_joint(alpha_trans_0, Z_ret, Pi, A_samples, mu_ks, cov_ks, Y, T, D, K).detach()
             log_p_joint_prev = log_joint(alpha_trans_0, Z_ret, Pi, A_prev, mu_ks, cov_ks, Y, T, D, K).detach()
             log_q_curr = log_q_hmm(latents_dirs, A_samples).detach()
@@ -88,10 +89,55 @@ def rws(enc, alpha_trans_0, Pi, mu_ks, cov_ks, Y, T, D, K, num_particles_rws, nu
         log_p_joints[l] = log_joint(alpha_trans_0, Z_ret, Pi, A_samples, mu_ks, cov_ks, Y, T, D, K).detach()
         log_qs[l] = log_q_hmm(latents_dirs, A_samples)
 
-    log_weights_rws = log_weights_rws - logsumexp(log_weights_rws)
+    log_weights_rws = log_weights_rws - logsumexp(log_weights_rws, dim=0)
     weights_rws = torch.exp(log_weights_rws)
     kl =  torch.mul(weights_rws, kls).sum()
     ess = (1. / (weights_rws ** 2 ).sum()).item()
     loss_infer = - torch.mul(weights_rws, log_qs).sum()
     eubo =  torch.mul(weights_rws, log_p_joints - log_qs + log_normalizers - log_p_smcs).sum()
     return enc, loss_infer, eubo, kl, ess, latents_dirs, Z_ret
+# 
+# def rws2(enc, alpha_trans_0, Pi, mu_ks, cov_ks, Y, T, D, K, num_particles_rws, num_particles_smc, mcmc_steps):
+#     log_weights_rws = torch.zeros(num_particles_rws)
+#     log_p_joints = torch.zeros(num_particles_rws)
+#     log_normalizers = torch.zeros(num_particles_rws)
+#     log_p_smcs = torch.zeros(num_particles_rws)
+#     log_qs = torch.zeros(num_particles_rws)
+#     kls = torch.zeros(num_particles_rws)
+#
+#     A_samples = initial_trans(alpha_trans_0, K, num_particles_rws)
+#     Zs, log_weights, log_normalizers = smc_hmm_v(Pi, A_samples, mu_ks, cov_ks, Y, T, D, K, num_particles_smc, num_particles_rws)
+#     Z_ret = resampling_smc_v(Zs, log_weights, num_particles_rws)
+#     log_weight_rwss = log_normalizers
+#     Z_ret_pair = torch.cat((Z_ret[:, :T-1, :].unsqueeze(1), Z_ret[:, 1:, :].unsqueeze(1)), 1)
+#     for m in range(mcmc_steps):
+#             A_prev = A_samples
+#             A_samples = torch.zeros((num_particles_rws, K, K))
+#             for l in range(num_particles_rws):
+#                 latents_dirs, A_sample = enc(Z_ret_pair[l], alpha_trans_0.sum().item(), T)
+#                 log_p_joint_curr = log_joint(alpha_trans_0, Z_ret[l], Pi, A_sample, mu_ks, cov_ks, Y, T, D, K).detach()
+#                 log_p_joint_prev = log_joint(alpha_trans_0, Z_ret[l], Pi, A_prev[l], mu_ks, cov_ks, Y, T, D, K).detach()
+#                 log_q_curr = log_q_hmm(latents_dirs, A_sample)
+#                 log_q_prev = log_q_hmm(latents_dirs, A_prev[l]).detach()
+#                 log_weight_rws += log_p_joint_curr - log_p_joint_prev - log_q_curr + log_q_prev
+#                 A_samples[l] = A_sample
+#             log_weight_rwss = log_weight_rwss +
+#             Zs, log_weights, log_normalizers = csmc_hmm_v(Z_ret, Pi, A_samples, mu_ks, cov_ks, Y, T, D, K, num_particles_smc, num_particles_rws)
+#             Z_ret = resampling_smc_v(Zs, log_weights, num_particles_rws)
+#             Z_ret_pair = torch.cat((Z_ret[:, :T-1, :].unsqueeze(1), Z_ret[:, 1:, :].unsqueeze(1)), 1)
+#
+#         log_weight_rwss[l] = log_weight_rws.detach()
+#         log_p_smcs[l] = log_joint_smc(Z_ret, Pi, A_samples, mu_ks, cov_ks, Y, T, D, K).detach()
+#         log_normalizers[l] = log_normalizer.detach()
+#         alpha_trans_hat = alpha_trans_0 + pairwise(Z_ret, T).sum(0)
+#         kls[l] = kl_dirichlets(alpha_trans_0, latents_dirs, Z_ret, T, K)
+#         # log_p_joints[l] = log_joint(alpha_trans_0, Z_ret, Pi, A_samples, mu_ks, cov_ks, Y, T, D, K).detach()
+#         # log_qs[l] = log_q_hmm(latents_dirs, A_samples)
+#
+#     log_weights_rws = log_weights_rws - logsumexp(log_weights_rws)
+#     weights_rws = torch.exp(log_weights_rws)
+#     kl =  torch.mul(weights_rws, kls).sum()
+#     ess = (1. / (weights_rws ** 2 ).sum()).item()
+#     loss_infer = - torch.mul(weights_rws, log_qs).sum()
+#     eubo =  torch.mul(weights_rws, log_p_joints - log_qs + log_normalizers - log_p_smcs).sum()
+#     return enc, loss_infer, eubo, kl, ess, latents_dirs, Z_ret
