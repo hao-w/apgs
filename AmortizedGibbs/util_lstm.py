@@ -36,7 +36,7 @@ def PackSeq(Seq, Len, batch_size):
     
 class LSTM(nn.Module):
 
-    def __init__(self, input_dim, hidden_dim, batch_size, output_dim, target_dim):
+    def __init__(self, input_dim, hidden_dim, batch_size, target_dim):
         super(LSTM, self).__init__()
         self.input_dim = input_dim
         self.hidden_dim = hidden_dim
@@ -60,8 +60,8 @@ class LSTM(nn.Module):
         out_unpacked, _ = to.nn.utils.rnn.pad_packed_sequence(out_packed)#, batch_first=True)
         out_last = out_unpacked[lenghts - 1, np.arange(out_unpacked.shape[1]), :]
         
-        out_lin = self.linear(out_last)
-        out = to.exp(out_lin)
+        #out_lin = self.linear(out_last)
+        out = to.exp(out_last)
         return out
         
         
