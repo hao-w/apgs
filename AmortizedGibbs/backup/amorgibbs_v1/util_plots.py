@@ -7,19 +7,16 @@ import matplotlib.gridspec as gridspec
 def pairwise(Zs, T):
     return torch.bmm(Zs[:T-1].unsqueeze(-1), Zs[1:].unsqueeze(1))
 
-def plot_dirs(enc, alpha_trans_0, Z_ret, Zs_true, T, K, num_particles_rws, vmax):
-    Z_ret_pair = torch.cat((Z_ret[:, :T-1, :].unsqueeze(1), Z_ret[:, 1:, :].unsqueeze(1)), 1)
-    ind = np.random.randint(num_particles_rws)
-    latents_dir, A_sample = enc(Z_ret_pair[ind].transpose(0,1).contiguous().view(T-1, 2*K))
-    conjugate_post = alpha_trans_0 + pairwise(torch.from_numpy(Zs_true).float(), T).sum(0)
+def plot_dirs(latents_dirs, alpha_trans_0, Zs_true, T, K, vmax):
+    conjugate_post = alpha_trans_0 + pairwise(Zs_true, T).sum(0)
     print('variational : ')
-    print(latents_dir)
+    print(latents_dirs)
     print('conjugate posterior :')
     print(conjugate_post)
 
     fig3 = plt.figure(figsize=(12,6))
     ax1 = fig3.add_subplot(1, 2, 1)
-    infer_plot = ax1.imshow(latents_dir.data.numpy(), cmap='viridis', vmin=0, vmax=vmax)
+    infer_plot = ax1.imshow(latents_dirs.data.numpy(), cmap='viridis', vmin=0, vmax=vmax)
     ax1.set_xticks([])
     ax1.set_yticks([])
     ax1.set_title('variational')
@@ -34,17 +31,16 @@ def plot_dirs(enc, alpha_trans_0, Z_ret, Zs_true, T, K, num_particles_rws, vmax)
     # cb = plt.colorbar(true_plot, cax = cbaxes)
     # fig3.savefig('transition_plot T=%d_series=%d_boundary=%d_ratio=%f.png' % (T, num_series, Boundary, signal_noise_ratio))
 
-def plot_results(EUBOs, log_qs, KLs, ESSs, num_particles_rws):
+def plot_results(EUBOs, KLs, ESSs):
     fig, ax = plt.subplots(figsize=(16, 8))
     ax1 = fig.add_subplot(1,2,1)
     x = np.arange(len(EUBOs))
     ax1.plot(EUBOs, 'r-', label='eubo')
-    ax1.plot(log_qs, 'b-', label='- log_q')
     ax1.plot(KLs, 'g-', label='KL')
     ax1.legend()
     ax1.set_xlabel('epochs')
     ax2 = fig.add_subplot(1,2,2)
-    ax2.plot(np.array(ESSs) / num_particles_rws)
+    ax2.plot(np.array(ESSs))
     plt.show()
 
 

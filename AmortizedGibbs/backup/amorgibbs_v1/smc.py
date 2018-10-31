@@ -5,6 +5,8 @@ from torch.distributions.multivariate_normal import MultivariateNormal
 from torch.distributions.one_hot_categorical import OneHotCategorical as cat
 from torch.distributions.categorical import Categorical
 
+
+
 # def csmc_hmm(Z_ret, Pi, A, mu_ks, cov_ks, Y, T, D, K, num_particles=1):
 #     Zs = torch.zeros((num_particles, T, K))
 #     log_weights = torch.zeros((num_particles, T))

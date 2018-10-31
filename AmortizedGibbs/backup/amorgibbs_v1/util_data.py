@@ -112,5 +112,6 @@ def generate_seq_T(T, K, dt, Boundary, init_v, noise_cov):
     cov_ks = torch.from_numpy(cov_true).float()
     mu_ks = torch.from_numpy(mu_true).float()
     Pi = torch.from_numpy(Pi_true).float()
+    Zs_true = torch.from_numpy(Zs_true).float()
     Y = torch.from_numpy(Disp).float()
     return mu_ks, cov_ks, Pi, Y, A_true, Zs_true
