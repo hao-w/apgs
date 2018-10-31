@@ -22,19 +22,10 @@ def save_params(KLs, EUBOs, ESSs, PATH_ENC):
     fkl.close()
     fess.close()
 
-def initial_trans(alpha_trans_0, K, num_particles_rws):
-    # A = torch.zeros((K, K)).float()
-    # for k in range(K):
-    #     A[k] = Dirichlet(alpha_trans_0[k]).sample()
-    A = torch.ones((K, K)).float() / 10
-    for k in range(K):
-        A[k, k] = 1 / 7
-    return A.repeat(num_particles_rws, 1, 1)
-
 def initial_trans_prior(K):
     alpha_trans_0 = torch.ones((K, K))
     for k in range(K):
-        alpha_trans_0[k,k] = K
+        alpha_trans_0[k,k] = 2
     return alpha_trans_0
 
 def log_q_hmm(latents_dirs, A_samples):

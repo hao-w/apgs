@@ -37,15 +37,6 @@ def naive_hmm(Pi, A, T, K):
             log_qs[t] = cat(A[labels]).log_prob(sample_z)
     return Zs, log_qs.sum()
 
-def initial_trans(alpha_trans_0, K, num_particles_rws):
-    # A = torch.zeros((K, K)).float()
-    # for k in range(K):
-    #     A[k] = Dirichlet(alpha_trans_0[k]).sample()
-    A = torch.ones((K, K)).float() / 10
-    for k in range(K):
-        A[k, k] = 1 / 7
-    return A.repeat(num_particles_rws, 1, 1)
-
 def initial_trans_prior(K):
     alpha_trans_0 = torch.ones((K, K))
     for k in range(K):
