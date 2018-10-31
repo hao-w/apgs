@@ -8,6 +8,20 @@ from torch.distributions.one_hot_categorical import OneHotCategorical as cat
 from torch.distributions.categorical import Categorical
 from smc import *
 
+def save_params(KLs, EUBOs, ESSs, PATH_ENC):
+    with open(PATH_ENC + 'EUBOs.txt', 'w+') as feubo:
+        for eubo in EUBOs:
+            feubo.write("%s\n" % eubo)
+    with open(PATH_ENC + 'KLs.txt', 'w+') as fkl:
+        for kl in KLs:
+            fkl.write("%s\n" % kl)
+    with open(PATH_ENC + 'ESSs.txt', 'w+') as fess:
+        for ess in ESSs:
+            fess.write("%s\n" % ess)
+    feubo.close()
+    fkl.close()
+    fess.close()
+    
 def initial_trans(alpha_trans_0, K, num_particles_rws):
     A = torch.zeros((K, K)).float()
     for k in range(K):
