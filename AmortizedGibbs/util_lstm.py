@@ -36,15 +36,13 @@ def PackSeq(Seq, Len, batch_size):
     
 class LSTM(nn.Module):
 
-    def __init__(self, input_dim, hidden_dim, batch_size, target_dim):
+    def __init__(self, input_dim, hidden_dim, batch_size):
         super(LSTM, self).__init__()
         self.input_dim = input_dim
         self.hidden_dim = hidden_dim
         self.batch_size = batch_size
-        self.target_dim = target_dim
 
         self.lstm = nn.LSTM(self.input_dim, self.hidden_dim)
-        self.linear = nn.Linear(self.hidden_dim, self.target_dim)
         self.init_hidden()
         
     def init_hidden(self):
@@ -53,7 +51,7 @@ class LSTM(nn.Module):
 
     def forward(self, x, lenghts):
         # Input: seq_length x batch_size x input_size (embedding_dimension in this case)
-        # Output: seq_length x batch_size x hidden_size
+        # Seq-Output: seq_length x batch_size x hidden_size
         # last_hidden_state: batch_size, hidden_size
         # last_cell_state: batch_size, hidden_size
         out_packed, self.hidden = self.lstm(x, self.hidden)
