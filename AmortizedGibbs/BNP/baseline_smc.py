@@ -78,4 +78,5 @@ def onesmc_sampling(enc, alpha_trans_0, Pi, mu_ks, cov_ks, Z_true, Y, T, D, K, n
     kl =  torch.mul(weights_is, kls).sum()
     ess = (1. / (weights_is ** 2 ).sum()).item()
     eubo =  torch.mul(weights_is, log_weights_is).sum()
-    return enc, eubo, kl, ess, latents_dirs
+    elbo = log_weights_is.sum()
+    return enc, eubo, kl, ess, latents_dirs, elbo

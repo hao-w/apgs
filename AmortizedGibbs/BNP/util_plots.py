@@ -31,12 +31,13 @@ def plot_dirs(latents_dirs, alpha_trans_0, Zs_true, T, K, vmax):
     # cb = plt.colorbar(true_plot, cax = cbaxes)
     # fig3.savefig('transition_plot T=%d_series=%d_boundary=%d_ratio=%f.png' % (T, num_series, Boundary, signal_noise_ratio))
 
-def plot_results(EUBOs, KLs, ESSs):
+def plot_results(EUBOs, KLs, ESSs, ELBOs):
     fig, ax = plt.subplots(figsize=(16, 8))
     ax1 = fig.add_subplot(1,2,1)
     x = np.arange(len(EUBOs))
     ax1.plot(EUBOs, 'r-', label='eubo')
     ax1.plot(KLs, 'g-', label='KL')
+    ax1.plot(ELBOs, 'b-', label='elbo')
     ax1.legend()
     ax1.set_xlabel('epochs')
     ax2 = fig.add_subplot(1,2,2)

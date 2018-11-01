@@ -137,7 +137,6 @@ def resampling_smc(Zs, log_weights):
 
 def log_joint_smc(Z_ret, Pi, A_samples, mu_ks, cov_ks, Y, T, D, K):
     log_joint = torch.zeros(1).float()
-    decode_onehot = torch.arange(K).float().unsqueeze(-1)
     for t in range(T):
         label = Z_ret[t].nonzero().item()
         likelihood = MultivariateNormal(mu_ks[label], cov_ks[label]).log_prob(Y[t])
