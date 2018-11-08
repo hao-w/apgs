@@ -31,13 +31,22 @@ def plot_dirs(latents_dirs, alpha_trans_0, Zs_true, T, K, vmax):
     # cb = plt.colorbar(true_plot, cax = cbaxes)
     # fig3.savefig('transition_plot T=%d_series=%d_boundary=%d_ratio=%f.png' % (T, num_series, Boundary, signal_noise_ratio))
 
+<<<<<<< HEAD:AmortizedGibbs/disps/util_plots.py
 def plot_results(EUBOs, KLs, ELBOs):
+=======
+def plot_results(EUBOs, KLs, ESSs, ELBOs):
+>>>>>>> 9fa5e5028ad3ebbea666020006d2621e092d74a7:AmortizedGibbs/BNP/util_plots.py
     fig, ax = plt.subplots(figsize=(16, 8))
     ax1 = fig.add_subplot(1,2,1)
     x = np.arange(len(EUBOs))
     ax1.plot(EUBOs, 'r-', label='eubo')
+<<<<<<< HEAD:AmortizedGibbs/disps/util_plots.py
     ax1.plot(ELBOs, 'g-', label='elbo')
     # ax1.plot(KLs, 'g-', label='KL')
+=======
+    ax1.plot(KLs, 'g-', label='KL')
+    ax1.plot(ELBOs, 'b-', label='elbo')
+>>>>>>> 9fa5e5028ad3ebbea666020006d2621e092d74a7:AmortizedGibbs/BNP/util_plots.py
     ax1.legend()
     ax1.set_xlabel('iterations')
     plt.show()

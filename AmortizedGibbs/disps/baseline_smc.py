@@ -102,4 +102,9 @@ def twoshots_sampling(A_true, enc, alpha_trans_0, Pi, mu_ks, cov_ks, Z_true, Y, 
     kl =  torch.mul(weights_is, kls).sum()
     ess = (1. / (weights_is ** 2 ).sum()).item()
     eubo =  torch.mul(weights_is, log_weights_is).sum()
+<<<<<<< HEAD:AmortizedGibbs/disps/baseline_smc.py
     return enc, eubo, kl, ess, latents_dirs
+=======
+    elbo = log_weights_is.sum()
+    return enc, eubo, kl, ess, latents_dirs, elbo
+>>>>>>> 9fa5e5028ad3ebbea666020006d2621e092d74a7:AmortizedGibbs/BNP/baseline_smc.py
