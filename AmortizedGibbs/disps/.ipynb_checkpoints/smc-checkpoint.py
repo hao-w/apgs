@@ -66,7 +66,7 @@ def csmc_hmm(Z_ret, Pi, A, mu_ks, cov_ks, Y, T, D, K, num_particles_smc):
             sample_zs = cat(A[labels]).sample()
             Zs[:-1, t, :] = sample_zs
             labels = Zs[:, t, :].nonzero()[:, 1]
-            likelihoods = MultivariateNormZ_retal(mu_ks[labels], cov_ks[labels]).log_prob(Y[t])
+            likelihoods = MultivariateNormal(mu_ks[labels], cov_ks[labels]).log_prob(Y[t])
             log_weights[:, t] = likelihoods
         log_normalizer += logsumexp(log_weights[:, t], dim=0) - torch.log(torch.FloatTensor([num_particles_smc]))
     return Zs, log_weights, log_normalizer
