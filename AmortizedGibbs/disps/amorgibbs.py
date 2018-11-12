@@ -7,66 +7,7 @@ from torch.distributions.multivariate_normal import MultivariateNormal
 from torch.distributions.one_hot_categorical import OneHotCategorical as cat
 from torch.distributions.categorical import Categorical
 from smc import *
-
-def save_params(KLs, EUBOs, ELBOs, PATH_ENC):
-    with open(PATH_ENC + 'EUBOs.txt', 'w+') as feubo:
-        for eubo in EUBOs:
-            feubo.write("%s\n" % eubo)
-    with open(PATH_ENC + 'KLs.txt', 'w+') as fkl:
-        for kl in KLs:
-            fkl.write("%s\n" % kl)
-    with open(PATH_ENC + 'ELBOs.txt', 'w+') as ELBOs:
-        for elbo in ELBOs:
-            fess.write("%s\n" % elbo)
-    feubo.close()
-    fkl.close()
-    fess.close()
-
-def initial_trans(alpha_trans_0, K):
-    A = torch.zeros((K, K)).float()
-    log_prior = 0.0
-    for k in range(K):
-        A[k] = Dirichlet(alpha_trans_0[k]).sample()
-        log_prior += Dirichlet(alpha_trans_0[k]).log_prob(A[k])
-    #A = torch.ones((K, K)).float() / 10
-    #for k in range(K):
-    #    A[k, k] = 1. / 7
-    return A, log_prior
-
-def initial_trans_prior(K):
-    alpha_trans_0 = torch.ones((K, K))
-    return alpha_trans_0
-
-def pairwise(Zs, T):
-    return torch.bmm(Zs[:T-1].unsqueeze(-1), Zs[1:].unsqueeze(1))
-
-def log_joint(alpha_trans_0, Zs, Pi, A, mu_ks, cov_ks, Y, T, D, K):
-    log_joint_prob = torch.zeros(1).float()
-    labels = Zs.nonzero()[:, 1]
-    log_joint_prob += (MultivariateNormal(mu_ks[labels], cov_ks[labels]).log_prob(Y)).sum() # likelihood of obs
-    log_joint_prob += cat(Pi).log_prob(Zs[0]) # z_1 | pi
-    log_joint_prob += (cat(A[labels[:-1]]).log_prob(Zs[1:])).sum()
-    log_joint_prob += (Dirichlet(alpha_trans_0).log_prob(A)).sum() ## prior of A
-    return log_joint_prob
-
-def log_q_hmm(latents_dirs, A_samples):
-    log_q = Dirichlet(latents_dirs).log_prob(A_samples)
-    return log_q.sum()
-
-def kl_dirichlets(alpha_trans_0, latents_dirs, Zs, T, K):
-    conjugate_posterior = alpha_trans_0 + pairwise(Zs, T).sum(0)
-    variational = alpha_trans_0 + latents_dirs
-    kl = 0.0
-    for k in range(K):
-        kl += kl_dirichlet(conjugate_posterior[k], variational[k])
-    return kl
-
-def kl_dirichlet(alpha1, alpha2):
-    A = torch.lgamma(alpha1.sum()) - torch.lgamma(alpha2.sum())
-    B = (torch.lgamma(alpha1) - torch.lgamma(alpha2)).sum()
-    C = (torch.mul(alpha1 - alpha2, torch.digamma(alpha1) - torch.digamma(alpha1.sum()))).sum()
-    kl = A - B + C
-    return kl
+from util import *
 
 def rws_nested(enc, alpha_trans_0, Pi, mu_ks, cov_ks, Y, T, D, K, num_particles_rws, num_particles_smc, mcmc_steps):
     log_weights_rws = torch.zeros(num_particles_rws)
@@ -80,7 +21,7 @@ def rws_nested(enc, alpha_trans_0, Pi, mu_ks, cov_ks, Y, T, D, K, num_particles_
         Z_ret_pairwise = torch.cat((Z_ret[:T-1].unsqueeze(0), Z_ret[1:].unsqueeze(0)), 0).transpose(0, 1).contiguous().view(T-1, 2*K)
         for m in range(mcmc_steps):
             A_prev = A_samples
-            latents_dirs, A_samples = enc(Z_ret_pairwise)
+            latents_dirs, A_samples = enc(Z_ret_pairwise, alpha_trans_0)
             log_q_curr = log_q_hmm(latents_dirs, A_samples)
             log_weights_rws[l] = log_weights_rws[l] - log_q_curr
             Zs, log_weights, log_normalizer = csmc_hmm(Z_ret, Pi, A_samples, mu_ks, cov_ks, Y, T, D, K, num_particles_smc)

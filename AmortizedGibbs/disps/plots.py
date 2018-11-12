@@ -7,9 +7,8 @@ import matplotlib.gridspec as gridspec
 def pairwise(Zs, T):
     return torch.bmm(Zs[:T-1].unsqueeze(-1), Zs[1:].unsqueeze(1))
 
-def plot_dirs(latents_dirs, alpha_trans_0, Zs, T, K, vmax):
+def plot_dirs(variational, alpha_trans_0, Zs, T, K, vmax):
     conjugate_post = alpha_trans_0 + pairwise(Zs, T).sum(0)
-    variational = alpha_trans_0 + latents_dirs
     print('variational : ')
     print(variational)
     print('conjugate posterior :')
@@ -37,7 +36,7 @@ def plot_results(EUBOs, ELBOs, KLs, ESSs):
     ax1 = fig.add_subplot(1,2,1)
     x = np.arange(len(EUBOs))
     ax1.plot(EUBOs, 'r-', label='eubo')
-    ax1.plot(ELBOs, 'b-', label='- log_q')
+    ax1.plot(ELBOs, 'b-', label='elbo')
     ax1.plot(KLs, 'g-', label='KL')
     ax1.legend()
     ax1.set_xlabel('epochs')
@@ -75,89 +74,13 @@ def plot_cov_ellipse(cov, pos, nstd=2, ax=None, **kwargs):
 
 def plot_clusters(Xs, mus, covs, K):
     fig, ax = plt.subplots(figsize=(4, 4))
-    # ax.set_xlim(-6, 6)
-    # ax.set_ylim(-6, 6)
+    ax.set_xlim(-10, 10)
+    ax.set_ylim(-10, 10)
     ax.axis('equal')
     ax.plot(Xs[:,0], Xs[:,1], 'ro')
     for k in range(K):
         plot_cov_ellipse(cov=covs[k], pos=mus[k], nstd=2, ax=ax, alpha=0.5)
     plt.show()
-
-def plot_velocity_circle(v):
-    fig = plt.figure(figsize=(4,4))
-    ax = fig.gca()
-    ax.scatter(v[:,0], v[:,1], label='z=1')
-    ax.scatter(-v[:,0], v[:,1], label='z=2')
-    ax.scatter(v[:,0], -v[:,1], label='z=3')
-    ax.scatter(-v[:,0], -v[:,1], label='z=4')
-    ax.set_xlabel('x velocity')
-    ax.set_ylabel('y velocity')
-    ax.legend(loc='upper center', bbox_to_anchor=(0.5, 1.15), ncol=4)
-
-def plot_transition(As_pred, As_true, vmax, T, num_series=None, Boundary=None, signal_noise_ratio=None, fs=None):
-    As_infer = As_pred / As_pred.sum(-1)[:, :, None]
-    As_infer = As_infer.mean(0)
-    fig3 = plt.figure(figsize=(fs,fs))
-    ax1 = fig3.add_subplot(1, 1, 1)
-    infer_plot = ax1.imshow(As_infer, cmap='Greys', vmin=0, vmax=vmax)
-    ax1.set_xticks([])
-    ax1.set_yticks([])
-    ax1.set_title('variational')
-    ax2 = fig3.add_subplot(2, 1, 2)
-    As_true_ave = As_true.mean(0)
-    true_plot = ax2.imshow(As_true_ave, cmap='Greys', vmin=0, vmax=vmax)
-    ax2.set_xticks([])
-    ax2.set_yticks([])
-    ax2.set_title('conjugate posterior')
-    # cbaxes = fig3.add_axes([0.95, 0.32, 0.02, 0.36])
-    # cb = plt.colorbar(true_plot, cax = cbaxes)
-    # fig3.savefig('transition_plot T=%d_series=%d_boundary=%d_ratio=%f.png' % (T, num_series, Boundary, signal_noise_ratio))
-    return As_infer, As_true_ave
-
-def plot_circle_transition(init_v, final_mus, final_covs, As_pred, As_true, K, fs, vmax=0.3, width_space=0.05, height_space=0.05, cov_flag=False, legend_flag=True, save_flag=True):
-    width_space = 0.05
-    height_space = 0.05
-    fig = plt.figure(figsize=(fs*1.5 + width_space,fs + height_space))
-    gs = gridspec.GridSpec(2, 2, width_ratios=[2,1], height_ratios=[1,1])
-    gs.update(left=0.0, bottom=0.0, right=1.0, top=1.0, wspace=width_space, hspace=height_space)
-    ax1 = fig.add_subplot(gs[:, 0])
-    ax2 = fig.add_subplot(gs[0, 1])
-    ax3 = fig.add_subplot(gs[1, 1])
-    ax1.set_xticks([])
-    ax1.set_yticks([])
-    ax2.set_xticks([])
-    ax2.set_yticks([])
-    ax3.set_xticks([])
-    ax3.set_yticks([])
-    ## plot left one
-    ax1.scatter(init_v[:,0], init_v[:,1], label='z=1')
-    ax1.scatter(init_v[:,0], -init_v[:,1], label='z=2')
-    ax1.scatter(-init_v[:,0], -init_v[:,1], label='z=3')
-    ax1.scatter(-init_v[:,0], init_v[:,1], label='z=4')
-    colors = ['b', 'orange', 'g', 'r']
-    for k in range(K):
-        ax1.scatter(final_mus[:,k,0], final_mus[:,k,1], c=colors[k], marker='x')
-    if cov_flag:
-        for k in range(K):
-            for s in range(num_series):
-                plot_cov_ellipse(cov=final_covs[s, k, :, :], pos=final_mus[s, k, :], nstd=0.3, ax=ax1, alpha=0.3)
-#    ax1.set_xlabel('x velocity')
-#    ax1.set_ylabel('y velocity')
-    if legend_flag:
-        ax1.legend(loc='upper center', bbox_to_anchor=(0.75, 1.15), ncol=4)
-
-    As_infer = As_pred / As_pred.sum(-1)[:, :, None]
-    As_infer = As_infer.mean(0)
-    infer_plot = ax2.imshow(As_infer, cmap='viridis', vmin=0, vmax=0.3)
-    # ax2.set_title('inferred averaged transition matrix')
-    As_true_ave = As_true.mean(0)
-    true_plot = ax3.imshow(As_true_ave, cmap='viridis', vmin=0, vmax=0.3)
-    # ax3.set_title('true averaged transition matrix')
-    if save_flag:
-        fig.savefig('baseline_results.pdf')
-        fig.savefig('baseline_results.svg')
-        fig.savefig('baseline_results.png', dpi=600)
-
 
 def plot_circle_transition_colorcode(num_series, init_v, final_mus, final_covs, As_pred, As_true, K, fs, vmax, width_space, height_space, cov_flag, legend_flag, save_flag):
 

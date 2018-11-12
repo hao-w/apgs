@@ -7,70 +7,25 @@ from torch.distributions.multivariate_normal import MultivariateNormal
 from torch.distributions.one_hot_categorical import OneHotCategorical as cat
 from torch.distributions.categorical import Categorical
 from smc import *
+from util import *
 
-def save_params(KLs, EUBOs, ELBOs, PATH_ENC):
-    with open(PATH_ENC + 'EUBOs.txt', 'w+') as feubo:
-        for eubo in EUBOs:
-            feubo.write("%s\n" % eubo)
-    with open(PATH_ENC + 'KLs.txt', 'w+') as fkl:
-        for kl in KLs:
-            fkl.write("%s\n" % kl)
-    with open(PATH_ENC + 'ELBOs.txt', 'w+') as ELBOs:
-        for elbo in ELBOs:
-            fess.write("%s\n" % elbo)
-    feubo.close()
-    ELBOs.close()
-    fess.close()
 
-def initial_trans_prior(K):
-    alpha_trans_0 = torch.ones((K, K))
-    return alpha_trans_0
-
-def log_q_hmm(latents_dirs, A_samples):
-    log_q = Dirichlet(latents_dirs).log_prob(A_samples)
-    return log_q.sum()
-
-def pairwise(Zs, T):
-    return torch.bmm(Zs[:T-1].unsqueeze(-1), Zs[1:].unsqueeze(1))
-
-def log_joint(alpha_trans_0, Zs, Pi, A, mu_ks, cov_ks, Y, T, D, K):
-    log_joint_prob = torch.zeros(1).float()
-    labels = Zs.nonzero()[:, 1]
-    log_joint_prob += (MultivariateNormal(mu_ks[labels], cov_ks[labels]).log_prob(Y)).sum() # likelihood of obs
-    log_joint_prob += cat(Pi).log_prob(Zs[0]) # z_1 | pi
-    log_joint_prob += (cat(A[labels[:-1]]).log_prob(Zs[1:])).sum()
-    log_joint_prob += (Dirichlet(alpha_trans_0).log_prob(A)).sum() ## prior of A
-    return log_joint_prob
-
-def kl_dirichlets(alpha_trans_0, latents_dirs, Zs, T, K):
-    conjugate_posterior = alpha_trans_0 + pairwise(Zs, T).sum(0)
-    variational = alpha_trans_0 + latents_dirs
-    kl = 0.0
-    for k in range(K):
-        kl += kl_dirichlet(conjugate_posterior[k], variational[k])
-    return kl
-
-def kl_dirichlet(alpha1, alpha2):
-    A = torch.lgamma(alpha1.sum()) - torch.lgamma(alpha2.sum())
-    B = (torch.lgamma(alpha1) - torch.lgamma(alpha2)).sum()
-    C = (torch.mul(alpha1 - alpha2, torch.digamma(alpha1) - torch.digamma(alpha1.sum()))).sum()
-    kl = A - B + C
-    return kl
-
-def oneshot_sampling(enc, alpha_trans_0, Pi, mu_ks, cov_ks, Z_true, Y, T, D, K, num_particles, num_particles_smc):
+def oneshot_sampling(enc, alpha_trans_0, Pi, mu_ks, cov_ks, Y, T, D, K, num_particles, num_particles_smc):
     log_weights_is = torch.zeros(num_particles)
     log_p_joints = torch.zeros(num_particles)
     kls = torch.zeros(num_particles)
     for l in range(num_particles):
         Y_pairwise = torch.cat((Y[:-1].unsqueeze(0), Y[1:].unsqueeze(0)), 0).transpose(0, 1).contiguous().view(T-1, 2*D)
-        latents_dirs, A_sample = enc(Y_pairwise)
-        log_q_mlp = log_q_hmm(latents_dirs, A_sample)
+        variational, A_sample = enc(Y_pairwise, alpha_trans_0)
+        log_q_mlp = log_q_hmm(variational, A_sample)
         Zs, log_weights, log_normalizer = smc_hmm(Pi, A_sample, mu_ks, cov_ks, Y, T, D, K, num_particles_smc)
         Z_ret = resampling_smc(Zs, log_weights)
         log_q_smc = log_joint_smc(Z_ret, Pi, A_sample, mu_ks, cov_ks, Y, T, D, K)
         log_p_joints = log_joint(alpha_trans_0, Z_ret, Pi, A_sample, mu_ks, cov_ks, Y, T, D, K).detach()
         log_weights_is[l] = log_p_joints - log_q_smc - log_q_mlp + log_normalizer
-        kls[l] = kl_dirichlets(alpha_trans_0, latents_dirs, Z_ret, T, K)
+
+        posterior = alpha_trans_0 + pairwise(Z_ret, T).sum(0)
+        kls[l] = kl_dirichlets(posterior, variational, K)
 
     log_weights_is_norm = log_weights_is - logsumexp(log_weights_is, dim=0)
     weights_is = torch.exp(log_weights_is_norm).detach()
@@ -78,7 +33,7 @@ def oneshot_sampling(enc, alpha_trans_0, Pi, mu_ks, cov_ks, Z_true, Y, T, D, K, 
     ess = (1. / (weights_is ** 2 ).sum()).item()
     eubo =  torch.mul(weights_is, log_weights_is).sum()
     elbo = log_weights_is.mean()
-    return enc, eubo, kl, ess, latents_dirs, elbo
+    return enc, eubo, kl, ess, variational, elbo
 
 def twoshots_sampling(enc_trans, enc_disp, alpha_trans_0, Pi, mu_ks, cov_ks, Z_true, Y, T, D, K, num_particles, num_particles_smc):
     log_weights_rws = torch.zeros(num_particles)
@@ -112,3 +67,30 @@ def twoshots_sampling(enc_trans, enc_disp, alpha_trans_0, Pi, mu_ks, cov_ks, Z_t
     eubo =  torch.mul(weights_rws, log_weights_rws).sum()
     elbo = log_weights_rws.mean()
     return eubo, kl, ess, latents_dirs_trans, elbo
+
+def oneshot_givenZ(enc, alpha_trans_0, Pi, mu_ks, cov_ks, A_true, Y, T, D, K, num_particles, num_particles_smc):
+    log_weights_is = torch.zeros(num_particles)
+    log_p_joints = torch.zeros(num_particles)
+    kls = torch.zeros(num_particles)
+    Zs, log_weights, log_normalizer = smc_hmm(Pi, A_true, mu_ks, cov_ks, Y, T, D, K, num_particles_smc)
+    Z_ret = resampling_smc(Zs, log_weights)
+    Z_ret_pairs = torch.cat((Z_ret[:-1].unsqueeze(0), Z_ret[1:].unsqueeze(0)), 0).transpose(0, 1).contiguous().view(T-1, 2*K)
+    for l in range(num_particles):
+        variational, A_sample = enc(Z_ret_pairs, alpha_trans_0)
+        log_q_mlp = log_q_hmm(variational, A_sample)
+        Zs, log_weights, log_normalizer = smc_hmm(Pi, A_sample, mu_ks, cov_ks, Y, T, D, K, num_particles_smc)
+        Z_ret_new = resampling_smc(Zs, log_weights)
+        log_q_smc = log_joint_smc(Z_ret_new, Pi, A_sample, mu_ks, cov_ks, Y, T, D, K)
+        log_p_joints = log_joint(alpha_trans_0, Z_ret_new, Pi, A_sample, mu_ks, cov_ks, Y, T, D, K).detach()
+        log_weights_is[l] = log_p_joints - log_q_smc - log_q_mlp + log_normalizer
+
+        posterior = alpha_trans_0 + pairwise(Z_ret, T).sum(0)
+        kls[l] = kl_dirichlets(posterior, variational, K)
+
+    log_weights_is_norm = log_weights_is - logsumexp(log_weights_is, dim=0)
+    weights_is = torch.exp(log_weights_is_norm).detach()
+    kl =  kls.mean()
+    ess = (1. / (weights_is ** 2 ).sum()).item()
+    eubo =  torch.mul(weights_is, log_weights_is).sum()
+    elbo = log_weights_is.mean()
+    return eubo, kl, ess, variational, elbo
