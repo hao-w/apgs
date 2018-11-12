@@ -31,7 +31,7 @@ def plot_dirs(variational, alpha_trans_0, Zs, T, K, vmax):
     # cb = plt.colorbar(true_plot, cax = cbaxes)
     # fig3.savefig('transition_plot T=%d_series=%d_boundary=%d_ratio=%f.png' % (T, num_series, Boundary, signal_noise_ratio))
 
-def plot_results(EUBOs, ELBOs, KLs, ESSs):
+def plot_results(EUBOs, ELBOs, KLs, ESSs, PATH_ENC):
     fig, ax = plt.subplots(figsize=(16, 8))
     ax1 = fig.add_subplot(1,2,1)
     x = np.arange(len(EUBOs))
@@ -42,6 +42,7 @@ def plot_results(EUBOs, ELBOs, KLs, ESSs):
     ax1.set_xlabel('epochs')
     ax2 = fig.add_subplot(1,2,2)
     ax2.plot(np.array(ESSs))
+    fig.savefig(PATH_ENC + 'results.png')
 
 
 def plot_smc_sample(Zs_true, Zs_ret):

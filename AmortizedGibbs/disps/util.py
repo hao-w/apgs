@@ -12,12 +12,12 @@ def save_params(KLs, EUBOs, ELBOs, PATH_ENC):
     with open(PATH_ENC + 'KLs.txt', 'w+') as fkl:
         for kl in KLs:
             fkl.write("%s\n" % kl)
-    with open(PATH_ENC + 'ELBOs.txt', 'w+') as ELBOs:
+    with open(PATH_ENC + 'ELBOs.txt', 'w+') as felbo:
         for elbo in ELBOs:
             fess.write("%s\n" % elbo)
     feubo.close()
-    ELBOs.close()
-    fess.close()
+    felbos.close()
+    fkls.close()
 
 def initial_trans_prior(K):
     alpha_trans_0 = torch.ones((K, K))
