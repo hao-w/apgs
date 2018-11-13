@@ -33,7 +33,7 @@ def oneshot_sampling(enc, alpha_trans_0, Pi, mu_ks, cov_ks, Y, T, D, K, num_part
     ess = (1. / (weights_is ** 2 ).sum()).item()
     eubo =  torch.mul(weights_is, log_weights_is).sum()
     elbo = log_weights_is.mean()
-    return enc, eubo, kl, ess, variational, elbo
+    return eubo, kl, ess, variational, elbo
 
 def twoshots_sampling(enc_trans, enc_disp, alpha_trans_0, Pi, mu_ks, cov_ks, Z_true, Y, T, D, K, num_particles, num_particles_smc):
     log_weights_rws = torch.zeros(num_particles)
@@ -54,7 +54,7 @@ def twoshots_sampling(enc_trans, enc_disp, alpha_trans_0, Pi, mu_ks, cov_ks, Z_t
         log_p_joints_target = log_joint(alpha_trans_0, Z_ret, Pi, A_sample_trans, mu_ks, cov_ks, Y, T, D, K).detach()
         log_q_forward = log_q_hmm(latents_dirs_trans, A_sample_trans)
         log_q_reverse = log_q_hmm(latents_dirs_trans, A_sample_disp)
-        log_weights_rws[l] = log_weights_rws[l] + log_p_joints_target - log_p_joints + log_q_reverse - log_q_forward
+        log_weights_rws[l] = log_weights_rws[l] + log_p_joints_targetalpha_trans_0, latents_dirs, Z_ret, T, K - log_p_joints + log_q_reverse - log_q_forward
 
         Zs, log_weights, log_normalizer = csmc_hmm(Z_ret, Pi, A_sample_trans, mu_ks, cov_ks, Y, T, D, K, num_particles_smc)
         Z_ret = resampling_smc(Zs, log_weights)
@@ -89,6 +89,32 @@ def oneshot_givenZ(enc, alpha_trans_0, Pi, mu_ks, cov_ks, A_true, Y, T, D, K, nu
 
     log_weights_is_norm = log_weights_is - logsumexp(log_weights_is, dim=0)
     weights_is = torch.exp(log_weights_is_norm).detach()
+    kl =  kls.mean()
+    ess = (1. / (weights_is ** 2 ).sum()).item()
+    eubo =  torch.mul(weights_is, log_weights_is).sum()
+    elbo = log_weights_is.mean()
+    return eubo, kl, ess, variational, elbo
+
+def oneshot_sharp_prior(enc, alpha_trans_0, Pi, mu_ks, cov_ks, Y, T, D, K, num_particles, num_particles_smc):
+    log_weights_is = torch.zeros(num_particles)
+    log_p_joints = torch.zeros(num_particles)
+    kls = torch.zeros(num_particles)
+    
+    A_samples = initial_trans(alpha_trans_0, K)
+    
+    Zs, log_weights, log_normalizer = smc_hmm(Pi, A_samples, mu_ks, cov_ks, Y, T, D, K, num_particles_smc)
+    Z_ret = resampling_smc(Zs, log_weights)
+    Z_ret_pairs = torch.cat((Z_ret[:-1].unsqueeze(0), Z_ret[1:].unsqueeze(0)), 0).transpose(0, 1).contiguous().view(T-1, 2*K)
+    for l in range(num_particles):
+        variational, A_sample = enc(Z_ret_pairs, alpha_trans_0)
+        log_q_mlp = log_q_hmm(variational, A_sample)
+        log_q_smc = log_joint_smc(Z_ret, Pi, A_sample, mu_ks, cov_ks, Y, T, D, K)
+        log_p_joints = log_joint(alpha_trans_0, Z_ret, Pi, A_sample, mu_ks, cov_ks, Y, T, D, K).detach()
+        log_weights_is[l] = log_p_joints - log_q_smc - log_q_mlp + log_normalizer
+        posterior = alpha_trans_0 + pairwise(Z_ret, T).sum(0)
+        kls[l] = kl_dirichlets(posterior, variational, K)
+
+    weights_is = torch.exp(log_weights_is - logsumexp(log_weights_is, dim=0)).detach()
     kl =  kls.mean()
     ess = (1. / (weights_is ** 2 ).sum()).item()
     eubo =  torch.mul(weights_is, log_weights_is).sum()

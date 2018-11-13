@@ -44,7 +44,6 @@ def plot_results(EUBOs, ELBOs, KLs, ESSs, PATH_ENC):
     ax2.plot(np.array(ESSs))
     fig.savefig(PATH_ENC + 'results.png')
 
-
 def plot_smc_sample(Zs_true, Zs_ret):
     ret_index = torch.nonzero(Zs_ret).data.numpy()
     true_index = torch.nonzero(Zs_true).data.numpy()

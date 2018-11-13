@@ -5,7 +5,7 @@ from torch.distributions.multivariate_normal import MultivariateNormal
 from torch.distributions.one_hot_categorical import OneHotCategorical as cat
 from torch.distributions.categorical import Categorical
 
-def save_params(KLs, EUBOs, ELBOs, PATH_ENC):
+def save_params(KLs, EUBOs, ELBOs, ESSs, PATH_ENC):
     with open(PATH_ENC + 'EUBOs.txt', 'w+') as feubo:
         for eubo in EUBOs:
             feubo.write("%s\n" % eubo)
@@ -14,14 +14,26 @@ def save_params(KLs, EUBOs, ELBOs, PATH_ENC):
             fkl.write("%s\n" % kl)
     with open(PATH_ENC + 'ELBOs.txt', 'w+') as felbo:
         for elbo in ELBOs:
-            fess.write("%s\n" % elbo)
+            felbo.write("%s\n" % elbo)
+    with open(PATH_ENC + 'ESSs.txt', 'w+') as fess:
+        for ess in ESSs:
+            fess.write("%s\n" % ess)
     feubo.close()
-    felbos.close()
-    fkls.close()
+    felbo.close()
+    fkl.close()
+    fess.close()
 
 def initial_trans_prior(K):
     alpha_trans_0 = torch.ones((K, K))
+    for k in range(K):
+        alpha_trans_0[k, k] = 2
     return alpha_trans_0
+
+def initial_trans(alpha_trans_0, K):
+    A = torch.zeros((K, K)).float()
+    for k in range(K):
+        A[k] = Dirichlet(alpha_trans_0[k]).sample()
+    return A
 
 def log_q_hmm(latents_dirs, A_samples):
     log_q = Dirichlet(latents_dirs).log_prob(A_samples)
