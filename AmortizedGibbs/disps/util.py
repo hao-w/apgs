@@ -25,8 +25,8 @@ def save_params(KLs, EUBOs, ELBOs, ESSs, PATH_ENC):
 
 def initial_trans_prior(K):
     alpha_trans_0 = torch.ones((K, K))
-    for k in range(K):
-        alpha_trans_0[k, k] = 3
+    # for k in range(K):
+    #     alpha_trans_0[k, k] = 3
     return alpha_trans_0
 
 def initial_trans(alpha_trans_0, K):
