@@ -8,6 +8,8 @@ from torch.distributions.one_hot_categorical import OneHotCategorical as cat
 from torch.distributions.categorical import Categorical
 from smc import *
 from util import *
+from data import *
+
 
 def stepwise_optimal_1(enc, D, K, NUM_EPOCHS, num_particles_rws, num_particles_smc, mcmc_steps):
     """
@@ -18,6 +20,15 @@ def stepwise_optimal_1(enc, D, K, NUM_EPOCHS, num_particles_rws, num_particles_s
     EUBOs = []
     ESSs = []
     ELBOs = []
+
+    T_min = 50
+    T_max = 60
+    K = 4
+    D = 2
+    dt = 5
+    Boundary = 30
+    noise_ratio = 10.0
+    noise_cov = np.array([[1, 0], [0, 1]]) * noise_ratio
     for epoch in range(NUM_EPOCHS):
         alpha_trans_0 = initial_trans_prior(K)
         init_v = init_velocity(dt)
@@ -61,7 +72,7 @@ def stepwise_optimal_1(enc, D, K, NUM_EPOCHS, num_particles_rws, num_particles_s
 
 def stepwise_optimal_2(enc, D, K, NUM_EPOCHS, num_particles_rws, num_particles_smc, mcmc_steps):
     """
-    the previous weight for each generation is not valid in the sense that it cannot be derived from the entire obj
+    The scheme JW suggested during the meeting, 
     """
     KLs = []
     EUBOs = []

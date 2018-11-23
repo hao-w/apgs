@@ -61,14 +61,7 @@ def generate_seq(T, dt, Boundary, init_v, noise_cov, radius):
     init_state = intialization(init_v, Boundary - radius*2)
     box_bound = np.array([-1, 1, -1, 1]) * (Boundary-radius*2)
     Zs = np.zeros((T, 4))
-    # plot = figure(plot_width=300, plot_height=300)
-    # plot.x_range = Range1d(box_bound[0], box_bound[1])
-    # plot.y_range = Range1d(box_bound[2], box_bound[3])
-    # c = plot.circle(x=[init_state[0]], y=[init_state[1]])
-    # target = show(plot, notebook_handle=True)
-
     STATE[0] = init_state
-    # old_hidden = compute_state(init_state[2:])
     for i in range(T):
         state = step(STATE[i], box_bound, noise_cov)
         STATE[i+1] = state
@@ -77,10 +70,6 @@ def generate_seq(T, dt, Boundary, init_v, noise_cov, radius):
         if i != 0:
             A[old_state, new_state] += 1
         old_state = new_state
-        # c.data_source.data['x'] = [state[0]]
-        # c.data_source.data['y'] = [state[1]]
-        # push_notebook(handle=target)
-        # time.sleep(0.2)
     Disp = (STATE[1:] - STATE[:T])[:, :2]
 
     np.place(A, A==0, 1 / T)

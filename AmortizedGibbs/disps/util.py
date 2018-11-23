@@ -63,3 +63,7 @@ def kl_dirichlet(alpha1, alpha2):
     C = (torch.mul(alpha1 - alpha2, torch.digamma(alpha1) - torch.digamma(alpha1.sum()))).sum()
     kl = A - B + C
     return kl
+
+def BCE(x_mean, x, EPS=1e-9):
+    return - (torch.log(x_mean + EPS) * x +
+              torch.log(1 - x_mean + EPS) * (1 - x)).sum(-1)
