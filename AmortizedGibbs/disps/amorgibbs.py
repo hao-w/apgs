@@ -72,7 +72,8 @@ def stepwise_optimal_1(enc, D, K, NUM_EPOCHS, num_particles_rws, num_particles_s
 
 def stepwise_optimal_2(enc, D, K, NUM_EPOCHS, num_particles_rws, num_particles_smc, mcmc_steps):
     """
-    The scheme JW suggested during the meeting, 
+    The scheme JW suggested during the meeting,         ## initialze A from uniform prior, this step does NOT involve gradient
+
     """
     KLs = []
     EUBOs = []
@@ -96,7 +97,6 @@ def stepwise_optimal_2(enc, D, K, NUM_EPOCHS, num_particles_rws, num_particles_s
         # At each mcmc step, we each gradient using normalized weights
         for m in range(mcmc_steps):
             time_start = time.time()
-
             log_w = torch.zeros(num_particles_rws)
             for l in range(num_particles_rws):
                 variational_curr, A_samples = enc(Z_ret_pairwise, alpha_trans_0)
