@@ -23,6 +23,9 @@ def save_params(KLs, EUBOs, ELBOs, ESSs, PATH_ENC):
     fkl.close()
     fess.close()
 
+def pairwise(Zs, T):
+    return torch.bmm(Zs[:T-1].unsqueeze(-1), Zs[1:].unsqueeze(1))
+    
 def initial_trans_prior(K):
     alpha_trans_0 = torch.ones((K, K))
     # for k in range(K):

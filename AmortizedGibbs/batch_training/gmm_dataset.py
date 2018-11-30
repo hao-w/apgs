@@ -6,7 +6,8 @@ from matplotlib.patches import Ellipse
 from torch.distributions.multivariate_normal import MultivariateNormal
 from torch.distributions.one_hot_categorical import OneHotCategorical as cat
 from torch.distributions.categorical import Categorical
-
+from torch.distributions.dirichlet import Dirichlet
+from util import *
 
 
 def sample_state(P):
@@ -15,21 +16,21 @@ def sample_state(P):
 
 def sampling_hmm(T, K, D):
     decode_onehot = torch.arange(K).float().unsqueeze(-1)
-
     Zs_true = torch.zeros((T, K))
-    A = np.array([[0.8, 0.1, 0.1], [0.1, 0.8, 0.1], [0.1, 0.1, 0.8]])
+    # A = np.array([[0.7, 0.15, 0.15], [0.15, 0.7, 0.15], [0.15, 0.15, 0.7]])
     mus_true = np.array([[1,1], [2,10], [10, 5.5]])
     cov1 = np.expand_dims(np.array([[3.0, 0],[0, 2.0]]), 0)
     cov2 = np.expand_dims(np.array([[2, 0.7],[0.7, 2.5]]), 0)
     cov3 = np.expand_dims(np.array([[1.5, -0.8],[-0.8, 2.0]]), 0)
     covs_true = np.concatenate((cov1, cov2, cov3), axis=0)
     Pi = np.array([1./3, 1./3, 1./3])
-
     Xs = torch.zeros((T, D)).float()
     mus_true = torch.from_numpy(mus_true).float()
     covs_true = torch.from_numpy(covs_true).float()
     Pi = torch.from_numpy(Pi).float()
-    A = torch.from_numpy(A).float()
+    
+    prior = initial_trans_prior(K)
+    A = Dirichlet(prior).mean
     for t in range(T):
         if t == 0:
             zt = cat(Pi).sample()
@@ -46,7 +47,6 @@ def sampling_hmm(T, K, D):
             Xs[t] = xt
             ztp1 = cat(A[label])
         Zs_true[t] = zt
-
     return Xs, mus_true, covs_true, Zs_true, Pi, A
 
 def plot_cov_ellipse(cov, pos, nstd=2, ax=None, **kwargs):
