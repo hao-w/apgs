@@ -7,30 +7,6 @@ import matplotlib.gridspec as gridspec
 def pairwise(Zs, T):
     return torch.bmm(Zs[:T-1].unsqueeze(-1), Zs[1:].unsqueeze(1))
 
-def plot_dirs(variational, alpha_trans_0, Zs, T, K, vmax):
-    conjugate_post = alpha_trans_0 + pairwise(Zs, T).sum(0)
-    print('variational : ')
-    print(variational)
-    print('conjugate posterior :')
-    print(conjugate_post)
-
-    fig3 = plt.figure(figsize=(12,6))
-    ax1 = fig3.add_subplot(1, 2, 1)
-    infer_plot = ax1.imshow(variational.data.numpy(), cmap='viridis', vmin=0, vmax=vmax)
-    ax1.set_xticks([])
-    ax1.set_yticks([])
-    ax1.set_title('variational')
-    ax2 = fig3.add_subplot(1, 2, 2)
-    true_plot = ax2.imshow(conjugate_post.data.numpy(), cmap='viridis', vmin=0, vmax=vmax)
-    ax2.set_xticks([])
-    ax2.set_yticks([])
-    ax2.set_title('conjugate posterior')
-    cax = fig3.add_axes([1.0, 0.15, 0.03, 0.7])
-    #fig3.colorbar(true_plot, cax=cax, orientation='vertical')
-    # cbaxes = fig3.add_axes([0.95, 0.32, 0.02, 0.36])
-    # cb = plt.colorbar(true_plot, cax = cbaxes)
-    # fig3.savefig('transition_plot T=%d_series=%d_boundary=%d_ratio=%f.png' % (T, num_series, Boundary, signal_noise_ratio))
-
 def plot_results(EUBOs, ELBOs, ESSs, KLs, filename):
     fig, ax = plt.subplots(figsize=(8,24))
     ax.set_xticks([])

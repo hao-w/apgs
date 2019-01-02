@@ -5,10 +5,10 @@ from torch.distributions.multivariate_normal import MultivariateNormal
 from torch.distributions.one_hot_categorical import OneHotCategorical as cat
 from torch.distributions.categorical import Categorical
 
-def save_params(Divers, EUBOs, ELBOs, ESSs, KLs, PATH_ENC):
-    with open(PATH_ENC + 'Divers.txt', 'w+') as fdiver:
-        for diver in Divers:
-            fdiver.write("%s\n" % diver)
+def save_params(LOSSs, EUBOs, ELBOs, ESSs, KLs, PATH_ENC):
+    with open(PATH_ENC + 'LOSSs.txt', 'w+') as floss:
+        for loss in LOSSs:
+            floss.write("%s\n" % loss)
     with open(PATH_ENC + 'EUBOs.txt', 'w+') as feubo:
         for eubo in EUBOs:
             feubo.write("%s\n" % eubo)
@@ -23,7 +23,7 @@ def save_params(Divers, EUBOs, ELBOs, ESSs, KLs, PATH_ENC):
             fkl.write("%s\n" % kl)
     feubo.close()
     felbo.close()
-    fdiver.close()
+    floss.close()
     fess.close()
     fkl.close()
 
