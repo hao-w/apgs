@@ -30,7 +30,7 @@ def sampling_hmm(T, K, D):
     Pi = torch.from_numpy(Pi).float()
     
     prior = initial_trans_prior(K)
-    A = Dirichlet(prior).mean
+    A = Dirichlet(prior).sample()
     for t in range(T):
         if t == 0:
             zt = cat(Pi).sample()
