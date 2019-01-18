@@ -59,12 +59,22 @@ def log_qs(variational, As):
     log_q = Dirichlet(variational).log_prob(As)
     return log_q.sum(1)
 
+def log_joints_ball(alpha_trans_0, Z, Pi, As, mu_ks, cov_ks, Ys, T, D, K, batch_size):
+    log_probs = torch.zeros(batch_size).float()
+    labels = Z.nonzero()
+    log_probs = log_probs + (MultivariateNormal(mu_ks[labels[:, 0], labels[:, -1]].view(batch_size, T, D), cov_ks[labels[:,0], labels[:, -1]].view(batch_size, T, D, D)).log_prob(Ys)).sum(1) # likelihood of obs
+    log_probs = log_probs + cat(Pi).log_prob(Z[:, 0]) # z_1 | pi
+    inds = labels.view(batch_size, T, 3)[:, :-1, :].contiguous().view(batch_size * (T-1), 3)
+    log_probs = log_probs + (cat(As[inds[:, 0], inds[:, -1]].view(batch_size, T-1, K)).log_prob(Z[:, 1:])).sum(1)
+    log_probs = log_probs + (Dirichlet(alpha_trans_0).log_prob(As)).sum(1) ## prior of A
+    return log_probs
+
 def log_joints(alpha_trans_0, Z, Pi, As, mu_ks, cov_ks, Ys, T, D, K, batch_size):
     log_probs = torch.zeros(batch_size).float()
     labels = Z.nonzero()
     log_probs = log_probs + (MultivariateNormal(mu_ks[labels[:, -1]].view(batch_size, T, D), cov_ks[labels[:, -1]].view(batch_size, T, D, D)).log_prob(Ys)).sum(1) # likelihood of obs
     log_probs = log_probs + cat(Pi).log_prob(Z[:, 0]) # z_1 | pi
-    inds = labels.view(batch_size, T, K)[:, :-1, :].contiguous().view(batch_size * (T-1), K)
+    inds = labels.view(batch_size, T, 3)[:, :-1, :].contiguous().view(batch_size * (T-1), 3)
     log_probs = log_probs + (cat(As[inds[:, 0], inds[:, -1]].view(batch_size, T-1, K)).log_prob(Z[:, 1:])).sum(1)
     log_probs = log_probs + (Dirichlet(alpha_trans_0).log_prob(As)).sum(1) ## prior of A
     return log_probs

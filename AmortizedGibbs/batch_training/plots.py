@@ -7,19 +7,17 @@ import matplotlib.gridspec as gridspec
 def pairwise(Zs, T):
     return torch.bmm(Zs[:T-1].unsqueeze(-1), Zs[1:].unsqueeze(1))
 
-def plot_results(EUBOs, ELBOs, ESSs, KLs, filename):
+dedef plot_results(ELBOs, ESSs, KLs, filename):
     fig, ax = plt.subplots(figsize=(8,24))
     ax.set_xticks([])
     ax.set_yticks([])
     ax1 = fig.add_subplot(3,1,1)
-    ax1.plot(EUBOs, 'r-', label='eubo')
     ax1.plot(ELBOs, 'b-', label='elbo')
     ax1.legend(fontsize=18)
     ax1.set_xlabel('gradient steps', fontsize=18)
-    ax1.set_ylabel('eubo and elbo estimators', fontsize=18)
+    ax1.set_ylabel('elbo estimators', fontsize=18)
     ax2 = fig.add_subplot(3,1,2)
     ax2.plot(KLs, 'g-', label='true kl')
-    ax2.plot(np.array(EUBOs) - np.array(ELBOs), 'k-', label='bounds gap')
     ax2.set_xlabel('gradient steps', fontsize=18)
     ax2.set_ylabel('KL(p(eta | z, y) || q_phi (\eta | z))', fontsize=18)
     ax2.legend(fontsize=18)

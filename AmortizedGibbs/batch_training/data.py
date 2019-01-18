@@ -99,3 +99,26 @@ def generate_seq(T, K, dt, Boundary, init_v, noise_cov):
     A_true = torch.from_numpy(A).float()
     return STATE, mu_ks, cov_ks, Pi, Y, A_true, Zs_true
 
+def generate_frames(STATE, Boundary, pixels, dpi, radius, seq_ind):
+    length_states = STATE.shape[0]
+    for s in range(length_states):
+        fig = plt.figure(frameon=False)
+        fig.set_size_inches(pixels/dpi, pixels/dpi)
+        ax = plt.Axes(fig, [0 , 0 , 1, 1])
+        ax.set_axis_off()
+        fig.add_axes(ax)
+        ball = plt.Circle((STATE[s, 0], STATE[s, 1]), radius, color='black')
+        ax.set_xlim((-Boundary, Boundary))
+        ax.set_ylim((-Boundary, Boundary))
+        ax.add_artist(ball)
+        plt.savefig('images/%s-%s.png' % (str(seq_ind), str(s)),dpi=dpi)
+        plt.close()
+
+def generate_pixels(T, num_seq, Boundary, dt, noise_ratio, pixels, dpi, radius):
+    init_v = init_velocity(dt)
+    for s in range(num_seq):
+        STATE, Disp, A, Zs = generate_seq(T, dt, Boundary, init_v, noise_cov, radius)
+        generate_frames(STATE, Boundary, pixels, dpi, radius, s)
+    print('dataset generate completed!')
+
+
