@@ -8,7 +8,6 @@ from torch.distributions.one_hot_categorical import OneHotCategorical as cat
 from torch.distributions.categorical import Categorical
 from smc import *
 from util import *
-from data import *
 
 def flatz(Z, T, K, batch_size):
     return torch.cat((Z[:, :T-1, :].unsqueeze(2), Z[:, 1:, :].unsqueeze(2)), 2).view(batch_size * (T-1), 2*K)
