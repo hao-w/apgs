@@ -12,13 +12,13 @@ from util import *
 def flatz(Z, T, K, batch_size):
     return torch.cat((Z[:, :T-1, :].unsqueeze(2), Z[:, 1:, :].unsqueeze(2)), 2).view(batch_size * (T-1), 2*K)
 
-def baseline_vimco(enc, prior_true, prior_mcmc, Zs_true, Pi, mu_ks, cov_ks, Ys, T, D, K, num_samples, num_particles_smc, batch_size):
+def baseline_vimco(enc, prior_mcmc, Zs_true, Pi, mu_ks, cov_ks, Ys, T, D, K, num_samples, num_particles_smc, batch_size):
     """
     baseline vimco
     """
     log_increment_weights = torch.zeros((batch_size, num_samples))
     log_q_mcmc = torch.zeros((batch_size, num_samples))
-    conj_posts = conj_posterior(prior_true.repeat(batch_size, 1, 1), Zs_true, T, K, batch_size)
+    conj_posts = conj_posterior(prior_mcmc.repeat(batch_size, 1, 1), Zs_true, T, K, batch_size)
     Y_pairs = flatz(Ys, T, D, batch_size)
     for l in range(num_samples):
 
@@ -36,7 +36,7 @@ def baseline_vimco(enc, prior_true, prior_mcmc, Zs_true, Pi, mu_ks, cov_ks, Ys, 
     variational_true, As_notusing = enc(Y_pairs, prior_mcmc, batch_size)
     kls = kl_dirichlets(variational_true, conj_posts).sum(-1)
 
-    ess = (1. / (log_increment_weights ** 2 ).sum(1)).mean()
+    # ess = (1. / (log_increment_weights ** 2 ).sum(1)).mean()
     elbos = log_increment_weights.mean(-1)
 
     log_sum_weights = logsumexp(log_increment_weights, -1)
@@ -51,7 +51,7 @@ def baseline_vimco(enc, prior_true, prior_mcmc, Zs_true, Pi, mu_ks, cov_ks, Ys, 
     term1 = torch.mul(term1_A - term1_B, log_q_mcmc).sum(-1)
     term2 = log_sum_weights - log_K
     gradient = term1 + term2
-    return gradient.mean(), elbos.mean(), ess, kls.mean()
+    return gradient.mean(), elbos.mean(), kls.mean()
 
 def ag_mcmc_vimco(enc, prior_mcmc, Zs_true, Pi, mu_ks, cov_ks, Ys, T, D, K, num_samples, num_particles_smc, mcmc_steps, batch_size):
     """

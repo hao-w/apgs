@@ -22,7 +22,7 @@ def sampling_hmm(T, K, D):
     decode_onehot = torch.arange(K).float().unsqueeze(-1)
     Zs_true = torch.zeros((T, K))
     # A = np.array([[0.7, 0.15, 0.15], [0.15, 0.7, 0.15], [0.15, 0.15, 0.7]])
-    mus_true = np.array([[1.5,-0.4], [2,4], [6, 1]])
+    mus_true = np.array([[3.5,-2.4], [4,6], [8, 1]])
     cov1 = np.expand_dims(np.array([[1.2, 0],[0, 1.3]]), 0)
     cov2 = np.expand_dims(np.array([[1.5, 0.3],[0.3, 1.5]]), 0)
     cov3 = np.expand_dims(np.array([[2.0, 0.8],[-0.8, 2.0]]), 0)

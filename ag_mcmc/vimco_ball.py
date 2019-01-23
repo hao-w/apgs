@@ -12,13 +12,13 @@ from util import *
 def flatz(Z, T, K, batch_size):
     return torch.cat((Z[:, :T-1, :].unsqueeze(2), Z[:, 1:, :].unsqueeze(2)), 2).view(batch_size * (T-1), 2*K)
 
-def baseline_vimco_ball(enc, prior_true, prior_mcmc, Zs_true, Pi, mu_ks, cov_ks, Ys, T, D, K, num_samples, num_particles_smc, batch_size):
+def baseline_vimco_ball(enc, prior_mcmc, Zs_true, Pi, mu_ks, cov_ks, Ys, T, D, K, num_samples, num_particles_smc, batch_size):
     """
     baseline vimco
     """
     log_increment_weights = torch.zeros((batch_size, num_samples))
     log_q_mcmc = torch.zeros((batch_size, num_samples))
-    conj_posts = conj_posterior(prior_true.repeat(batch_size, 1, 1), Zs_true, T, K, batch_size)
+    conj_posts = conj_posterior(prior_mcmc.repeat(batch_size, 1, 1), Zs_true, T, K, batch_size)
     Y_pairs = flatz(Ys, T, D, batch_size)
     for l in range(num_samples):
 
