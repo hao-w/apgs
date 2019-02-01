@@ -42,56 +42,78 @@ def log_joints_gmm(Z, Pi, mus, Sigmas, Ys, T, D, K, batch_size):
     log_probs = log_probs + Normal(mus[labels[:, 0], labels[:, -1]].view(batch_size, T, D), Sigmas[labels[:, 0], labels[:, -1]].view(batch_size, T, D)).log_prob(Ys).sum(-1).sum(-1)
     return log_probs
 
-def ag_mcmc_vimco_gmm(enc, Zs_true, Pi, Sigmas, Ys, T, D, K, num_samples, mcmc_steps, batch_size):
-    """
-    mcmc sampling scheme 2
-    vimco gradient estimator
-    """
-    log_increment_weights = torch.zeros((batch_size, num_samples)).float()
-    log_q_mcmc = torch.zeros((batch_size, num_samples)).float()
-    Zs_candidates = torch.zeros((num_samples, batch_size, T, K)).float()
-    mus_candidates = torch.zeros((num_samples, batch_size, K, D)).float()
-
-    for m in range(mcmc_steps):
+def eubo_hmm_rws(prior, Pi, mus, covs, Ys, T, D, K, rws_samples, smc_samples, steps, batch_size):
+    log_final_weights = torch.zeros((rws_samples, batch_size)).float()
+    for m in range(steps):
+        log_increment_weights = torch.zeros((rws_samples, batch_size)).float()
+        Zs_cand = torch.zeros((rws_samples, batch_size, T, K))
         if m == 0:
-            for l in range(num_samples):
-                mus, log_p_init = init_mus(K, D, batch_size)
-                mus_candidates[l] = mus
-                Z, log_qz = E_step_gmm(mus, Sigmas, Ys, T, D, K)
-                Zs_candidates[l] = Z
-                ## the first incremental weight is just log normalizer since As is sampled from prior
-                log_increment_weights[:, l] = - log_p_init
-                log_q_mcmc[:, l] = log_p_init + log_qz
-                # exclusive_kls[:, l] = exclusive_kls[:, l] + log_qs(conj_posts, As) - log_qs(prior_mcmc, As)
+            for r in range(rws_samples):
+                As = initial_trans(prior, K, batch_size)
+                Zs, log_weights, log_normalizers = smc_hmm_batch(Pi, As, mus, covs, Ys, T, D, K, smc_samples, batch_size)
+                Z = smc_resamplings(Zs, log_weights, batch_size)
+                Zs_cand[r] = Z
+                log_increment_weights[r] = log_normalizers
+            Zs_samples = adapt_resampling(Zs_cand, log_increment_weights, rws_samples)
+
+        elif m == (steps-1):
+            for r in range(rws_samples):
+                Z_pairs = flatz(Zs_samples[r], T, K, batch_size)
+                alphas, As = enc(Z_pairs, prior, batch_size)
+                Zs, log_weights, log_normalizers = smc_hmm_batch(Pi, As, mus, covs, Ys, T, D, K, smc_samples, batch_size)
+                Z = smc_resamplings(Zs, log_weights, batch_size)
+                log_p_prior = Dirichlet(prior).log_prob(As).sum(-1)
+                log_q_enc = Dirichlet(alphas).log_prob(As).sum(-1)
+                log_final_weights[r] =  log_p_prior - log_q_enc + log_normalizers
+
+
         else:
-            for l in range(num_samples):
-                Ys_Z = torch.cat((Ys, Zs_candidates[l]), -1)
-                mean, std, mus = enc(Ys_Z, T, K, batch_size)
-                mus_candidates[l] = mus
-                ## Sigmas needs to be B-K-D
+            for r in range(rws_samples):
+                Z_pairs = flatz(Zs_samples[r], T, K, batch_size)
+                alphas, As = enc(Z_pairs, prior, batch_size)
+                Zs, log_weights, log_normalizers = smc_hmm_batch(Pi, As, mus, covs, Ys, T, D, K, smc_samples, batch_size)
+                Z = smc_resamplings(Zs, log_weights, batch_size)
+                log_p_prior = Dirichlet(prior).log_prob(As).sum(-1)
+                log_q_enc = Dirichlet(alphas).log_prob(As).sum(-1)
+                log_increment_weights[r] =  log_p_prior - log_q_enc + log_normalizers
+            Zs_samples = adapt_resampling(Zs_cand, log_increment_weights, rws_samples)
+        weights = torch.exp(log_final_weights - logsumexp(log_final_weights, dim=0)).detach()
+        eubo = torch.mul(weights, log_final_weights).sum(0).mean()
+        elbo = log_final_weights.mean(0).mean()
+        ess = (1. / (weights ** 2).sum(0)).mean()
+
+    return eubo, elbo, ess
+
+def eubo_gmm_rws(enc, Zs_true, Pi, Sigmas, Ys, T, D, K, rws_samples, steps, batch_size):
+    """
+    rws gradient estimator
+    sis sampling scheme
+    no resampling
+    """
+    log_increment_weights = torch.zeros((steps, rws_samples, bach_size))
+
+    for m in range(steps):
+        if m == 0:
+            for l in range(rws_samples):
+                mus, log_p_init = init_mus(K, D, batch_size)
                 Z, log_qz = E_step_gmm(mus, Sigmas, Ys, T, D, K)
-                Zs_candidates[l] = Z
-                Ys_Z = torch.cat((Ys, Z), -1)
-                mean_new, std_new, mus_notusing = enc(Ys_Z, T, K, batch_size)
-                mus_prev = mus_candidates[l].clone()
-                log_increment_weights[:, l] =  log_increment_weights[:, l] - log_qs_gmm(mean, std, mus) + log_qs_gmm(mean_new, std_new, mus_prev)
-                mus_candidates[l] = mus
-                log_q_mcmc[:, l] = log_q_mcmc[:, l] + log_qs_gmm(mean, std, mus) + log_qz
-                if m == (mcmc_steps-1):
-                    log_increment_weights[:, l] =  log_increment_weights[:, l] - log_qz + log_joints_gmm(Z, Pi, mus, Sigmas, Ys, T, D, K, batch_size)
+                ## the first incremental weight is just log normalizer since As is sampled from prior
+                log_p_joint = log_joints_gmm(Z, Pi, mus, Sigmas, Ys, T, D, K, batch_size)
+                log_increment_weights[m, l] = log_p_joint - log_p_init - log_qz
 
-    elbos = log_increment_weights.mean(-1)
+        else:
+            for l in range(rws_samples):
+                stats1 = Z.sum(1)
+                stats2 = torch.mul(stats1.unsqueeze(-1).unsqueeze(-1).repeat(1, 1, T, D).transpose(0, 1), Ys.unsqueeze(0).repeat(K, 1, 1, 1)).sum(2).transpose(0,1).view(-1, K*D) ## should be B-K*D
+                stats = torch.cat((stats1, stats2), -1)
+                mean, std, mus = enc(stats, K, D)
+                log_q_mus = Normal(mean, std).log_prob(mus).sum(-1).sum(-1)
+                Z, log_qz = E_step_gmm(mus, Sigmas, Ys, T, D, K)
+                ## the first incremental weight is just log normalizer since As is sampled from prior
+                log_p_joint = log_joints_gmm(Z, Pi, mus, Sigmas, Ys, T, D, K, batch_size)
+                log_increment_weights[m, l] = log_increment_weights[m-1, l] + log_p_joint - log_q_mus - log_qz
 
-    log_sum_weights = logsumexp(log_increment_weights, -1)
-    log_K = torch.log(torch.FloatTensor([num_samples]))
-    term1_A = (log_sum_weights - log_K).unsqueeze(-1).repeat(1, num_samples).detach()
-    term1_B1 = (log_increment_weights.sum(-1).unsqueeze(-1).repeat(1, num_samples) - log_increment_weights) / (num_samples - 1.0)
-    expand = log_increment_weights.unsqueeze(1).repeat(1, num_samples, 1)
-    extra_col = - torch.diagonal(expand, offset=0, dim1=1, dim2=2)
-    term1_B2 = logsumexp(torch.cat((expand, extra_col.unsqueeze(-1)), -1), dim=-1)
 
-    term1_B = (logsumexp(torch.cat((term1_B1.unsqueeze(-1), term1_B2.unsqueeze(-1)), -1), dim=-1) - log_K).detach()
-    term1 = torch.mul(term1_A - term1_B, log_q_mcmc).sum(-1)
-    term2 = log_sum_weights - log_K
-    gradient = term1 + term2
-    return gradient.mean(), elbos.mean()
+
+
+    return 1

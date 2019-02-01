@@ -19,8 +19,7 @@ def save_params(EUBOs, ELBOs, ESSs, PATH_ENC):
     felbo.close()
     feubo.close()
     fess.close()
-    
-    
+
 def conj_posterior(priors, Zs, T, K, batch_size):
     """
     Zs is B-T-K tensor
@@ -63,6 +62,21 @@ def log_joints_ball(alpha_trans_0, Z, Pi, As, mu_ks, cov_ks, Ys, T, D, K, batch_
     log_probs = log_probs + (Dirichlet(alpha_trans_0).log_prob(As)).sum(1) ## prior of A
     return log_probs
 
+
+def smc_log_joints(Z, Pis, As, mu_ks, cov_ks, Ys, T, D, K, batch_size):
+    log_joints = torch.zeros(batch_size).float()
+    for t in range(T):
+        labels = Z[:, t].nonzero()[:, -1]
+        likelihoods = MultivariateNormal(mu_ks[labels], cov_ks[labels]).log_prob(Ys[:, t])
+        log_joints = log_joints + likelihoods
+        if t == 0:
+            log_joints = log_joints + cat(Pis).log_prob(Z[:, t])
+        else:
+            label_prev = Z[:, t-1].nonzero()
+            log_joints = log_joints + cat(As[label_prev[:, 0], label_prev[:, -1]]).log_prob(Z[:, t])
+    return log_joints
+
+    
 def log_joints(prior, Z, Pi, As, mus, covs, Ys, T, D, K, batch_size):
     log_probs = torch.zeros(batch_size).float()
     labels = Z.nonzero()

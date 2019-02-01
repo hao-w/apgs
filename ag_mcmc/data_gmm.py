@@ -14,7 +14,7 @@ def sampling_gmm(T, K, D, ind, radius):
             if angle > 2 * math.pi:
                 angle -= 2 * math.pi
         mus_true[k] = torch.FloatTensor([math.cos(angle) * radius, math.sin(angle) * radius])
-    covs_true = torch.eye(D).unsqueeze(0).repeat(K, 1, 1) * 0.5
+    covs_true = torch.eye(D).unsqueeze(0).repeat(K, 1, 1) 
     Pi = torch.FloatTensor([1./3, 1./3, 1./3])
     Zs_true = cat(Pi).sample((T,))
     labels = Zs_true.nonzero()[:, 1]
