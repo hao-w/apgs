@@ -83,37 +83,3 @@ def eubo_hmm_rws(prior, Pi, mus, covs, Ys, T, D, K, rws_samples, smc_samples, st
         ess = (1. / (weights ** 2).sum(0)).mean()
 
     return eubo, elbo, ess
-
-def eubo_gmm_rws(enc, Zs_true, Pi, Sigmas, Ys, T, D, K, rws_samples, steps, batch_size):
-    """
-    rws gradient estimator
-    sis sampling scheme
-    no resampling
-    """
-    log_increment_weights = torch.zeros((steps, rws_samples, bach_size))
-
-    for m in range(steps):
-        if m == 0:
-            for l in range(rws_samples):
-                mus, log_p_init = init_mus(K, D, batch_size)
-                Z, log_qz = E_step_gmm(mus, Sigmas, Ys, T, D, K)
-                ## the first incremental weight is just log normalizer since As is sampled from prior
-                log_p_joint = log_joints_gmm(Z, Pi, mus, Sigmas, Ys, T, D, K, batch_size)
-                log_increment_weights[m, l] = log_p_joint - log_p_init - log_qz
-
-        else:
-            for l in range(rws_samples):
-                stats1 = Z.sum(1)
-                stats2 = torch.mul(stats1.unsqueeze(-1).unsqueeze(-1).repeat(1, 1, T, D).transpose(0, 1), Ys.unsqueeze(0).repeat(K, 1, 1, 1)).sum(2).transpose(0,1).view(-1, K*D) ## should be B-K*D
-                stats = torch.cat((stats1, stats2), -1)
-                mean, std, mus = enc(stats, K, D)
-                log_q_mus = Normal(mean, std).log_prob(mus).sum(-1).sum(-1)
-                Z, log_qz = E_step_gmm(mus, Sigmas, Ys, T, D, K)
-                ## the first incremental weight is just log normalizer since As is sampled from prior
-                log_p_joint = log_joints_gmm(Z, Pi, mus, Sigmas, Ys, T, D, K, batch_size)
-                log_increment_weights[m, l] = log_increment_weights[m-1, l] + log_p_joint - log_q_mus - log_qz
-
-
-
-
-    return 1

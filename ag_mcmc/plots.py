@@ -7,26 +7,17 @@ import matplotlib.gridspec as gridspec
 def pairwise(Zs, T):
     return torch.bmm(Zs[:T-1].unsqueeze(-1), Zs[1:].unsqueeze(1))
 
-def plot_results(EUBOs, ELBOs, ESSs, KLs, filename):
-    fig, ax = plt.subplots(figsize=(8,24))
+def plot_results(EUBOs, ELBOs):
+    fig, ax = plt.subplots(figsize=(10,10))
     ax.set_xticks([])
     ax.set_yticks([])
-    ax1 = fig.add_subplot(3,1,1)
+    ax1 = fig.add_subplot(1,1,1)
     ax1.plot(ELBOs, 'b-', label='elbo')
+    ax1.plot(EUBOs, 'r-', label='eubo')
     ax1.legend(fontsize=18)
-    ax1.set_xlabel('gradient steps', fontsize=18)
-    ax1.set_ylabel('elbo estimators', fontsize=18)
-    ax2 = fig.add_subplot(3,1,2)
-    ax2.plot(KLs, 'g-', label='true kl')
-    ax2.set_xlabel('gradient steps', fontsize=18)
-    ax2.set_ylabel('KL(p(eta | z, y) || q_phi (\eta | z))', fontsize=18)
-    ax2.legend(fontsize=18)
-    ax3 = fig.add_subplot(3,1,3)
-    ax3.plot(ESSs, 'm-o')
-    ax3.set_xlabel('gradient steps', fontsize=18)
-    ax3.set_ylabel('effective sample sizes', fontsize=18)
-    ax3.set_ylim([1, 2])
-    plt.savefig(filename)
+    ax1.set_xlabel('epoch', fontsize=16)
+    ax1.set_ylabel('EUBO and ELBO', fontsize=16)
+    ax1.tick_params(labelsize=18)
 
 def plot_smc_sample(Zs_true, Zs_ret):
     ret_index = torch.nonzero(Zs_ret).data.numpy()
