@@ -7,15 +7,15 @@ from torch.distributions.normal import Normal
 import math
 
 def sampling_gmm(T, K, D, ind, radius, prior_covs):
-    # mus_true = torch.zeros((K, D)).float()
-    # for k in range(K):
-    #     if k == 0:
-    #         angle = ind
-    #     else:
-    #         angle = angle + 2 * math.pi / K
-    #         if angle > 2 * math.pi:
-    #             angle -= 2 * math.pi
-    #     mus_true[k] = torch.FloatTensor([math.cos(angle) * radius, math.sin(angle) * radius])
+    mus_true = torch.zeros((K, D)).float()
+    for k in range(K):
+        if k == 0:
+            angle = ind
+        else:
+            angle = angle + 2 * math.pi / K
+            if angle > 2 * math.pi:
+                angle -= 2 * math.pi
+        mus_true[k] = torch.FloatTensor([math.cos(angle) * radius, math.sin(angle) * radius])
     Pi = torch.FloatTensor([1./3, 1./3, 1./3])
     Zs_true = cat(Pi).sample((T,))
     labels = Zs_true.nonzero()[:, 1]
