@@ -28,7 +28,7 @@ def sampling_gmm_orbits(T, K, D, ind, radius, prior_covs):
         Xs = Normal(mus_true[labels], covs_true[labels]).sample()
     return Xs, mus_true, covs_true, Zs_true, Pi
 
-def sampling_gmm(T, K, D, boundary):
+def sampling_gmm_uniform(T, K, D, boundary):
     mus_true = torch.zeros((K, D)).float()
     for k in range(K):
         mus_true[k] = Uniform(0, boundary).sample((2,)) * torch.from_numpy(np.random.choice([-1, 1], 2)).float()
@@ -36,5 +36,15 @@ def sampling_gmm(T, K, D, boundary):
     Zs_true = cat(Pi).sample((T,))
     labels = Zs_true.nonzero()[:, 1]
     covs_true = Gamma(torch.ones((K, D))*6.0, torch.ones((K, D)) * 6.0).sample()
+    Xs = Normal(mus_true[labels], covs_true[labels]).sample()
+    return Xs, mus_true, covs_true, Zs_true, Pi
+
+def sampling_gmm_conjugate(T, K, D):
+    precisions = Gamma(torch.ones((K, D)) * 5, torch.ones((K,D)) * 8).sample()
+    covs_true = 1. / torch.sqrt(precisions)
+    mus_true = Normal(torch.zeros((K, D)), 1.0 * torch.ones((K, D))).sample()
+    Pi = torch.FloatTensor([1./3, 1./3, 1./3])
+    Zs_true = cat(Pi).sample((T,))
+    labels = Zs_true.nonzero()[:, 1]
     Xs = Normal(mus_true[labels], covs_true[labels]).sample()
     return Xs, mus_true, covs_true, Zs_true, Pi
