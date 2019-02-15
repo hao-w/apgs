@@ -33,80 +33,33 @@ def init_posterior(Y, T, K, D):
     Ws = W.repeat(K, 1, 1)
     return alpha_init, alpha_trans, ms, betas, nus, Ws
 
-
-def quad(a, B):
-    return torch.mm(torch.mm(a.transpose(0, 1), B), a)
-
-def log_expectation_wi_single(nu, W, D):
-    ds = (nu + 1 - (torch.arange(D).float() + 1)) / 2.0
-    return  - D * torch.log(torch.Tensor([2])) + torch.log(torch.det(W)) - torch.digamma(ds).sum()
-
-def log_expectation_wi_single2(nu, W, D):
-    ds = (nu + 1 - (torch.arange(D).float() + 1)) / 2.0
-    return  D * torch.log(torch.Tensor([2])) + torch.log(torch.det(W)) + torch.digamma(ds).sum()
-
-def log_expectation_wi2(nu_ks, W_ks, D, K):
-    log_expectations = torch.zeros(K)
+def E_log_Sigmas(nus, Ws, D, K):
+    E_log_Sigmas_term = torch.zeros(K)
+    psi_argus = (nus.unsqueeze(-1).repeat(1, D) + 1 - torch.arange(D).float() + 1) / 2.0
     for k in range(K):
-        log_expectations[k] = log_expectation_wi_single2(nu_ks[k], W_ks[k], D)
-    return log_expectations
+        E_log_Sigmas_term[k] = - D * torch.log(torch.FloatTensor([2.])) + torch.log(torch.det(Ws[k])) - torch.digamma(psi_argus[k]).sum()
+    return E_log_Sigmas_term
 
-def log_expectation_wi(nu_ks, W_ks, D, K):
-    log_expectations = torch.zeros(K)
+def E_quadratic(ms, betas, nus, Ws, Y, T, D, K):
+    E_quadratic_term = torch.zeros((K, T))
     for k in range(K):
-        log_expectations[k] = log_expectation_wi_single(nu_ks[k], W_ks[k], D)
-    return log_expectations
+        E_quadratic_term[k] = D / betas[k] + nus[k] * torch.mul(torch.mm(Y - ms[k], torch.inverse(Ws[k])), Y - ms[k]).sum(1)
+    return E_quadratic_term.transpose(0,1)
 
-def quadratic_expectation(nu_ks, W_ks, m_ks, beta_ks, Y, N, D, K):
-    quadratic_expectations = torch.zeros((K, N))
-    for k in range(K):
-        quadratic_expectations[k] = D / beta_ks[k] + nu_ks[k] * torch.mul(torch.mm(Y - m_ks[k], torch.inverse(W_ks[k])), Y - m_ks[k]).sum(1)
-    return quadratic_expectations.transpose(0,1)
-
-def log_expectations_dir(alpha_hat, K):
-    log_expectations = torch.zeros(K)
-    sum_digamma = torch.digamma(alpha_hat.sum())
-    for k in range(K):
-        log_expectations[k] = torch.digamma(alpha_hat[k]) - sum_digamma
-    return log_expectations
-
-# def vbE_step(alpha_init, alpha_trans, ms, betas, nus, Ws, Y, N, D, K):
-#     ## A K by K transition matrix, E is N by K emission matrix, both take log-form
-#     log_A = torch.zeros((K, K))
-#     quadratic_expectations = quadratic_expectation(nus, Ws, ms, betas, Y, N, D, K)
-#
-#     log_expectation_lambda = log_expectation_wi(nus, Ws, D, K)
-#     log_E = - (D / 2) * torch.log(torch.Tensor([2*math.pi])) - (1 / 2) * log_expectation_lambda - (1 / 2) * quadratic_expectations
-#
-#     for j in range(K):
-#         log_A[j] = log_expectations_dir(alpha_trans[j], K)
-#     ## Pi is the initial distribution in qz
-#     log_Pi = log_expectations_dir(alpha_init, K)
-#     # log_Pi_q = log_Pi - logsumexp(log_Pi)
-#     log_Alpha = forward(log_Pi, log_A, log_E, N, K)
-#     log_Beta = backward(log_A, log_E, N, K)
-#     log_gammas = marginal_posterior(log_Alpha, log_Beta, N, K)
-#     log_Eta = joint_posterior(log_Alpha, log_Beta, log_A, log_E, N, K)
-#     return log_gammas, log_Eta
-
-def vbE_step(alpha_init_hat, alpha_trans_hat, nu_ks, W_ks, m_ks, beta_ks, Y, N, D, K):
-    ## A K by K transition matrix, E is N by K emission matrix, both take log-form
-    log_A = torch.zeros((K, K))
-    quadratic_expectations = quadratic_expectation(nu_ks, W_ks, m_ks, beta_ks, Y, N, D, K)
-
-    log_expectation_lambda = log_expectation_wi(nu_ks, W_ks, D, K)
-    log_E = - (D / 2) * torch.log(torch.Tensor([2*math.pi])) - (1 / 2) * log_expectation_lambda - (1 / 2) * quadratic_expectations
-
-    for j in range(K):
-        log_A[j] = log_expectations_dir(alpha_trans_hat[j], K)
-    ## Pi is the initial distribution in qz
-    log_Pi = log_expectations_dir(alpha_init_hat, K)
-    # log_Pi_q = log_Pi - logsumexp(log_Pi)
-    log_Alpha = forward(log_Pi, log_A, log_E, N, K)
-    log_Beta = backward(log_A, log_E, N, K)
-    log_gammas = marginal_posterior(log_Alpha, log_Beta, N, K)
-    log_Eta = joint_posterior(log_Alpha, log_Beta, log_A, log_E, N, K)
-    return log_gammas, log_Eta
+def vbE_step(alpha_init, alpha_trans, ms, betas, nus, Ws, Y, T, D, K):
+    ## expectation terms needed in forward-backward
+    E_quadratic_term = E_quadratic(ms, betas, nus, Ws, Y, T, D, K)
+    E_log_Sigmas_term = E_log_Sigmas(nus, Ws, D, K)
+    log_E = - (D / 2) * torch.log(torch.Tensor([2*math.pi])) - (1 / 2) * E_log_Sigmas_term - (1 / 2) * E_quadratic_term
+    log_A = torch.digamma(alpha_trans) - torch.digamma(alpha_trans.sum(-1)).unsqueeze(-1)
+    log_Pi = torch.digamma(alpha_init) - torch.digamma(alpha_init.sum())
+    log_Pi = log_Pi - logsumexp(log_Pi.unsqueeze(-1), 0)
+    ## forward-backward algorithm
+    log_Alpha = forward(log_Pi, log_A, log_E, T, K)
+    log_Beta = backward(log_A, log_E, T, K)
+    log_gammas = marginal_posterior(log_Alpha, log_Beta, T, K)
+    log_etas = joint_posterior(log_Alpha, log_Beta, log_A, log_E, T, K)
+    return log_gammas, log_etas
 
 def stats(log_gammas, Y, D, K):
     gammas = torch.exp(log_gammas)
