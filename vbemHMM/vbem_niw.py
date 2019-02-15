@@ -61,19 +61,15 @@ def vbE_step(alpha_init, alpha_trans, ms, betas, nus, Ws, Y, T, D, K):
     log_etas = joint_posterior(log_Alpha, log_Beta, log_A, log_E, T, K)
     return log_gammas, log_etas
 
-def stats(log_gammas, Y, D, K):
+def stats(log_gammas, Y, T, K, D):
     gammas = torch.exp(log_gammas)
     N_ks = gammas.sum(0)
-    Y_ks = torch.zeros((K, D))
-    S_ks = torch.zeros((K, D, D))
-    gammas_expanded = gammas.repeat(D, 1, 1)
-    for k in range(K):
-        Y_ks[k] = torch.mul(gammas_expanded[:, :, k].transpose(0,1), Y).sum(0) / N_ks[k]
-        gammas_expanded2 = gammas_expanded[:, :, k].repeat(D, 1, 1).permute(2, 1, 0)
-        Y_diff = Y - Y_ks[k]
-        Y_bmm = torch.bmm(Y_diff.unsqueeze(2), Y_diff.unsqueeze(1))
-        S_ks[k] = torch.mul(gammas_expanded2, Y_bmm).sum(0) / (N_ks[k])
-    return N_ks, Y_ks, S_ks
+    N_ks[N_ks == 0] == 1e-6
+    Ave_ks = (gammas.unsqueeze(-1).repeat(1, 1, D) * Y.unsqueeze(-1).repeat(1, 1, K).transpose(2,1)).sum(0) / N_ks.unsqueeze(-1)
+    # Y_ks = torch.zeros((K, D))
+    diff = Y.repeat(K, 1, 1) - Ave_ks.unsqueeze(1).repeat(1, T, 1)
+    S_ks = torch.mul(gammas.unsqueeze(-1).unsqueeze(-1).repeat(1, 1, D, D).transpose(0, 1), torch.bmm(diff.view(K*T, D).unsqueeze(-1), diff.view(K*T, D).unsqueeze(1)).view(K, T, D, D)).sum(1) / N_ks.unsqueeze(-1).unsqueeze(-1)
+    return N_ks, Ave_ks, S_ks
 
 def vbM_step(log_eta, alpha_init_0, alpha_trans_0, nu_0, W_0, m_0, beta_0, N_ks, Y_ks, S_ks, N, D, K):
     eta = torch.exp(log_eta)
