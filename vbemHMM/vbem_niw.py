@@ -5,26 +5,34 @@ import numpy as np
 from torch import logsumexp
 import time
 
-def pirors(Y, N, D, K):
+def init_priors(Y, T, K, D):
     alpha_init_0 = torch.ones(K)
-    # L = torch.ones((K, K))  / (2 *(K-1))
-    # alpha_trans_0 = torch.cat((torch.cat((torch.eye(4)*0.5, torch.ones((4, K-4)) * (0.5 / (K-4))), 1),\
-    # torch.ones((K-4, K)) * (1.0 / K)), 0)
     alpha_trans_0 = torch.ones((K, K))
-    m_0 = torch.FloatTensor([[1, 1], [1, -1], [-1, -1], [-1, 1]]) * (1 / math.sqrt(2))
-    beta_0 = 1.0
-    nu_0 = 6.0
-    W_0 =  (nu_0-D-1) * torch.mm((Y - Y.mean(0)).transpose(0,1), (Y - Y.mean(0))) / (N)
-    cov = torch.from_numpy(np.cov(Y.transpose(0,1))).float()
-    ## inialize variational distribution as prior
-    alpha_init_hat = alpha_init_0
-    alpha_trans_hat = alpha_trans_0
-    # m_ks = MultivariateNormal(m_0, cov).sample((K,))
-    m_ks = torch.FloatTensor([[1, 1], [1, -1], [-1, -1], [-1, 1]])
-    beta_ks = (torch.ones(K) * beta_0)
-    nu_ks = (torch.ones(K) * nu_0)
-    W_ks = W_0.repeat(K, 1, 1)
-    return alpha_init_0, alpha_trans_0, m_0, beta_0, nu_0, W_0, alpha_init_hat, alpha_trans_hat, m_ks, beta_ks, nu_ks, W_ks
+    ms_0 = torch.FloatTensor([[1, 1], [1, -1], [-1, -1], [-1, 1]]) * (1 / math.sqrt(2))
+    nu = 6.0
+    beta = 1.0
+    betas_0 = beta * torch.ones(K)
+    nus_0 = nu * torch.ones(K)
+    W =  (nu - D - 1) * torch.mm((Y - Y.mean(0)).transpose(0,1), (Y - Y.mean(0))) / (T)
+    Ws_0 = W.repeat(K, 1, 1)
+    return alpha_init_0, alpha_trans_0, ms_0, betas_0[0], nus_0[0], Ws_0[0]
+
+def init_posterior(Y, T, K, D):
+    alpha_init = torch.ones(K)
+    alpha_trans = torch.ones((K, K))
+    ms = torch.FloatTensor([[1, 1], [1, -1], [-1, -1], [-1, 1]])
+    ## In general m_ks should be initialized randomly
+    # m_0 = torch.FloatTensor([[1, 1], [1, -1], [-1, -1], [-1, 1]]) * (1 / math.sqrt(2))
+    # cov = torch.from_numpy(np.cov(Y.transpose(0,1).data.numpy())).float()
+    # m_ks = mvn(m_0, cov).sample((K,))
+    nu = 6.0
+    beta = 1.0
+    betas = torch.ones(K) * beta
+    nus = torch.ones(K) * nu
+    W =  (nu - D - 1) * torch.mm((Y - Y.mean(0)).transpose(0,1), (Y - Y.mean(0))) / (T)
+    Ws = W.repeat(K, 1, 1)
+    return alpha_init, alpha_trans, ms, betas, nus, Ws
+
 
 def quad(a, B):
     return torch.mm(torch.mm(a.transpose(0, 1), B), a)
@@ -61,6 +69,25 @@ def log_expectations_dir(alpha_hat, K):
     for k in range(K):
         log_expectations[k] = torch.digamma(alpha_hat[k]) - sum_digamma
     return log_expectations
+
+# def vbE_step(alpha_init, alpha_trans, ms, betas, nus, Ws, Y, N, D, K):
+#     ## A K by K transition matrix, E is N by K emission matrix, both take log-form
+#     log_A = torch.zeros((K, K))
+#     quadratic_expectations = quadratic_expectation(nus, Ws, ms, betas, Y, N, D, K)
+#
+#     log_expectation_lambda = log_expectation_wi(nus, Ws, D, K)
+#     log_E = - (D / 2) * torch.log(torch.Tensor([2*math.pi])) - (1 / 2) * log_expectation_lambda - (1 / 2) * quadratic_expectations
+#
+#     for j in range(K):
+#         log_A[j] = log_expectations_dir(alpha_trans[j], K)
+#     ## Pi is the initial distribution in qz
+#     log_Pi = log_expectations_dir(alpha_init, K)
+#     # log_Pi_q = log_Pi - logsumexp(log_Pi)
+#     log_Alpha = forward(log_Pi, log_A, log_E, N, K)
+#     log_Beta = backward(log_A, log_E, N, K)
+#     log_gammas = marginal_posterior(log_Alpha, log_Beta, N, K)
+#     log_Eta = joint_posterior(log_Alpha, log_Beta, log_A, log_E, N, K)
+#     return log_gammas, log_Eta
 
 def vbE_step(alpha_init_hat, alpha_trans_hat, nu_ks, W_ks, m_ks, beta_ks, Y, N, D, K):
     ## A K by K transition matrix, E is N by K emission matrix, both take log-form
@@ -110,6 +137,22 @@ def vbM_step(log_eta, alpha_init_0, alpha_trans_0, nu_0, W_0, m_0, beta_0, N_ks,
         W_ks[k] = W_0 + N_ks[k] * S_ks[k] + (beta_0*N_ks[k] / (beta_0 + N_ks[k])) * torch.mul(temp2, temp2.transpose(0, 1))
         cov_ks[k] = W_ks[k] / (nu_ks[k] - D - 1)
     return alpha_init_hat, alpha_trans_hat, nu_ks, W_ks, m_ks, beta_ks, cov_ks
+
+# def vbM_step(log_eta, alpha_init_0, alpha_trans_0, ms_0, betas_0, nus_0, Ws_0, N_ks, Y_ks, S_ks, N, D, K):
+#     eta = torch.exp(log_eta)
+#     ms = torch.zeros((K, D))
+#     Ws = torch.zeros((K, D, D))
+#     covs = torch.zeros((K, D, D))
+#     alpha_init = alpha_init_0 + N_ks
+#     nus = nus_0+ N_ks + 1
+#     betas = betas_0 + N_ks
+#     alpha_trans = alpha_trans_0 + eta.sum(0)
+#     for k in range(K):
+#         ms[k] = (betas_0[k] * ms_0[k] + N_ks[k] * Y_ks[k]) / betas[k]
+#         temp2 = (Y_ks[k] - ms_0[k]).view(D, 1)
+#         Ws[k] = Ws_0[k] + N_ks[k] * S_ks[k] + (betas_0[k]*N_ks[k] / (betas_0[k] + N_ks[k])) * torch.mul(temp2, temp2.transpose(0, 1))
+#         covs[k] = Ws[k] / (nus[k] - D - 1)
+#     return alpha_init, alpha_trans, ms, betas, nus, Ws, covs
 
 def log_C(alpha):
     return torch.lgamma(alpha.sum()) - (torch.lgamma(alpha)).sum()
