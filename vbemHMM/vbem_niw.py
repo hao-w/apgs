@@ -1,4 +1,7 @@
 from fb_hmm import *
+from scipy.stats import invwishart as iw
+from torch.distributions.dirichlet import Dirichlet
+from torch.distributions.multivariate_normal import MultivariateNormal as mvn
 import math
 import torch
 import numpy as np
@@ -15,7 +18,7 @@ def init_priors(Y, T, K, D):
     nus_0 = nu * torch.ones(K)
     W =  (nu - D - 1) * torch.mm((Y - Y.mean(0)).transpose(0,1), (Y - Y.mean(0))) / (T)
     Ws_0 = W.repeat(K, 1, 1)
-    return alpha_init_0, alpha_trans_0, ms_0, betas_0[0], nus_0[0], Ws_0[0]
+    return alpha_init_0, alpha_trans_0, ms_0, betas_0, nus_0, Ws_0
 
 def init_posterior(Y, T, K, D):
     alpha_init = torch.ones(K)
@@ -71,37 +74,31 @@ def stats(log_gammas, Y, T, K, D):
     S_ks = torch.mul(gammas.unsqueeze(-1).unsqueeze(-1).repeat(1, 1, D, D).transpose(0, 1), torch.bmm(diff.view(K*T, D).unsqueeze(-1), diff.view(K*T, D).unsqueeze(1)).view(K, T, D, D)).sum(1) / N_ks.unsqueeze(-1).unsqueeze(-1)
     return N_ks, Ave_ks, S_ks
 
-def vbM_step(log_eta, alpha_init_0, alpha_trans_0, nu_0, W_0, m_0, beta_0, N_ks, Y_ks, S_ks, N, D, K):
-    eta = torch.exp(log_eta)
-    m_ks = torch.zeros((K, D))
-    W_ks = torch.zeros((K, D, D))
-    cov_ks = torch.zeros((K, D, D))
-    alpha_init_hat = alpha_init_0 + N_ks
-    nu_ks = nu_0+ N_ks + 1
-    beta_ks = beta_0 + N_ks
-    alpha_trans_hat = alpha_trans_0 + eta.sum(0)
-    for k in range(K):
-        m_ks[k] = (beta_0 * m_0[k] + N_ks[k] * Y_ks[k]) / beta_ks[k]
-        temp2 = (Y_ks[k] - m_0[k]).view(D, 1)
-        W_ks[k] = W_0 + N_ks[k] * S_ks[k] + (beta_0*N_ks[k] / (beta_0 + N_ks[k])) * torch.mul(temp2, temp2.transpose(0, 1))
-        cov_ks[k] = W_ks[k] / (nu_ks[k] - D - 1)
-    return alpha_init_hat, alpha_trans_hat, nu_ks, W_ks, m_ks, beta_ks, cov_ks
+def vbM_step(log_etas, alpha_init_0, alpha_trans_0, ms_0, betas_0, nus_0, Ws_0, N_ks, Ave_ks, S_ks, T, K, D):
+    etas = torch.exp(log_etas)
+    ms = torch.zeros((K, D))
+    Ws = torch.zeros((K, D, D))
+    alpha_init = alpha_init_0 + N_ks
+    nus = nus_0 + N_ks + 1
+    betas = betas_0 + N_ks
+    alpha_trans = alpha_trans_0 + etas.sum(0)
+    ms = (Ave_ks * N_ks.unsqueeze(-1) + ms_0 * betas_0.unsqueeze(-1)) / betas.unsqueeze(-1)
 
-# def vbM_step(log_eta, alpha_init_0, alpha_trans_0, ms_0, betas_0, nus_0, Ws_0, N_ks, Y_ks, S_ks, N, D, K):
-#     eta = torch.exp(log_eta)
-#     ms = torch.zeros((K, D))
-#     Ws = torch.zeros((K, D, D))
-#     covs = torch.zeros((K, D, D))
-#     alpha_init = alpha_init_0 + N_ks
-#     nus = nus_0+ N_ks + 1
-#     betas = betas_0 + N_ks
-#     alpha_trans = alpha_trans_0 + eta.sum(0)
-#     for k in range(K):
-#         ms[k] = (betas_0[k] * ms_0[k] + N_ks[k] * Y_ks[k]) / betas[k]
-#         temp2 = (Y_ks[k] - ms_0[k]).view(D, 1)
-#         Ws[k] = Ws_0[k] + N_ks[k] * S_ks[k] + (betas_0[k]*N_ks[k] / (betas_0[k] + N_ks[k])) * torch.mul(temp2, temp2.transpose(0, 1))
-#         covs[k] = Ws[k] / (nus[k] - D - 1)
-#     return alpha_init, alpha_trans, ms, betas, nus, Ws, covs
+    Ws = Ws_0 + S_ks * N_ks.unsqueeze(-1).unsqueeze(-1) + (betas_0 * N_ks / (betas_0 + N_ks)).unsqueeze(-1).unsqueeze(-1) * torch.bmm((Ave_ks - ms_0).unsqueeze(-1), (Ave_ks - ms_0).unsqueeze(1))
+
+    return alpha_init, alpha_trans, ms, betas, nus, Ws
+
+def sample_posterior(alpha_init, alpha_trans, ms, betas, nus, Ws, K, D):
+    pi = Dirichlet(alpha_init).sample()
+    A = Dirichlet(alpha_trans).sample()
+    covs = torch.zeros((K, D, D))
+    mus = torch.zeros((K, D))
+    for k in range(K):
+        cov = iw.rvs(df=nus[k].item(), scale=Ws[k].data.numpy())
+        cov_tensor = torch.from_numpy(cov).float()
+        covs[k] = cov_tensor
+        mus[k] = mvn(ms[k], cov_tensor / betas[k]).sample()
+    return mus, covs, A, pi
 
 def log_C(alpha):
     return torch.lgamma(alpha.sum()) - (torch.lgamma(alpha)).sum()
@@ -189,18 +186,3 @@ def elbo(log_gammas, log_eta, alpha_init_0, alpha_trans_0, nu_0, W_0, m_0, beta_
     Elbo = log_likelihood - kl_z - kl_pi - kl_phi - kl_trans
     # Elbo = 0
     return Elbo
-
-def output_transition(alpha_trans_hat):
-    A = alpha_trans_hat.data.numpy()
-    A = (A.T / A.sum(1)).T
-    return A
-
-def plot_results(Y, final_mus, final_covs):
-    fig, ax = plt.subplots(figsize=(4, 4))
-    ax.set_xlim(-5, 15)
-    ax.set_ylim(-5, 15)
-    ax.plot(Y[:,0], Y[:,1], 'ro')
-    plot_cov_ellipse(cov=final_covs[0], pos=final_mus[0], nstd=2, ax=ax, alpha=0.5)
-    plot_cov_ellipse(cov=final_covs[1], pos=final_mus[1], nstd=2, ax=ax, alpha=0.5)
-    plot_cov_ellipse(cov=final_covs[2], pos=final_mus[2], nstd=2, ax=ax, alpha=0.5)
-    plt.show()
