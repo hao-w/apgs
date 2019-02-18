@@ -2,31 +2,7 @@ import torch
 import matplotlib.pyplot as plt
 from matplotlib.patches import Ellipse
 import numpy as np
-import matplotlib.gridspec as gridspec
-
-def pairwise(Zs, T):
-    return torch.bmm(Zs[:T-1].unsqueeze(-1), Zs[1:].unsqueeze(1))
-
-def plot_results(EUBOs, ELBOs):
-    fig, ax = plt.subplots(figsize=(10,10))
-    ax.set_xticks([])
-    ax.set_yticks([])
-    ax1 = fig.add_subplot(1,1,1)
-    ax1.plot(ELBOs, 'b-', label='elbo')
-    ax1.plot(EUBOs, 'r-', label='eubo')
-    ax1.legend(fontsize=18)
-    ax1.set_xlabel('epoch', fontsize=16)
-    ax1.set_ylabel('EUBO and ELBO', fontsize=16)
-    ax1.tick_params(labelsize=18)
-
-def plot_smc_sample(Zs_true, Zs_ret):
-    ret_index = torch.nonzero(Zs_ret).data.numpy()
-    true_index = torch.nonzero(Zs_true).data.numpy()
-    fig, ax = plt.subplots(figsize=(4, 4))
-    ax.plot(true_index[:,0], true_index[:,1], 'ro', label='truth')
-    ax.plot(ret_index[:,0], ret_index[:,1], 'bo', label='sample')
-    ax.legend(loc='upper right', bbox_to_anchor=(1.5, 0.1))
-    plt.show()
+import matplotlib.gridspec as gridspec    
 
 def plot_cov_ellipse(cov, pos, nstd=2, ax=None, **kwargs):
     def eigsorted(cov):
