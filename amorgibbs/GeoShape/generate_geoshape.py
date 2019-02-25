@@ -3,11 +3,26 @@ import torch
 import numpy as np
 import math
 
+def sim_shapes(bound, N, rad, thick, period, noise_dist='uniform'):
+    dict_shapes = {'circle' : 0, 'square' : 1, 'triangle' : 2, 'cross' : 3}
+    mus = np.random.uniform(0.25*bound, 0.75*bound, (2, 4))
+    pos_c = circle(N, rad, thick, period, noise_dist='uniform') + mus[:, 0, None]
+    pos_s = square(N, rad, thick, period, noise_dist='uniform') + mus[:, 1, None]
+    pos_x = cross(N, rad, thick, period, noise_dist='uniform') + mus[:, 2, None]
+    pos_t = triangle(N, rad, thick, period, noise_dist='uniform') + mus[:, 3, None]
+    pos = np.concatenate((pos_c, pos_s, pos_x, pos_t), 1)
+    fig = plt.figure(figsize=(5,5))
+    ax = fig.add_subplot(1,1,1)
+    ax.scatter(pos[0], pos[1])    
+    ax.set_xlim([0,10])
+    ax.set_ylim([0, 10])
+    return pos
+
 def circle(N, rad, thick, period=1.0, noise_dist='uniform'):
     rads = np.ones(N) * rad
     if noise_dist == 'uniform':
         noise = np.random.uniform(-thick / 2., thick / 2., N)
-    elif noise_dist == 'gaussian':
+    elif noise_dist == 'gau6ssian':
         noise = np.random.normal(0.0, thick, N)
     else:
         print('error : noise distribution undefined...either uniform or gaussian')
@@ -16,10 +31,11 @@ def circle(N, rad, thick, period=1.0, noise_dist='uniform'):
     angles = np.linspace(0, period * 2 * math.pi, N, endpoint=False)
     x = np.cos(angles) * rads
     y = np.sin(angles) * rads
+    pos = np.concatenate((x[None,:], y[None, :]), 0)
 #     fig = plt.figure(figsize=(5,5))
 #     ax = fig.add_subplot(1,1,1)
 #     ax.scatter(x, y)
-    return x, y
+    return pos
 
 def square(N, rad, thick, period=1.0, noise_dist='uniform'):
     if noise_dist == 'uniform':
@@ -53,10 +69,12 @@ def square(N, rad, thick, period=1.0, noise_dist='uniform'):
 
     x = np.concatenate((bottom_x, left_x, top_x, right_x), 0)
     y = np.concatenate((bottom_y, left_y, top_y, right_y), 0)
+    pos = np.concatenate((x[None,:], y[None, :]), 0)
 #     fig = plt.figure(figsize=(5,5))
 #     ax = fig.add_subplot(1,1,1)
 #     ax.scatter(x, y)    
-    return x, y
+    
+    return pos
 
 def cross(N, rad, thick, period, noise_dist='uniform'):
     if noise_dist == 'uniform':
@@ -86,7 +104,7 @@ def cross(N, rad, thick, period, noise_dist='uniform'):
 #     fig = plt.figure(figsize=(5,5))
 #     ax = fig.add_subplot(1,1,1)
 #     ax.scatter(pos[0], pos[1])    
-    return pos[0], pos[1]
+    return pos
 
 def triangle(N, rad, thick, period, noise_dist='uniform'):
     if noise_dist == 'uniform':
@@ -124,8 +142,8 @@ def triangle(N, rad, thick, period, noise_dist='uniform'):
     right_pos[0] = right_pos[0] + rad
     
     pos = np.concatenate((bottom_pos, left_pos, right_pos), -1)
-    
+    pos[1] = pos[1] - rad * np.sqrt(3) /2 
 #     fig = plt.figure(figsize=(5,5))
 #     ax = fig.add_subplot(1,1,1)
 #     ax.scatter(pos[0], pos[1])  
-    return pos[0], pos[1]
+    return pos
