@@ -41,15 +41,15 @@ def kls_NGs(p_mean, p_nu, p_alpha, p_beta, q_mean, q_nu, q_alpha, q_beta):
     return kl_exclusive, kl_inclusive
 
 
-def kl_cat_cat(p_logits, q_logits):
+def kl_cat_cat(p_logits, q_logits, EPS=1e-8):
     p_probs = torch.exp(p_logits)
-    q_probs = torch.exp(q_logits)
+    q_probs = torch.exp(q_logits) + EPS
     t = p_probs * (p_logits - q_logits)
     t[(q_probs == 0).expand_as(t)] = inf
     t[(p_probs == 0).expand_as(t)] = 0
     return t.sum(-1)
 
-def kls_cats(p_logits, q_logits, EPS=1e-8):
-    KL_ex = kl_cat_cat(q_logits, p_logits + EPS).sum(-1)
+def kls_cats(p_logits, q_logits):
+    KL_ex = kl_cat_cat(q_logits, p_logits).sum(-1)
     KL_in = kl_cat_cat(p_logits, q_logits).sum(-1)
     return KL_ex, KL_in
