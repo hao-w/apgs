@@ -40,11 +40,12 @@ def sampling_gmm_uniform(T, K, D, boundary):
     return Xs, mus_true, covs_true, Zs_true, Pi
 
 def sampling_gmm_conjugate(T, K, D):
-    precisions = Gamma(torch.ones((K, D)) * 5, torch.ones((K,D)) * 8).sample()
-    covs_true = 1. / torch.sqrt(precisions)
-    mus_true = Normal(torch.zeros((K, D)), 1.0 * torch.ones((K, D))).sample()
+    precisions = Gamma(torch.ones((K, D)) * 2, torch.ones((K,D)) * 2).sample()
+    sigmas_true = 1. / torch.sqrt(precisions)
+    mus_sigmas = sigmas_true / 0.5
+    mus_true = Normal(torch.zeros((K, D)), mus_sigmas).sample()
     Pi = torch.FloatTensor([1./3, 1./3, 1./3])
     Zs_true = cat(Pi).sample((T,))
     labels = Zs_true.nonzero()[:, 1]
-    Xs = Normal(mus_true[labels], covs_true[labels]).sample()
-    return Xs, mus_true, covs_true, Zs_true, Pi
+    Xs = Normal(mus_true[labels], sigmas_true[labels]).sample()
+    return Xs, mus_true, sigmas_true, Zs_true, Pi
