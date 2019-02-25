@@ -44,7 +44,7 @@ def sampling_gmm_conjugate(T, K, D):
     sigmas_true = 1. / torch.sqrt(precisions)
     mus_sigmas = sigmas_true / 0.5
     mus_true = Normal(torch.zeros((K, D)), mus_sigmas).sample()
-    Pi = torch.FloatTensor([1./3, 1./3, 1./3])
+    Pi = torch.FloatTensor([1./4, 1./4, 1/4., 1./4])
     Zs_true = cat(Pi).sample((T,))
     labels = Zs_true.nonzero()[:, 1]
     Xs = Normal(mus_true[labels], sigmas_true[labels]).sample()

@@ -49,7 +49,7 @@ def kl_cat_cat(p_logits, q_logits, EPS=1e-8):
     t[(p_probs == 0).expand_as(t)] = 0
     return t.sum(-1)
 
-def kls_cats(p_logits, q_logits):
-    KL_ex = kl_cat_cat(q_logits, p_logits).sum(-1)
-    KL_in = kl_cat_cat(p_logits, q_logits).sum(-1)
+def kls_cats(p_logits, q_logits, EPS=1e-8):
+    KL_ex = kl_cat_cat(q_logits, p_logits + EPS).sum(-1)
+    KL_in = kl_cat_cat(p_logits, q_logits + EPS).sum(-1)
     return KL_ex, KL_in
