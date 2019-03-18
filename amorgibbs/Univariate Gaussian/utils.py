@@ -17,5 +17,14 @@ def SNR(grads, N, beta1, beta2):
     E_g = (ltr1 * grads).sum(-1) * (1 - beta1) / (1 - ltr1[:, 0] * beta1)
     E_g2 = (ltr2 * grads2).sum(-1) * (1 - beta2) / (1 - ltr2[:, 0] * beta2)
     var = E_g2 - E_g ** 2
-    snr = E_g**2 / var
+    snr = E_g2 / (var + 1e-8)
     return E_g, E_g2, var, snr
+
+def exp_average(EUBO, ELBO, iterations, beta1, beta2):
+    ltr1, ltr2 = init_tril(iterations, beta1, beta2)
+    ELBOsmo = (ltr1 * np.array(ELBO)).sum(-1) * (1 - beta1) / (1 - ltr1[:, 0] * beta1)
+    EUBOsmo = (ltr1 * np.array(EUBO)).sum(-1) * (1 - beta1) / (1 - ltr1[:, 0] * beta1)
+    return EUBOsmo, ELBOsmo
+
+
+

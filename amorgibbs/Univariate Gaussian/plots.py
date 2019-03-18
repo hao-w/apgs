@@ -12,7 +12,7 @@ def plot_results(EUBO, ELBO, ESS, num_samples, snr_mu, snr_sigma):
     ax2.plot(snr_sigma, label='SNR_sigma')
     ax2.plot(snr_mu, label='SNR_mu')
     ax2.legend()
-    ax2.set_ylim([-1,5])
+    ax2.set_ylim([-1,10])
     ## ESS
     ess_ratio = np.array(ESS) / num_samples
     ave_ess = np.reshape(ess_ratio, (-1, 10)).mean(-1)
