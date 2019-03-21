@@ -1,22 +1,52 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-def plot_results(EUBO, ELBO, ESS, num_samples, snr_mu, snr_sigma):
-    fig = plt.figure(figsize=(10,10))
-    ax1, ax2, ax3 = fig.subplots(3, 1, sharex=True)
-    plt.tight_layout()
-    ax1.plot(EUBO, 'r', label='EUBOs')
-    ax1.plot(ELBO, 'b', label='ELBOs')
-    ax1.legend()
-    ## SNR
-    ax2.plot(snr_sigma, label='SNR_sigma')
-    ax2.plot(snr_mu, label='SNR_mu')
-    ax2.legend()
-    ax2.set_ylim([-1,10])
-    ## ESS
-    ess_ratio = np.array(ESS) / num_samples
-    ave_ess = np.reshape(ess_ratio, (-1, 10)).mean(-1)
-    N = ave_ess.shape[0]
-    ax3.plot(np.arange(N) * 10, ave_ess, 'go', label='ESS')
-    ax3.set_ylim([0, 1])
-    
+def plot_results(dEUBOs, dELBOs, dIWELBOs, dESSs, dSNRs, dVARs, num_samples, num_samples,_snr, steps, lr, ests, fs=10):
+    fig = plt.figure(figsize=(fs,fs))
+    colors = {'mc':'green', 'iwae': 'red', 'iwae-dreg': 'blue',
+              'rws': 'deepskyblue', 'rws-dreg': 'firebrick', 'stl': 'black'}
+    fig = plt.figure(figsize=(fs,fs))
+    ax = fig.subplots(5, 3, gridspec_kw={'wspace':0.1, 'hspace':0.1})
+
+    for i, est in enumerate(ests):
+        EUBOs = dEUBOs[est]
+        ELBOs = dELBOs[est]
+        IWELBOs = dIWELBOs[est]
+        ESSs = dESSs[est]
+        SNRs = dSNRs[est]
+        VARs = dVARs[est]
+        if est == 'mc':
+            ax[0, 0].plot(EUBOs, c=colors[est], label=est)
+            ax[1, 0].plot(ELBOs, c=colors[est], label=est)
+            ax[2, 0].plot(IWELBOs, c=colors[est], label=est)
+            ax[3, 0].plot(SNRs, c=colors[est], label=est + '-snr')
+            ax[3, 0].plot(VARs, marker='o', c=colors[est], label=est + '-var')
+            ax[4, 0].plot(ESSs, c=colors[est], label=est)
+        elif est == 'iwae' or est == 'iwae-dreg':
+            ax[0, 1].plot(EUBOs, c=colors[est], label=est)
+            ax[1, 1].plot(ELBOs, c=colors[est], label=est)
+            ax[2, 1].plot(IWELBOs, c=colors[est], label=est)
+            ax[3, 1].plot(SNRs, c=colors[est], label=est + '-snr')
+            ax[3, 1].plot(VARs, marker='o', c=colors[est], label=est + '-var')
+            ax[4, 1].plot(ESSs, c=colors[est], label=est)
+        elif est =='rws' or est == 'rws-dreg':
+            ax[0, 2].plot(EUBOs, c=colors[est], label=est)
+            ax[1, 2].plot(ELBOs, c=colors[est], label=est)
+            ax[2, 2].plot(IWELBOs, c=colors[est], label=est)
+            ax[3, 2].plot(SNRs, c=colors[est], label=est + '-snr')
+            ax[3, 2].plot(VARs, marker='o', c=colors[est], label=est + '-var')
+            ax[4, 2].plot(ESSs, c=colors[est], label=est)
+
+    ax[0, 1].set_title('EUBO')
+    ax[1, 1].set_title('ELBO')
+    ax[2, 1].set_title('IWELBO')
+    ax[3, 1].set_title('SNR and Variance')
+    ax[4, 1].set_title('ESS')
+
+    for i in range(5):
+        for j in range(3):
+            ax[i, j].legend(fontsize=14)
+            ax[i, j].tick_params(labelsize=14)
+            if i == 3:
+                ax[i, j].set_yscale('log')
+    plt.savefig('results/results-%dsamples-%dSNRsamples-%dsteps-%flr.svg' % (num_samples, num_samples_snr, steps, lr))
