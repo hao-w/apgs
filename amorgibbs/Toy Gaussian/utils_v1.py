@@ -51,7 +51,6 @@ def train(obj, q_mu, q_sigma, p_mu, p_sigma, steps, num_samples, optimizer, file
     flog = open('results/log-' + filename + '.txt', 'w+')
     flog.write('EUBO, ELBO, IWELBO, ESS, SNR, VAR\n')
     flog.close()
-    time_start = time.time()
     for i in range(steps):
         # optimizer.zero_grad()
         # snr, var = SNR(obj, q_mu, q_sigma, p_mu, p_sigma, num_samples, num_batches, optimizer, alpha)

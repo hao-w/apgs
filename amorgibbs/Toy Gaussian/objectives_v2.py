@@ -7,7 +7,7 @@ import numpy as np
 from utils import *
 
 
-def mc(q_mu, q_sigma, p_mu, p_sigma, num_samples, num_batches=None):
+def mc(q_mu, q_sigma, p_mu, p_sigma, num_samples, joint_sample=True, num_batches=None):
     q = Normal(q_mu, q_sigma)
     if num_batches == None:
         xs = q.rsample((num_samples,)) ## reparam sampler
@@ -15,7 +15,10 @@ def mc(q_mu, q_sigma, p_mu, p_sigma, num_samples, num_batches=None):
         xs = q.rsample((num_samples, num_batches))
     log_p = (-1.0 / ((p_sigma**2) * 2.0)) * ((xs - p_mu) ** 2)
     log_q = q.log_prob(xs)
-    log_weights = log_p - log_q
+    if joint_sample:
+        log_p_joint = log_p.sum(-1)
+        log_joint = log_q.sum(-1)
+    log_weights = log_p_joint - log_q_joint
     weights = F.softmax(log_weights, 0).detach()
     ess = 1. / (weights ** 2).sum(0)
     eubo = (weights * log_weights).sum(0)
@@ -24,7 +27,7 @@ def mc(q_mu, q_sigma, p_mu, p_sigma, num_samples, num_batches=None):
     loss = - elbo
     return loss, eubo, elbo, iwelbo, ess
 
-def iwae(q_mu, q_sigma, p_mu, p_sigma, num_samples, num_batches=None):
+def iwae(q_mu, q_sigma, p_mu, p_sigma, num_samples, joint_sample=True, num_batches=None):
     q = Normal(q_mu, q_sigma)
     if num_batches == None:
         xs = q.rsample((num_samples,)) ## reparam sampler
@@ -32,6 +35,10 @@ def iwae(q_mu, q_sigma, p_mu, p_sigma, num_samples, num_batches=None):
         xs = q.rsample((num_samples, num_batches))
     log_p = (-1.0 / ((p_sigma**2) * 2.0)) * ((xs - p_mu) ** 2)
     log_q = q.log_prob(xs)
+    if joint_sample:
+        log_p_joint = log_p.sum(-1)
+        log_joint = log_q.sum(-1)
+    log_weights = log_p_joint - log_q_joint
     log_weights = log_p - log_q
     weights = F.softmax(log_weights, 0).detach()
     ess = 1. / (weights ** 2).sum(0)
@@ -42,7 +49,7 @@ def iwae(q_mu, q_sigma, p_mu, p_sigma, num_samples, num_batches=None):
     loss = - iwelbo
     return loss, eubo, elbo, iwelbo, ess
 
-def driwae(q_mu, q_sigma, p_mu, p_sigma, num_samples, num_batches=None):
+def driwae(q_mu, q_sigma, p_mu, p_sigma, num_samples, joint_sample=True, num_batches=None):
 
     q = Normal(q_mu, q_sigma)
     dq = Normal(q_mu.detach(), q_sigma.detach())
@@ -62,7 +69,7 @@ def driwae(q_mu, q_sigma, p_mu, p_sigma, num_samples, num_batches=None):
     loss = - estor
     return loss, eubo, elbo, iwelbo, ess
 
-def drrws(q_mu, q_sigma, p_mu, p_sigma, num_samples, num_batches=None):
+def drrws(q_mu, q_sigma, p_mu, p_sigma, num_samples, joint_sample=True, num_batches=None):
     q = Normal(q_mu, q_sigma)
     dq = Normal(q_mu.detach(), q_sigma.detach())
     if num_batches == None:
@@ -82,7 +89,7 @@ def drrws(q_mu, q_sigma, p_mu, p_sigma, num_samples, num_batches=None):
     loss = - estor
     return loss, eubo, elbo, iwelbo, ess
 
-def rws(q_mu, q_sigma, p_mu, p_sigma, num_samples, num_batches=None):
+def rws(q_mu, q_sigma, p_mu, p_sigma, num_samples, joint_sample=True, num_batches=None):
     q = Normal(q_mu, q_sigma)
     if num_batches == None:
         xs = q.sample((num_samples,)) ## nonreparam sampler
