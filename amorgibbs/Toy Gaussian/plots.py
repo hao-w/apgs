@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-def plot_results(dEUBOs, dELBOs, dIWELBOs, dESSs, dSNRs, dVARs, num_samples, num_samples,_snr, steps, lr, ests, fs=10):
+def plot_results(dEUBOs, dELBOs, dIWELBOs, dESSs, dSNRs, dVARs, num_samples, num_samples_snr, steps, lr, ests, fs=10):
     fig = plt.figure(figsize=(fs,fs))
     colors = {'mc':'green', 'iwae': 'red', 'iwae-dreg': 'blue',
               'rws': 'deepskyblue', 'rws-dreg': 'firebrick', 'stl': 'black'}
@@ -50,3 +50,33 @@ def plot_results(dEUBOs, dELBOs, dIWELBOs, dESSs, dSNRs, dVARs, num_samples, num
             if i == 3:
                 ax[i, j].set_yscale('log')
     plt.savefig('results/results-%dsamples-%dSNRsamples-%dsteps-%flr.svg' % (num_samples, num_samples_snr, steps, lr))
+
+def plot_results_simplified(dLOSSs, dESSs, dKLs, num_samples, num_batches, steps, lr, ests, fs=30):
+    fig = plt.figure(figsize=(fs,fs))
+    colors = {'mc':'green', 'iwae': 'red', 'iwae-dreg': 'blue',
+              'rws': 'deepskyblue', 'rws-dreg': 'firebrick', 'stl': 'black'}
+    fig = plt.figure(figsize=(fs,fs))
+    ax = fig.subplots(3, 1, gridspec_kw={'wspace':0.1, 'hspace':0.1})
+
+    for i, est in enumerate(ests):
+        LOSSs = dLOSSs[est]
+        ESSs = dESSs[est]
+        KLs = dKLs[est]
+        if est == 'mc' or est == 'iwae' or est == 'iwae-dreg':
+            ax[0].plot(- LOSSs, c=colors[est], label= 'ELBO' + est)
+            ax[1].plot(KLs, c=colors[est], label=est)
+            ax[2].plot(np.array(ESSs), c=colors[est], label=est)
+        elif est =='rws' or est == 'rws-dreg':
+            ax[0].plot(LOSSs, c=colors[est], label= 'EUBO' + est)
+            ax[1].plot(KLs, c=colors[est], label=est)
+            ax[2].plot(np.array(ESSs), c=colors[est], label=est)
+    ax[0].set_title('Objectives')
+    ax[1].set_title('exclusive KL')
+    ax[2].set_title('ESS')
+
+    for i in range(3):
+        ax[i].legend(fontsize=12)
+        ax[i].tick_params(labelsize=12)
+        if i == 1:
+            ax[i].set_yscale('log')
+    plt.savefig('results/results-%dsamples-%dSNRsamples-%dsteps-%.4flr.svg' % (num_samples, num_batches, steps, lr))

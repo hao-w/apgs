@@ -22,54 +22,63 @@ def init_tril(T, beta1, beta2):
 #     snr = E_g2 / (var + 1e-8)
 #     return E_g, E_g2, var, snr
 
-def SNR(obj, q_mu, q_sigma, p_mu, p_sigma, num_samples, num_samples_snr, optimizer, alpha):
-    Grad_mu = []
-    Grad_sigma = []
-    for i in range(num_samples_snr):
-        optimizer.zero_grad()
-        loss, _, _, _, _ = obj(q_mu, q_sigma, p_mu, p_sigma, num_samples, alpha)
-        loss.backward()
-        Grad_mu.append(- q_mu.grad.item())
-        Grad_sigma.append(- q_sigma.grad.item())
+# def SNR(obj, q_mu, q_sigma, p_mu, p_sigma, num_samples, optimizer, num_samples_snr, alpha):
+#     Grad_mu = []
+#     Grad_sigma = []
+#     for i in range(num_samples_snr):
+#         optimizer.zero_grad()
+#         loss, _, _, _, _ = obj(q_mu, q_sigma, p_mu, p_sigma, num_samples, alpha)
+#         loss.backward()
+#         Grad_mu.append(- q_mu.grad.item())
+#         Grad_sigma.append(- q_sigma.grad.item())
+#
+#     snr_mu, var_mu = stats(np.array(Grad_mu))
+#     snr_sigma, var_sigma = stats(np.array(Grad_sigma))
+#     optimizer.zero_grad()
+#     return (snr_mu + snr_sigma) / 2, (var_mu + var_sigma) / 2
 
-    snr_mu, var_mu = stats(np.array(Grad_mu))
-    snr_sigma, var_sigma = stats(np.array(Grad_sigma))
-    optimizer.zero_grad()
-    return (snr_mu + snr_sigma) / 2, (var_mu + var_sigma) / 2
 
-def train(obj, q_mu, q_sigma, p_mu, p_sigma, steps, num_samples, num_samples_snr, optimizer, filename, alpha):
+
+def train(obj, q_mu, q_sigma, p_mu, p_sigma, steps, num_samples, optimizer, filename, num_batches):
+    LOSSs = []
     EUBOs = []
     ELBOs = []
     IWELBOs = []
     ESSs = []
     SNRs = []
     VARs = []
+    KLs = []
     flog = open('results/log-' + filename + '.txt', 'w+')
     flog.write('EUBO, ELBO, IWELBO, ESS, SNR, VAR\n')
     flog.close()
     time_start = time.time()
     for i in range(steps):
+        # optimizer.zero_grad()
+        # snr, var = SNR(obj, q_mu, q_sigma, p_mu, p_sigma, num_samples, num_batches, optimizer, alpha)
+        # SNRs.append(snr.item())
+        # VARs.append(var.item())
+
         optimizer.zero_grad()
-        snr, var = SNR(obj, q_mu, q_sigma, p_mu, p_sigma, num_samples, num_samples_snr, optimizer, alpha)
-        SNRs.append(snr.item())
-        VARs.append(var.item())
-        optimizer.zero_grad()
-        loss, eubo, elbo, iwelbo, ess = obj(q_mu, q_sigma, p_mu, p_sigma, num_samples, alpha)
+        loss, eubo, elbo, iwelbo, ess = obj(q_mu, q_sigma, p_mu, p_sigma, num_samples, num_batches=None)
         loss.backward()
         optimizer.step()
+        kl_ex = kl_normal_normal(q_mu, q_sigma, p_mu, p_sigma).mean()
+        LOSSs.append(loss.item())
         EUBOs.append(eubo.item())
         IWELBOs.append(iwelbo.item())
         ELBOs.append(elbo.item())
         ESSs.append(ess.item())
-        flog = open('results/log-' + filename + '.txt', 'a+')
-        flog.write(str(eubo.item()) + ', ' + str(elbo.item()) + ', ' + str(iwelbo.item()) + ', ' + str(ess.item()) + ', ' +
-                   str(snr.item()) + ', ' + str(var.item()) + '\n')
+        KLs.append(kl_ex.item())
 
-        if i % 100 == 0:
-            time_end = time.time()
-            print('iteration:%d, EUBO:%.3f, ELBO:%.3f, IWELBO:%.3f, ESS:%.3f (%ds)' % (i, eubo, elbo, iwelbo, ess, (time_end - time_start)))
-            time_start = time.time()
-    return EUBOs, ELBOs, IWELBOs, ESSs, SNRs, VARs
+        # flog = open('results/log-' + filename + '.txt', 'a+')
+        # flog.write(str(eubo.item()) + ', ' + str(elbo.item()) + ', ' + str(iwelbo.item()) + ', ' + str(ess.item()) + ', ' +
+        #            str(snr.item()) + ', ' + str(var.item()) + '\n')
+
+        # if i % 1000 == 0:
+            # time_end = time.time()
+            # print('iteration:%d, EUBO:%.3f, ELBO:%.3f, IWELBO:%.3f, ESS:%.3f, KL:%.3f (%ds)' % (i, eubo, elbo, iwelbo, ess, kl_ex, (time_end - time_start)))
+            # time_start = time.time()
+    return LOSSs, EUBOs, ELBOs, IWELBOs, ESSs, SNRs, VARs, KLs
 
 def stats(grads):
     E_g2 = (grads ** 2).mean()
@@ -78,3 +87,8 @@ def stats(grads):
     Var_g = E_g2 - E2_g
     SNR_g = E_g2 / Var_g
     return SNR_g, Var_g
+
+def kl_normal_normal(p_mean, p_std, q_mean, q_std):
+    var_ratio = (p_std / q_std).pow(2)
+    t1 = ((p_mean - q_mean) / q_std).pow(2)
+    return 0.5 * (var_ratio + t1 - 1 - var_ratio.log())
