@@ -1,20 +1,20 @@
 import torch.nn as nn
-from kls import *
+import torch
+# from kls import *
 from torch.distributions.normal import Normal
 from torch.distributions.gamma import Gamma
 from torch import logsumexp
 
 
-def shuffler(batch_Xs, batch_Zs, N, K, D, batch_size):
+def shuffler(batch_Xs, N, K, D, batch_size):
     indices = torch.cat([torch.randperm(N).unsqueeze(0) for b in range(batch_size)])
     indices_Xs = indices.unsqueeze(-1).repeat(1, 1, D)
-    indices_Zs = indices.unsqueeze(-1).repeat(1, 1, K)
-    return torch.gather(batch_Xs, 1, indices_Xs), torch.gather(batch_Zs, 1, indices_Zs)
+    return torch.gather(batch_Xs, 1, indices_Xs)
 
 def weights_init(m):
     classname = m.__class__.__name__
     if classname.find('Linear') != -1:
-        m.weight.data.normal_(0.0, 1e-1)     
+        m.weight.data.normal_(0.0, 1e-1)
 
 def log_joints_gmm(X, Z, mus, precisions, N, D, K, prior_mean, prior_nu, prior_alpha, prior_beta, prior_pi, num_samples, batch_size):
     log_probs = torch.zeros((num_samples, batch_size)).float()
@@ -31,7 +31,20 @@ def log_joints_gmm(X, Z, mus, precisions, N, D, K, prior_mean, prior_nu, prior_a
 def loglikelihood(X, Z, mus, precisions, D):
     # log-likelihoods
     """
-    X should be expanded and repeated along the sample dim 
+    X should be expanded and repeated along the sample dim
+    """
+    sigmas = 1. / torch.sqrt(precisions) ## S * B * K * D
+    labels = Z.argmax(-1)
+    labels_flat = labels.unsqueeze(-1).repeat(1, 1, 1, D)
+    x_mus = torch.gather(mus, 2, labels_flat)
+    x_sigmas = torch.gather(sigmas, 2, labels_flat)
+    log_p_x = Normal(x_mus, x_sigmas).log_prob(X).sum(-1).sum(-1) # S * B
+    return log_p_x
+
+def loglikelihood_relaxed(X, Z, mus, precisions, D):
+    # log-likelihoods
+    """
+    X should be expanded and repeated along the sample dim
     """
     sigmas = 1. / torch.sqrt(precisions) ## S * B * K * D
     labels = Z.argmax(-1)
@@ -45,7 +58,7 @@ def SNR(enc_init, enc_local, optimizer, x, K, D, SAMPLE_DIM, BATCH_DIM, num_samp
     grads = []
     for s in range(num_samples_snr):
         optimizer.zero_grad()
-        q_eta, p_eta = enc_init(x) 
+        q_eta, p_eta = enc_init(x)
         q_z, p_z = enc_local(q_eta, x)
 
         log_p_eta = p_eta.log_joint(sample_dims=SAMPLE_DIM, batch_dim=BATCH_DIM)
@@ -82,7 +95,7 @@ def SNR_NRe(enc_init, enc_local, optimizer, x, K, D, SAMPLE_DIM, BATCH_DIM, num_
     grads = []
     for s in range(num_samples_snr):
         optimizer.zero_grad()
-        q_eta, p_eta = enc_init(x) 
+        q_eta, p_eta = enc_init(x)
         q_z, p_z = enc_local(q_eta, x)
 
         log_p_eta = p_eta.log_joint(sample_dims=SAMPLE_DIM, batch_dim=BATCH_DIM)
