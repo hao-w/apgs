@@ -60,7 +60,7 @@ def train(obj, q_mu, q_sigma, p_mu, p_sigma, steps, num_samples, optimizer, file
         loss, eubo, elbo, iwelbo, ess = obj(q_mu, q_sigma, p_mu, p_sigma, num_samples, num_batches=None)
         loss.backward()
         optimizer.step()
-        kl_ex = kl_normal_normal(q_mu, q_sigma, p_mu, p_sigma).mean()
+        kl_ex = kl_normal_normal(q_mu, q_sigma, p_mu, p_sigma).sum()
         LOSSs.append(loss.item())
         EUBOs.append(eubo.item())
         IWELBOs.append(iwelbo.item())
