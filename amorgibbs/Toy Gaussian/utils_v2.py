@@ -13,13 +13,13 @@ def init_tril(T, beta1, beta2):
     tril2 = np.tril(np.exp(np.ones((T, T)) * lbeta2 * ltr))
     return tril1, tril2
 
-def train(obj, q_mu, q_sigma, p_mu, p_sigma, steps, num_samples, optimizer, filename, joint_sample):
+def train(obj, q_mu, q_sigma, p_mu, p_sigma, steps, num_samples, optimizer):
     LOSSs = []
     ESSs = []
     KLs = []
     for i in range(steps):
         optimizer.zero_grad()
-        loss, ess = obj(q_mu, q_sigma, p_mu, p_sigma, num_samples, joint_sample)
+        loss, ess = obj(q_mu, q_sigma, p_mu, p_sigma, num_samples)
         loss.backward()
         optimizer.step()
         LOSSs.append(loss.item())
@@ -27,6 +27,7 @@ def train(obj, q_mu, q_sigma, p_mu, p_sigma, steps, num_samples, optimizer, file
         kl_ex = kl_normal_normal(q_mu, q_sigma, p_mu, p_sigma).sum()
         ESSs.append(ess.item())
         KLs.append(kl_ex.item())
+
     return LOSSs, ESSs, KLs
 
 def stats(grads):
