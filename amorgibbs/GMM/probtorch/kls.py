@@ -37,8 +37,8 @@ def kl_normal_normal(p_mean, p_std, q_mean, q_std):
     return 0.5 * (var_ratio + t1 - 1 - var_ratio.log())
 
 def kls_normals(q_mean, q_sigma, p_mean, p_sigma):
-    Kl_ex = kl_normal_normal(q_mean, q_sigma, p_mean, p_sigma).sum(-1).sum(-1).mean()
-    Kl_in = kl_normal_normal(p_mean, p_sigma, q_mean, q_sigma).sum(-1).sum(-1).mean()
+    Kl_ex = kl_normal_normal(q_mean, q_sigma, p_mean, p_sigma).sum(-1)
+    Kl_in = kl_normal_normal(p_mean, p_sigma, q_mean, q_sigma).sum(-1)
     return Kl_ex, Kl_in
 
 def Post_mu(stat1, stat2, prior_mu, prior_sigma, obs_sigma, D):
@@ -56,8 +56,8 @@ def kl_gamma_gamma(p_alpha, p_beta, q_alpha, q_beta):
     return t1 + t2 + t3 + t4
 
 def kls_gammas(q_alpha, q_beta, p_alpha, p_beta):
-    KL_ex = kl_gamma_gamma(q_alpha, q_beta, p_alpha, p_beta).sum(-1).sum(-1).mean()
-    KL_in = kl_gamma_gamma(p_alpha, p_beta, q_alpha, q_beta).sum(-1).sum(-1).mean()
+    KL_ex = kl_gamma_gamma(q_alpha, q_beta, p_alpha, p_beta).sum(-1)
+    KL_in = kl_gamma_gamma(p_alpha, p_beta, q_alpha, q_beta).sum(-1)
     return KL_ex, KL_in
 
 def Post_tau(stat1, stat2, stat3, prior_alpha, prior_beta, obs_mu, D):
@@ -73,10 +73,21 @@ def kl_NG_NG(p_mean, p_nu, p_alpha, p_beta, q_mean, q_nu, q_alpha, q_beta):
     t3 = (p_alpha - q_alpha) * torch.digamma(p_alpha) - (p_beta - q_beta) * p_alpha / p_beta
     return t1 + t2 + t3
 
-def kls_NGs(p_mean, p_nu, p_alpha, p_beta, q_mean, q_nu, q_alpha, q_beta):
-    kl_exclusive = kl_NG_NG(q_mean, q_nu, q_alpha, q_beta, p_mean, p_nu, p_alpha, p_beta).sum(-1).sum(-1)
-    kl_inclusive = kl_NG_NG(p_mean, p_nu, p_alpha, p_beta, q_mean, q_nu, q_alpha, q_beta).sum(-1).sum(-1)
-    return kl_exclusive, kl_inclusive
+def kls_NGs(q_mean, q_nu, q_alpha, q_beta, p_mean, p_nu, p_alpha, p_beta):
+    kl_ex = kl_NG_NG(q_mean, q_nu, q_alpha, q_beta, p_mean, p_nu, p_alpha, p_beta).sum(-1)
+    kl_in = kl_NG_NG(p_mean, p_nu, p_alpha, p_beta, q_mean, q_nu, q_alpha, q_beta).sum(-1)
+    return kl_ex, kl_in
+
+def Post_mu_tau(stat1, stat2, stat3, prior_mu, prior_nu, prior_alpha, prior_beta, D):
+    stat1_expand = stat1.unsqueeze(-1).repeat(1, 1, 1, D) ## S * B * K * D
+    stat1_nonzero = stat1_expand
+    stat1_nonzero[stat1_nonzero == 0.0] = 1.0
+    x_bar = stat2 / stat1_nonzero
+    post_beta = prior_beta + (stat3 - (stat2 ** 2) / stat1_nonzero) / 2. + (stat1_expand * prior_nu / (stat1_expand + prior_nu)) * ((x_bar - prior_nu)**2) / 2.
+    post_nu = prior_nu + stat1_expand
+    post_mu = (prior_mu * prior_nu + stat2) / (prior_nu + stat1_expand)
+    post_alpha = prior_alpha + (stat1_expand / 2.)
+    return post_mu, post_nu, post_alpha, post_beta
 
 
 def kl_cat_cat(p_logits, q_logits, EPS=1e-8):
