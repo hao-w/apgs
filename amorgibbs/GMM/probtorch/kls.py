@@ -55,10 +55,16 @@ def kl_gamma_gamma(p_alpha, p_beta, q_alpha, q_beta):
     t4 = (q_beta - p_beta) * (p_alpha / p_beta)
     return t1 + t2 + t3 + t4
 
-def kls_gammas(precsions_alpha, precisions_beta, posterior_alpha, posterior_beta):
-    KL_exclusive = kl_gamma_gamma(precsions_alpha, precisions_beta, posterior_alpha, posterior_beta).sum(-1).sum(-1).mean()
-    KL_inclusive = kl_gamma_gamma(posterior_alpha, posterior_beta, precsions_alpha, precisions_beta).sum(-1).sum(-1).mean()
-    return KL_exclusive, KL_inclusive
+def kls_gammas(q_alpha, q_beta, p_alpha, p_beta):
+    KL_ex = kl_gamma_gamma(q_alpha, q_beta, p_alpha, p_beta).sum(-1).sum(-1).mean()
+    KL_in = kl_gamma_gamma(p_alpha, p_beta, q_alpha, q_beta).sum(-1).sum(-1).mean()
+    return KL_ex, KL_in
+
+def Post_tau(stat1, stat2, stat3, prior_alpha, prior_beta, obs_mu, D):
+    stat1_expand = stat1.unsqueeze(-1).repeat(1,1,1,D)
+    post_alpha = prior_alpha +  stat1_expand / 2
+    post_beta = prior_beta + stat3 + (obs_mu**2) * stat1_expand - 2 * obs_mu * stat2
+    return post_alpha, post_beta
 
 def kl_NG_NG(p_mean, p_nu, p_alpha, p_beta, q_mean, q_nu, q_alpha, q_beta):
     diff = q_mean - p_mean
