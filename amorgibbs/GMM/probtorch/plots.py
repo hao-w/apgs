@@ -28,8 +28,8 @@ def plot_clusters(Xs, mus_true, covs_true, K):
     for k in range(K):
         plot_cov_ellipse(cov=covs_true[k], pos=mus_true[k], nstd=2, ax=ax, alpha=0.5)
 
-    ax.set_ylim([-10, 10])
-    ax.set_xlim([-10, 10])
+    ax.set_ylim([-15, 15])
+    ax.set_xlim([-15, 15])
     plt.show()
     
     

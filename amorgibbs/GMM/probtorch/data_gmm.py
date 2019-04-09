@@ -14,7 +14,7 @@ D : observation dimensionality
 def sampling_gmm_conjugate(T, K, D):
     precisions = Gamma(torch.ones((K, D)) * 3, torch.ones((K,D)) * 3).sample()
     sigmas_true = 1. / torch.sqrt(precisions)
-    mus_sigmas = sigmas_true / 0.3
+    mus_sigmas = sigmas_true / 0.5
     mus_true = Normal(torch.zeros((K, D)), mus_sigmas).sample()
     Pi = torch.FloatTensor([1./3, 1./3, 1./ 3])
     Zs_true = cat(Pi).sample((T,))
