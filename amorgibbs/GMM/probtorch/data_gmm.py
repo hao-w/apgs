@@ -7,16 +7,16 @@ from torch.distributions.normal import Normal
 from torch.distributions.uniform import Uniform
 import math
 """
-T : time series length
+T : number of points
 K : number of clusters
 D : observation dimensionality
 """
 def sampling_gmm_conjugate(T, K, D):
     precisions = Gamma(torch.ones((K, D)) * 3, torch.ones((K,D)) * 3).sample()
     sigmas_true = 1. / torch.sqrt(precisions)
-    mus_sigmas = sigmas_true / 0.5
+    mus_sigmas = sigmas_true / 0.5 ## nu
     mus_true = Normal(torch.zeros((K, D)), mus_sigmas).sample()
-    Pi = torch.FloatTensor([1./3, 1./3, 1./ 3])
+    Pi = torch.ones((K)) * (1. / K)
     Zs_true = cat(Pi).sample((T,))
     labels = Zs_true.nonzero()[:, 1]
     Xs = Normal(mus_true[labels], sigmas_true[labels]).sample()
@@ -25,7 +25,7 @@ def sampling_gmm_conjugate(T, K, D):
 def sampling_gmm_fixed_sigma(T, K, D):
     obs_mu = Normal(torch.zeros((K, D)), torch.ones((K, D)) * 3).sample()
     obs_sigma = torch.ones((K, D))
-    Pi = torch.FloatTensor([1./3, 1./3, 1./ 3])
+    Pi = torch.ones((K)) * (1. / K)
     states = cat(Pi).sample((T,))
     labels = states.nonzero()[:, 1]
     obs = Normal(obs_mu[labels], obs_sigma[labels]).sample()
@@ -35,7 +35,7 @@ def sampling_gmm_nonconjugate(T, K, D):
     obs_mu = Normal(torch.zeros((K, D)), torch.ones((K, D)) * 5).sample()
     obs_precision = Gamma(torch.ones((K, D)) * 4, torch.ones((K, D)) * 4).sample()
     obs_sigma = 1. / obs_precision.sqrt()
-    Pi = torch.FloatTensor([1./3, 1./3, 1./ 3])
+    Pi = torch.ones((K)) * (1. / K)
     states = cat(Pi).sample((T,))
     labels = states.nonzero()[:, 1]
     obs = Normal(obs_mu[labels], obs_sigma[labels]).sample()
