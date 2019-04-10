@@ -15,7 +15,7 @@ def nats_to_params(nat1, nat2, nat3, nat4):
     beta = - nat2 - (nu * (mu**2) / 2)
     return alpha, beta, mu, nu
 
-def data_to_stats(x, z, N, K, D):
+def data_to_stats(x, z, K, D):
     stat1 = z.sum(2) ## S * B * K, sum of I[z_n=k]
     z_expand = z.unsqueeze(-1).repeat(1, 1, 1, 1, D) ## S * B * N * K * D
     x_expand = x.unsqueeze(-1).repeat(1, 1, 1, 1, K).transpose(-1, -2) ## S * B * N * K * D

@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-# from torch._six import inf
+import torch.nn.functional as F
 from torch.distributions.normal import Normal
 from torch.distributions.one_hot_categorical import OneHotCategorical as cat
 from torch.distributions.gamma import Gamma
@@ -90,17 +90,17 @@ def Post_mu_tau(stat1, stat2, stat3, prior_mu, prior_nu, prior_alpha, prior_beta
     return post_mu, post_nu, post_alpha, post_beta
 
 
-def kl_cat_cat(p_logits, q_logits, EPS=1e-8):
-    p_probs = torch.exp(p_logits)
-    q_probs = torch.exp(q_logits) + EPS
+def kl_cat_cat(p_probs, q_probs, EPS=1e-8):
+    p_logits = torch.log(p_probs)
+    q_logits = torch.log(q_probs+EPS)
     t = p_probs * (p_logits - q_logits)
     # t[(q_probs == 0).expand_as(t)] = inf
     t[(p_probs == 0).expand_as(t)] = 0
     return t.sum(-1)
 
-def kls_cats(p_logits, q_logits, EPS=1e-8):
-    KL_ex = kl_cat_cat(q_logits, p_logits + EPS).sum(-1)
-    KL_in = kl_cat_cat(p_logits, q_logits + EPS).sum(-1)
+def kls_cats(q_probs, p_probs, EPS=1e-8):
+    KL_ex = kl_cat_cat(q_probs, p_probs)
+    KL_in = kl_cat_cat(p_probs, q_probs)
     return KL_ex, KL_in
 
 def post_global(Xs, Zs, prior_mean, prior_nu, prior_alpha, prior_beta, N, K, D):
@@ -120,11 +120,11 @@ def post_global(Xs, Zs, prior_mean, prior_nu, prior_alpha, prior_beta, N, K, D):
 #     posterior_sigma = torch.sqrt(posterior_nu * (posterior_beta / posterior_alpha))
     return posterior_mean, posterior_nu, posterior_alpha, posterior_beta
 
-def post_local(Xs, Pi, means, precisions, N, K, D, batch_size):
-    sigmas = 1. / torch.sqrt(precisions)
-    means_expand = means.unsqueeze(-2).repeat(1, 1, 1, N, 1) # S * B * K * N * D
-    sigmas_expand = sigmas.unsqueeze(-2).repeat(1, 1, 1, N, 1) # S * B * K * N * D
-    Xs_expand = Xs.unsqueeze(2).repeat(1, 1, K, 1, 1) #  S * B * K * N * D
-    log_gammas = Normal(means_expand, sigmas_expand).log_prob(Xs_expand).sum(-1).transpose(-1, -2) # S * B * N * K
-    logits = log_gammas - logsumexp(log_gammas, dim=-1).unsqueeze(-1)
-    return logits
+def Post_z(obs, obs_tau, obs_mu, N, K):
+    obs_sigma = 1. / obs_tau.sqrt()
+    obs_mu_expand = obs_mu.unsqueeze(-2).repeat(1, 1, 1, N, 1) # S * B * K * N * D
+    obs_sigma_expand = obs_sigma.unsqueeze(-2).repeat(1, 1, 1, N, 1) # S * B * K * N * D
+    obs_expand = obs.unsqueeze(2).repeat(1, 1, K, 1, 1) #  S * B * K * N * D
+    log_gammas = Normal(obs_mu_expand, obs_sigma_expand).log_prob(obs_expand).sum(-1).transpose(-1, -2) # S * B * N * K
+    post_prob = F.softmax(log_gammas, dim=-1)
+    return post_prob
