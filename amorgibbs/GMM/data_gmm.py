@@ -1,11 +1,8 @@
 import numpy as np
 import torch
-from torch.distributions.multivariate_normal import MultivariateNormal as mvn
 from torch.distributions.one_hot_categorical import OneHotCategorical as cat
 from torch.distributions.gamma import Gamma
 from torch.distributions.normal import Normal
-from torch.distributions.uniform import Uniform
-import math
 """
 T : number of points
 K : number of clusters
