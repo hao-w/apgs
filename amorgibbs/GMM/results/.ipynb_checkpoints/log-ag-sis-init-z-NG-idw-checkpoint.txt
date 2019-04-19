@@ -1,2 +1,0 @@
-EUBO	ELBO	ESS	KLs_eta_ex	KLs_eta_in	KLs_z_ex	KLs_z_in
-EUBO	ELBO	ESS	KLs_eta_ex	KLs_eta_in	KLs_z_ex	KLs_z_in

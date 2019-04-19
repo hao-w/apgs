@@ -73,31 +73,33 @@ def Post_mu_tau(stat1, stat2, stat3, prior_mu, prior_nu, prior_alpha, prior_beta
     post_alpha = prior_alpha + (stat1_expand / 2.)
     return post_mu, post_nu, post_alpha, post_beta
 
+from torch._six import inf
 
-def kl_cat_cat(p_probs, q_probs, EPS=1e-8):
-    p_logits = torch.log(p_probs)
-    q_logits = torch.log(q_probs+EPS)
+def kl_cat_cat(p_logits, q_logits, EPS=1e-12):
+    p_probs= p_logits.exp()
+    ## To prevent from infinite KL due to ill-defined support of q
+    q_logits[q_logits == -inf] = torch.log(torch.FloatTensor([EPS]))
     t = p_probs * (p_logits - q_logits)
     # t[(q_probs == 0).expand_as(t)] = inf
     t[(p_probs == 0).expand_as(t)] = 0
     return t.sum(-1)
 
-def kls_cats(q_probs, p_probs, EPS=1e-8):
-    KL_ex = kl_cat_cat(q_probs, p_probs)
-    KL_in = kl_cat_cat(p_probs, q_probs)
+
+def kls_cats(q_logits, p_logits):
+    KL_ex = kl_cat_cat(q_logits, p_logits)
+    KL_in = kl_cat_cat(p_logits, q_logits)
     return KL_ex, KL_in
 
-def Post_z(obs, obs_tau, obs_mu, N, K):
+def Post_z(obs, obs_sigma, obs_mu, N, K):
     """
     conjugate posterior p(z | mu, tau, x) given mu, tau, x
     """
-    obs_sigma = 1. / obs_tau.sqrt()
     obs_mu_expand = obs_mu.unsqueeze(-2).repeat(1, 1, 1, N, 1) # S * B * K * N * D
     obs_sigma_expand = obs_sigma.unsqueeze(-2).repeat(1, 1, 1, N, 1) # S * B * K * N * D
     obs_expand = obs.unsqueeze(2).repeat(1, 1, K, 1, 1) #  S * B * K * N * D
     log_gammas = Normal(obs_mu_expand, obs_sigma_expand).log_prob(obs_expand).sum(-1).transpose(-1, -2) # S * B * N * K
-    post_prob = F.softmax(log_gammas, dim=-1)
-    return post_prob
+    post_logits = F.softmax(log_gammas, dim=-1).log()
+    return post_logits
 
 def post_global(Xs, Zs, prior_mean, prior_nu, prior_alpha, prior_beta, N, K, D):
 

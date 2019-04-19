@@ -17,7 +17,7 @@ def weights_init(m):
     if classname.find('Linear') != -1:
         m.weight.data.normal_(0.0, 1e-2)
 
-def log_joints_gmm(X, Z, mus, precisions, N, D, K, prior_mean, prior_nu, prior_alpha, prior_beta, prior_pi, num_samples, batch_size):
+def log_joints_gmm(obs, states, obs_mu, obs_sigma, K, D, prior_mean, prior_nu, prior_alpha, prior_beta, prior_pi, num_samples, batch_size):
     log_probs = torch.zeros((num_samples, batch_size)).float()
     ## mus and sigmas
     log_probs = log_probs + Gamma(prior_alpha, prior_beta).log_prob(precisions).sum(-1).sum(-1)
@@ -29,18 +29,19 @@ def log_joints_gmm(X, Z, mus, precisions, N, D, K, prior_mean, prior_nu, prior_a
     log_probs = log_probs + loglikelihood(X, Z, mus, precisions, D)
     return log_probs
 
-def loglikelihood(X, Z, mus, precisions, D):
-    # log-likelihoods
+def Log_likelihood(obs, states, obs_mu, obs_sigma, K, D, cluster_flag=False):
     """
-    X should be expanded and repeated along the sample dim
+    cluster_flag = False : return S * B * N
+    cluster_flag = True, return S * B * K
     """
-    sigmas = 1. / torch.sqrt(precisions) ## S * B * K * D
-    labels = Z.argmax(-1)
+    labels = states.argmax(-1)
     labels_flat = labels.unsqueeze(-1).repeat(1, 1, 1, D)
-    x_mus = torch.gather(mus, 2, labels_flat)
-    x_sigmas = torch.gather(sigmas, 2, labels_flat)
-    log_p_x = Normal(x_mus, x_sigmas).log_prob(X).sum(-1).sum(-1) # S * B
-    return log_p_x
+    obs_mu_expand = torch.gather(obs_mu, 2, labels_flat)
+    obs_sigma_expand = torch.gather(obs_sigma, 2, labels_flat)
+    log_obs = Normal(obs_mu_expand, obs_sigma_expand).log_prob(obs).sum(-1) # S * B * N
+    if cluster_flag:
+        log_obs = torch.cat([((labels==k).float() * log_obs).sum(-1).unsqueeze(-1) for k in range(K)], -1) # S * B * K
+    return log_obs
 
 def SNR(enc_init, enc_local, optimizer, x, K, D, SAMPLE_DIM, BATCH_DIM, num_samples, batch_size, num_samples_snr):
     grads = []
