@@ -9,9 +9,9 @@ K : number of clusters
 D : observation dimensionality
 """
 def sampling_gmm_conjugate(T, K, D):
-    precisions = Gamma(torch.ones((K, D)) * 3, torch.ones((K,D)) * 3).sample()
+    precisions = Gamma(torch.ones((K, D)) * 4, torch.ones((K,D)) * 4).sample()
     sigmas_true = 1. / torch.sqrt(precisions)
-    mus_sigmas = sigmas_true / 0.5 ## nu
+    mus_sigmas = sigmas_true / 0.3 ## nu
     mus_true = Normal(torch.zeros((K, D)), mus_sigmas).sample()
     Pi = torch.ones((K)) * (1. / K)
     Zs_true = cat(Pi).sample((T,))
