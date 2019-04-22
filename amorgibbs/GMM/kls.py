@@ -47,19 +47,19 @@ def Post_tau(stat1, stat2, stat3, prior_alpha, prior_beta, obs_mu, D):
     post_beta = prior_beta + stat3 + (obs_mu**2) * stat1_expand - 2 * obs_mu * stat2
     return post_alpha, post_beta
 
-def kl_NG_NG(p_mean, p_nu, p_alpha, p_beta, q_mean, q_nu, q_alpha, q_beta):
-    diff = q_mean - p_mean
+def kl_NG_NG(p_alpha, p_beta, p_mu, p_nu, q_alpha, q_beta, q_mu, q_nu):
+    diff = q_mu - p_mu
     t1 = (1. / 2) * ((p_alpha / p_beta) *  (diff ** 2) * q_nu + (q_nu / p_nu) - (torch.log(q_nu) - torch.log(p_nu)) - 1)
     t2 = q_alpha * (torch.log(p_beta) - torch.log(q_beta)) - (torch.lgamma(p_alpha) - torch.lgamma(q_alpha))
     t3 = (p_alpha - q_alpha) * torch.digamma(p_alpha) - (p_beta - q_beta) * p_alpha / p_beta
     return t1 + t2 + t3
 
-def kls_NGs(q_mean, q_nu, q_alpha, q_beta, p_mean, p_nu, p_alpha, p_beta):
-    kl_ex = kl_NG_NG(q_mean, q_nu, q_alpha, q_beta, p_mean, p_nu, p_alpha, p_beta).sum(-1)
-    kl_in = kl_NG_NG(p_mean, p_nu, p_alpha, p_beta, q_mean, q_nu, q_alpha, q_beta).sum(-1)
+def kls_NGs(q_alpha, q_beta, q_mu, q_nu, p_alpha, p_beta, p_mu, p_nu):
+    kl_ex = kl_NG_NG(q_alpha, q_beta, q_mu, q_nu, p_alpha, p_beta, p_mu, p_nu).sum(-1)
+    kl_in = kl_NG_NG(p_alpha, p_beta, p_mu, p_nu, q_alpha, q_beta, q_mu, q_nu).sum(-1)
     return kl_ex, kl_in
 
-def Post_mu_tau(stat1, stat2, stat3, prior_mu, prior_nu, prior_alpha, prior_beta, D):
+def Post_mu_tau(stat1, stat2, stat3, prior_alpha, prior_beta, prior_mu, prior_nu, D):
     """
     conjugate posterior p(mu, tau | z, x) given z, x
     """
@@ -71,7 +71,7 @@ def Post_mu_tau(stat1, stat2, stat3, prior_mu, prior_nu, prior_alpha, prior_beta
     post_nu = prior_nu + stat1_expand
     post_mu = (prior_mu * prior_nu + stat2) / (prior_nu + stat1_expand)
     post_alpha = prior_alpha + (stat1_expand / 2.)
-    return post_mu, post_nu, post_alpha, post_beta
+    return post_alpha, post_beta, post_mu, post_nu
 
 from torch._six import inf
 
