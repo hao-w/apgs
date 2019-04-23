@@ -58,9 +58,11 @@ def Eubo_eta_ng(enc_eta, obs, states, K, D, sample_size, batch_size):
     akl_in = kl_in.sum(-1).mean()
     return eubo, elbo, ess, akl_ex, akl_in
 
-def Eubo_eta_ng_stat(enc_eta, obs, states, K, D, sample_size, batch_size):
+def Eubo_eta_ng_stat(enc_eta, data, K, D, sample_size, batch_size):
+    obs = data[:, :, :, :2]
+    states = data[:, :, :, 2:]
     stat1_t, stat2_t, stat3_t = data_to_stats(obs, states, K, D)
-    q, p, q_nu = enc_eta(obs, states)
+    q, p, q_nu = enc_eta(data)
     ## for individual importance weight, S * B * K
     log_q_mu = q['means'].log_prob.sum(-1)
     log_q_tau = q['precisions'].log_prob.sum(-1)
