@@ -8,7 +8,7 @@ sys.path.append('/home/hao/Research/probtorch/')
 import probtorch
 from torch.distributions.categorical import Categorical
 
-def Eubo_ag_sis_initz_adapt_idw(enc_eta, enc_z, obs, N, K, D, mcmc_size, sample_size, batch_size, SAMPLE_DIM=0, BATCH_DIM=1):
+def Eubo_ag_sis_initz_adapt_idw(enc_eta, enc_z, obs, N, K, D, mcmc_size, sample_size, batch_size):
     """
     initialize z
     adaptive resampling after each step
@@ -22,29 +22,32 @@ def Eubo_ag_sis_initz_adapt_idw(enc_eta, enc_z, obs, N, K, D, mcmc_size, sample_
         if m == 0:
             p_init_z = cat(enc_z.prior_pi)
             states = p_init_z.sample((sample_size, batch_size, N,))
-            log_p_z = p_init_z.log_prob(states).sum(-1)## S * B * N
-            log_q_z = p_init_z.log_prob(states).sum(-1)
+            log_p_z = p_init_z.log_prob(states)## S * B * N
+            log_q_z = p_init_z.log_prob(states)
         else:
             ## adaptive resampling
             obs_mu, obs_sigma = resample_eta(obs_mu, obs_sigma, weights)
             ## update z -- cluster assignments
             q_z, p_z = enc_z(obs, obs_sigma, obs_mu, sample_size, batch_size)
-            log_p_z = p_z.log_joint(sample_dims=SAMPLE_DIM, batch_dim=BATCH_DIM)
-            log_q_z = q_z.log_joint(sample_dims=SAMPLE_DIM, batch_dim=BATCH_DIM)
+            log_p_z = p_z['zs'].log_prob
+            log_q_z = q_z['zs'].log_prob  ## S * B * N
             states = q_z['zs'].value ## S * B * N * K
         ## update tau and mu -- global variables
         local_vars = torch.cat((obs, states), -1)
         q_eta, p_eta, q_nu = enc_eta(local_vars)
-        log_p_eta = p_eta.log_joint(sample_dims=SAMPLE_DIM, batch_dim=BATCH_DIM)
-        log_q_eta = q_eta.log_joint(sample_dims=SAMPLE_DIM, batch_dim=BATCH_DIM)
+        log_p_eta = p_eta['means'].log_prob().sum(-1) + p_eta['precisions'].log_prob.sum(-1)
+        log_q_eta = q_eta['means'].log_prob().sum(-1) + q_eta['precisions'].log_prob.sum(-1)
+
 
         obs_mu = q_eta['means'].value
         obs_tau = q_eta['precisions'].value
         obs_sigma = 1. / obs_tau.sqrt()
         ##
         log_obs = Log_likelihood(obs, states, obs_mu, obs_sigma, K, D, cluster_flag=False)
-        log_weights = log_obs.sum(-1) + log_p_eta + log_p_z - log_q_eta - log_q_z
-        weights = F.softmax(log_weights, 0).detach()
+        log_weights_global = log_p_eta - log_q_eta
+        log_weights_local = log_obs.sum(-1) log_p_z - log_q_z
+        weights_local = F.softmax(log_weights_local, 0).detach()
+        weights_local = F.softmax(log_weights_local, 0).detach()
         eubos[m] = (weights * log_weights).sum(0).mean()
         elbos[m] = log_weights.mean()
         esss[m] = (1. / (weights**2).sum(0)).mean()
@@ -82,7 +85,7 @@ def Eubo_ag_sis_initz(enc_eta, enc_z, obs, N, K, D, mcmc_size, sample_size, batc
             q_z, p_z = enc_z(obs, obs_sigma, obs_mu, sample_size, batch_size)
             log_p_z = p_z.log_joint(sample_dims=SAMPLE_DIM, batch_dim=BATCH_DIM)
             log_q_z = q_z.log_joint(sample_dims=SAMPLE_DIM, batch_dim=BATCH_DIM)
-            states = q_z['zs'].value ## S * B * N * K
+            states = q_z['zs'].value
         ## update tau and mu -- global variables
         local_vars = torch.cat((obs, states), -1)
         q_eta, p_eta, q_nu = enc_eta(local_vars)
