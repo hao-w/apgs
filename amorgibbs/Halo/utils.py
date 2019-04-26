@@ -42,7 +42,7 @@ def Log_likelihood(obs, states, obs_mu, K, D, radius, noise_sigma, gpu, cluster_
         log_distance = torch.cat([((labels==k).float() * log_distance).sum(-1).unsqueeze(-1) for k in range(K)], -1) # S * B * K
     return log_distance
 
-def sample_single_batch(num_seqs, N, K, D, sample_size, batch_size, gpu):
+def sample_single_batch(num_seqs, Xs, sample_size, batch_size, gpu):
     indices = torch.randperm(num_seqs)
     batch_indices = indices[0*batch_size : (0+1)*batch_size]
     obs = Xs[batch_indices]
