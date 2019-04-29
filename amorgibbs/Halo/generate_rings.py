@@ -3,7 +3,8 @@ import torch
 import numpy as np
 import math
 
-def ring(N, rad, period, noise_std):
+def ring(N, period, rad_low, rad_high, noise_std):
+    rad = np.random.uniform(rad_low, rad_high, 1)
     rads = np.ones(N) * rad
     noise = np.random.normal(0.0, noise_std, N)
     rads = rads + noise
@@ -11,17 +12,19 @@ def ring(N, rad, period, noise_std):
     x = np.cos(angles) * rads
     y = np.sin(angles) * rads
     pos = np.concatenate((x[:, None], y[:, None]), -1)
-    return pos
+    return pos, rad
 
-def rings(K, bound, N, rad, period, noise_std):
+def rings(K, bound, N, rad_low, rad_high, period, noise_std):
     obs = []
     states = []
-    mus = np.random.uniform(-bound + rad, bound-rad, (K, 2))
+    rads = []
+    mus = np.random.uniform(-bound + rad_high, bound-rad_high, (K, 2))
     for k in range(K):
-        pos = ring(N, rad, period, noise_std)
+        pos, rad = ring(N, period, rad_low, rad_high, noise_std)
         state = np.zeros(K)
         state[k] = 1
         pos = pos + mus[k]
         obs.append(pos)
         states.append(np.tile(state, (N, 1)))
-    return np.concatenate(obs, 0), np.concatenate(states, 0), mus
+        rads.append(rad[None, :])
+    return np.concatenate(obs, 0), np.concatenate(states, 0), mus, np.concatenate(rads, 0)
