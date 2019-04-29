@@ -21,7 +21,7 @@ def plot_cov_ellipse(cov, pos, nstd=2, ax=None, **kwargs):
     return ellip
 
 def plot_rings(obs, states, K, bound):
-    colors = ['r', 'b', 'gold']
+    colors = ['r', 'b', 'g']
     assignments = states.argmax(-1)
     fig = plt.figure(figsize=(5,5))
     ax = fig.add_subplot(1,1,1)
@@ -50,6 +50,6 @@ def plot_samples(obs, q_eta, q_z, K, batch_size, PATH):
             xk = x[np.where(assignments == k)]
             ax.scatter(xk[:, 0], xk[:, 1], c=colors[k], alpha=0.2)
             plot_cov_ellipse(cov=cov_k, pos=mu_mu_b[k], nstd=2, ax=ax, alpha=1.0, color=colors[k])
-        ax.set_ylim([-5, 5])
-        ax.set_xlim([-5, 5])
+        ax.set_ylim([-8, 8])
+        ax.set_xlim([-8, 8])
     plt.savefig('results/modes-' + PATH + '.svg')
