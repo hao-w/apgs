@@ -18,6 +18,17 @@ def weights_init(m):
 
 from torch.distributions.categorical import Categorical
 
+def resample_eta(obs_mu, obs_rad, weights):
+    """
+    weights is S * B * K
+    """
+    S, B, K, D = obs_mu.shape
+    ancesters_mu = Categorical(weights.transpose(0,1).transpose(1,2)).sample((S, )).unsqueeze(-1).repeat(1, 1, 1, D) ## S * B * K * D
+    ancesters_rad = Categorical(weights.transpose(0,1).transpose(1,2)).sample((S, )).unsqueeze(-1) ## S * B * K * 1
+    obs_mu_r = torch.gather(obs_mu, 0, ancesters_mu)
+    obs_rad_r = torch.gather(obs_rad, 0, ancesters_rad)
+    return obs_mu_r, obs_rad_r
+
 def resample_mu(obs_mu, weights):
     """
     weights is S * B * K
@@ -36,7 +47,7 @@ def resample_states(states, weights):
     states_r = torch.gather(states, 0, ancesters)
     return states_r
 
-def True_Log_likelihood(obs, states, obs_mu, obs_rad, K, D, noise_sigma, gpu, cluster_flag=False):
+def True_Log_likelihood(obs, states, obs_mu, obs_rad, K, D, noise_sigma, device, cluster_flag=False):
     """
     cluster_flag = False : return S * B * N
     cluster_flag = True, return S * B * K
@@ -47,19 +58,19 @@ def True_Log_likelihood(obs, states, obs_mu, obs_rad, K, D, noise_sigma, gpu, cl
     obs_mu_expand = torch.gather(obs_mu, 2, labels_mu)
     obs_rad_expand = torch.gather(obs_rad.squeeze(-1), 2, labels)
     distance = ((obs - obs_mu_expand)**2).sum(-1).sqrt()
-    obs_dist = Normal(obs_rad_expand, torch.ones(1).cuda().to(gpu) * noise_sigma)
+    obs_dist = Normal(obs_rad_expand, torch.ones(1).cuda().to(device) * noise_sigma)
     log_distance = obs_dist.log_prob(distance) - (2*math.pi*distance).log()
     if cluster_flag:
         log_distance = torch.cat([((labels==k).float() * log_distance).sum(-1).unsqueeze(-1) for k in range(K)], -1) # S * B * K
     return log_distance
 
-def sample_single_batch(num_seqs, Xs, sample_size, batch_size, gpu):
+def sample_single_batch(num_seqs, Xs, sample_size, batch_size, CUDA, device):
     indices = torch.randperm(num_seqs)
     batch_indices = indices[0*batch_size : (0+1)*batch_size]
     obs = Xs[batch_indices]
     obs = shuffler(obs).repeat(sample_size, 1, 1, 1)
     if CUDA:
-        obs = obs.cuda().to(gpu)
+        obs = obs.cuda().to(device)
     return obs
 
 def test(enc_mu, enc_z, obs, N, K, D, mcmc_size, sample_size, batch_size, gpu):
