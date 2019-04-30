@@ -35,6 +35,8 @@ def Eubo_ag(enc_mu, enc_z, obs, obs_rad, N, K, D, mcmc_size, sample_size, batch_
     log_q_z = p_init_z.log_prob(states)
 
     for m in range(mcmc_size):
+        if m != 0:
+            states = resample_states(states, weights_local)
         q_mu, p_mu = enc_mu(obs, states, sample_size, batch_size)
         log_q_mu = q_mu['means'].log_prob.sum(-1)
         log_p_mu = p_mu['means'].log_prob.sum(-1) # S * B * K
@@ -54,6 +56,6 @@ def Eubo_ag(enc_mu, enc_z, obs, obs_rad, N, K, D, mcmc_size, sample_size, batch_
         weights_local = F.softmax(log_weights_local, 0).detach()
 
         eubos[m] =((weights_global * log_weights_global).sum(0).sum(-1).mean() + (weights_local * log_weights_local).sum(0).sum(-1).mean()) / 2
-        elbos[m] = (log_obs_n.sum(-1) + log_p_z.sum(-1) - log_q_z.sum(-1) + log_p_mu.sum(-1) - log_q_mu.sum(-1)).mean()
+        elbos[m] = (log_weights_global.sum(-1).mean() + log_weights_local.sum(-1).mean()) / 2
         esss[m] = ((1. / (weights_local**2).sum(0)).mean() + (1. / (weights_global**2).sum(0)).mean() ) / 2
     return eubos, elbos, esss

@@ -27,6 +27,15 @@ def resample_mu(obs_mu, weights):
     obs_mu_r = torch.gather(obs_mu, 0, ancesters)
     return obs_mu_r
 
+def resample_states(states, weights):
+    """
+    weights is S * B * N
+    """
+    S, B, N, K = states.shape
+    ancesters = Categorical(weights.transpose(0,1).transpose(1,2)).sample((S, )).unsqueeze(-1).repeat(1, 1, 1, K) ## S * B * N * K
+    states_r = torch.gather(states, 0, ancesters)
+    return states_r
+
 def True_Log_likelihood(obs, states, obs_mu, obs_rad, K, D, noise_sigma, gpu, cluster_flag=False):
     """
     cluster_flag = False : return S * B * N
