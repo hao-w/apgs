@@ -63,20 +63,21 @@ def plot_samples(obs, q_eta, q_z, PATH):
     colors = ['r', 'b', 'gold']
     fig = plt.figure(figsize=(25,50))
     xs = obs[0].cpu().data.numpy()
-    E_pi= q_z['zs'].dist.prob[0].cpu().data.numpy()
+    E_z = q_z['zs'].dist.probs[0].cpu().data.numpy()
+    batch_size, N, K = E_z.shape
+    _, _, D = xs.shape
     E_mu = q_eta['means'].dist.loc[0].cpu().data.numpy()
     E_tau = (q_eta['precisions'].dist.concentration[0] / q_eta['precisions'].dist.rate[0]).cpu().data.numpy()
-    batch_size = xs.shape[0]
     for b in range(batch_size):
         ax = fig.add_subplot(int(batch_size / 5), 5, b+1)
         xb = xs[b]
-        zb = zs[b]
+        zb = E_z[b]
         mu = E_mu[b].reshape(K, D)
         sigma2 = 1. / E_tau[b]
-        assignments = E_z.argmax(-1)
+        assignments = zb.argmax(-1)
         for k in range(K):
             cov_k = np.diag(sigma2[k])
-            xk = x[np.where(assignments == k)]
+            xk = xb[np.where(assignments == k)]
             ax.scatter(xk[:, 0], xk[:, 1], c=colors[k])
             plot_cov_ellipse(cov=cov_k, pos=mu[k], nstd=2, ax=ax, alpha=0.2, color=colors[k])
         ax.set_ylim([-15, 15])

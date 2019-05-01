@@ -4,18 +4,18 @@ from utils import *
 from normal_gamma_kls import *
 from normal_gamma_conjugacy import *
 
-def train(Eubo, enc_eta, enc_z, optimizer, Data, K, NUM_EPOCHS, MCMC_SIZE, SAMPLE_SIZE, BATCH_SIZE, PATH, CUDA, device):
+def train(Eubo, enc_eta, enc_z, optimizer, Data, K, num_epochs, mcmc_size, sample_size, batch_size, PATH, CUDA, device):
     EUBOs = []
     ELBOs = []
     ESSs = []
     NUM_SEQS, N, D = Data.shape
-    NUM_BATCHES = int((NUM_SEQS / BATCH_SIZE))
+    num_batches = int((NUM_SEQS / batch_size))
 
     flog = open('../results/log-' + PATH + '.txt', 'w+')
     flog.write('EUBO\tELBO\tESS\tKLs_eta_ex\tKLs_eta_in\tKLs_z_ex\tKLs_z_in\n')
     flog.close()
 
-    for epoch in range(NUM_EPOCHS):
+    for epoch in range(num_epochs):
         time_start = time.time()
         indices = torch.randperm(NUM_SEQS)
         EUBO = 0.0
@@ -25,14 +25,14 @@ def train(Eubo, enc_eta, enc_z, optimizer, Data, K, NUM_EPOCHS, MCMC_SIZE, SAMPL
         KL_eta_in = 0.0
         KL_z_ex = 0.0
         KL_z_in = 0.0
-        for step in range(NUM_BATCHES):
+        for step in range(num_batches):
             optimizer.zero_grad()
-            batch_indices = indices[step*BATCH_SIZE : (step+1)*BATCH_SIZE]
+            batch_indices = indices[step*batch_size : (step+1)*batch_size]
             obs = Data[batch_indices]
-            obs = shuffler(obs).repeat(SAMPLE_SIZE, 1, 1, 1)
+            obs = shuffler(obs).repeat(sample_size, 1, 1, 1)
             if CUDA:
                 obs =obs.cuda().to(device)
-            eubo, elbo, ess, q_eta, p_eta, q_z, p_z, q_nu, pr_nu = Eubo(enc_eta, enc_z, obs, N, K, D, MCMC_SIZE, SAMPLE_SIZE, BATCH_SIZE, device)
+            eubo, elbo, ess, q_eta, p_eta, q_z, p_z, q_nu, pr_nu = Eubo(enc_eta, enc_z, obs, N, K, D, mcmc_size, sample_size, batch_size, device)
             kl_eta_ex, kl_eta_in, kl_z_ex, kl_z_in = kl_train(q_eta, p_eta, q_z, p_z, q_nu, pr_nu, obs, K)
             ## gradient step
             eubo.backward()
@@ -44,16 +44,16 @@ def train(Eubo, enc_eta, enc_z, optimizer, Data, K, NUM_EPOCHS, MCMC_SIZE, SAMPL
             KL_eta_in += kl_eta_in.item()
             KL_z_ex += kl_z_ex.item()
             KL_z_in += kl_z_in.item()
-        EUBOs.append(EUBO / NUM_BATCHES)
-        ELBOs.append(ELBO / NUM_BATCHES)
-        ESSs.append(ESS / NUM_BATCHES)
+        EUBOs.append(EUBO / num_batches)
+        ELBOs.append(ELBO / num_batches)
+        ESSs.append(ESS / num_batches)
         flog = open('../results/log-' + PATH + '.txt', 'a+')
         print('%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f'
-                % (EUBO/NUM_BATCHES, ELBO/NUM_BATCHES, ESS/NUM_BATCHES, KL_eta_ex/NUM_BATCHES, KL_eta_in/NUM_BATCHES, KL_z_ex/NUM_BATCHES, KL_z_in/NUM_BATCHES), file=flog)
+                % (EUBO/num_batches, ELBO/num_batches, ESS/num_batches, KL_eta_ex/num_batches, KL_eta_in/num_batches, KL_z_ex/num_batches, KL_z_in/num_batches), file=flog)
         flog.close()
         time_end = time.time()
         print('epoch=%d, EUBO=%.3f, ELBO=%.3f, ESS=%.3f (%ds)'
-                % (epoch, EUBO/NUM_BATCHES, ELBO/NUM_BATCHES, ESS/NUM_BATCHES, time_end - time_start))
+                % (epoch, EUBO/num_batches, ELBO/num_batches, ESS/num_batches, time_end - time_start))
 
 def kl_train(q_eta, p_eta, q_z, p_z, q_nu, pr_nu, obs, K):
     _, _, N, D = obs.shape
@@ -79,7 +79,7 @@ def kl_train(q_eta, p_eta, q_z, p_z, q_nu, pr_nu, obs, K):
     kl_z_ex, kl_z_in = kls_cats(q_pi.log(), post_logits)
     return kl_eta_ex.sum(-1).mean(), kl_eta_in.sum(-1).mean(), kl_z_ex.sum(-1).mean(), kl_z_in.sum(-1).mean()
 
-def test(Eubo, enc_eta, enc_z, Data, K, MCMC_SIZE, SAMPLE_SIZE, BATCH_SIZE, CUDA, device):
+def test(Eubo, enc_eta, enc_z, Data, K, mcmc_size, sample_size, batch_size, CUDA, device):
     NUM_SEQS, N, D = Data.shape
     indices = torch.randperm(NUM_SEQS)
     batch_indices = indices[0*batch_size : (0+1)*batch_size]
@@ -87,5 +87,5 @@ def test(Eubo, enc_eta, enc_z, Data, K, MCMC_SIZE, SAMPLE_SIZE, BATCH_SIZE, CUDA
     obs = shuffler(obs).repeat(sample_size, 1, 1, 1)
     if CUDA:
         obs =obs.cuda().to(device)
-    _, _, _, q_eta, p_eta, q_z, p_z, _, _ = Eubo(enc_eta, enc_z, obs, N, K, D, MCMC_SIZE, SAMPLE_SIZE, BATCH_SIZE, device)
-    return q_eta, q_z
+    _, _, _, q_eta, p_eta, q_z, p_z, _, _ = Eubo(enc_eta, enc_z, obs, N, K, D, mcmc_size, sample_size, batch_size, device)
+    return obs, q_eta, q_z
