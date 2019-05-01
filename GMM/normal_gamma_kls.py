@@ -37,7 +37,7 @@ def kls_NGs(q_alpha, q_beta, q_mu, q_nu, p_alpha, p_beta, p_mu, p_nu):
 
 from torch._six import inf
 
-def kl_cat_cat(p_logits, q_logits, EPS=1e-12):
+def kl_cat_cat(p_logits, q_logits, EPS=1e-15):
     p_probs= p_logits.exp()
     ## To prevent from infinite KL due to ill-defined support of q
     q_logits[q_logits == -inf] = torch.log(torch.FloatTensor([EPS]))

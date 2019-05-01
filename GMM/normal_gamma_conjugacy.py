@@ -68,7 +68,7 @@ def Post_z(obs, obs_sigma, obs_mu, prior_pi, N, K):
     obs_mu_expand = obs_mu.unsqueeze(-2).repeat(1, 1, 1, N, 1) # S * B * K * N * D
     obs_sigma_expand = obs_sigma.unsqueeze(-2).repeat(1, 1, 1, N, 1) # S * B * K * N * D
     obs_expand = obs.unsqueeze(2).repeat(1, 1, K, 1, 1) #  S * B * K * N * D
-    log_gammas = Normal(obs_mu_expand, obs_sigma_expand).log_prob(obs_expand).sum(-1).transpose(-1, -2) * prior_pi # S * B * N * K
+    log_gammas = Normal(obs_mu_expand, obs_sigma_expand).log_prob(obs_expand).sum(-1).transpose(-1, -2) + prior_pi.log() # S * B * N * K
     post_logits = F.softmax(log_gammas, dim=-1).log()
     return post_logits
 
