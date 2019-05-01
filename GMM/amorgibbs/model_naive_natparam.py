@@ -1,7 +1,6 @@
+%run ../../path_import.py
 import torch
 import torch.nn as nn
-import sys
-sys.path.append('/home/hao/Research/probtorch/')
 import probtorch
 from torch.distributions.normal import Normal
 from torch.distributions.one_hot_categorical import OneHotCategorical as cat

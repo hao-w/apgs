@@ -1,10 +1,9 @@
+%run ../../path_import.py
 import torch
 import torch.nn as nn
 from utils import *
 from normal_gamma_kls import *
 from normal_gamma_conjugacy import *
-import sys
-sys.path.append('/home/hao/Research/probtorch/')
 import probtorch
 
 def Eubo_init_z(enc_eta, enc_z, obs, N, K, D, mcmc_size, sample_size, batch_size, device):
