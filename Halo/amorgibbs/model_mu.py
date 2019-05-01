@@ -1,6 +1,3 @@
-import sys
-sys.path.append("../")
-sys.path.append('/home/hao/Research/probtorch/')
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -69,7 +66,7 @@ class Enc_z(nn.Module):
     def __init__(self, K, D, num_hidden, CUDA, device):
         super(self.__class__, self).__init__()
         self.log_prob = nn.Sequential(
-            nn.Linear(2*D+2, num_hidden),
+            nn.Linear(2*D+1, num_hidden),
             nn.Tanh(),
             nn.Linear(num_hidden, 1))
 
@@ -80,11 +77,11 @@ class Enc_z(nn.Module):
     def forward(self, obs, obs_mu, obs_rad, N, sample_size, batch_size, noise_sigma, device):
         q = probtorch.Trace()
         p = probtorch.Trace()
-        noise_sigmas = torch.ones((sample_size, batch_size, N, 1)).cuda().to(device) * noise_sigma
+        # noise_sigmas = torch.ones((sample_size, batch_size, N, 1)).cuda().to(device) * noise_sigma
         obs_rads = torch.ones((sample_size, batch_size, N, 1)).cuda().to(device) * obs_rad
-        prob1 = self.log_prob(torch.cat((obs, obs_mu[:, :, 0, :].unsqueeze(-2).repeat(1,1,N,1), obs_rads, noise_sigmas), -1))
-        prob2 = self.log_prob(torch.cat((obs, obs_mu[:, :, 1, :].unsqueeze(-2).repeat(1,1,N,1), obs_rads, noise_sigmas), -1))
-        prob3 = self.log_prob(torch.cat((obs, obs_mu[:, :, 2, :].unsqueeze(-2).repeat(1,1,N,1), obs_rads, noise_sigmas), -1))
+        prob1 = self.log_prob(torch.cat((obs, obs_mu[:, :, 0, :].unsqueeze(-2).repeat(1,1,N,1), obs_rads), -1))
+        prob2 = self.log_prob(torch.cat((obs, obs_mu[:, :, 1, :].unsqueeze(-2).repeat(1,1,N,1), obs_rads), -1))
+        prob3 = self.log_prob(torch.cat((obs, obs_mu[:, :, 2, :].unsqueeze(-2).repeat(1,1,N,1), obs_rads), -1))
 
         probs = torch.cat((prob1, prob2, prob3), -1) # S * B * N * K
         q_pi = F.softmax(probs, -1)
