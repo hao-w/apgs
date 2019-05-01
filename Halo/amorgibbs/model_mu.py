@@ -8,7 +8,7 @@ from torch.distributions.normal import Normal
 from torch.distributions.one_hot_categorical import OneHotCategorical as cat
 import probtorch
 
-class Enc_mu_rad(nn.Module):
+class Enc_mu(nn.Module):
     def __init__(self, K, D, num_hidden, num_stats, CUDA, device):
         super(self.__class__, self).__init__()
 
@@ -81,10 +81,10 @@ class Enc_z(nn.Module):
         q = probtorch.Trace()
         p = probtorch.Trace()
         noise_sigmas = torch.ones((sample_size, batch_size, N, 1)).cuda().to(device) * noise_sigma
-
-        prob1 = self.log_prob(torch.cat((obs, obs_mu[:, :, 0, :].unsqueeze(-2).repeat(1,1,N,1), obs_rad[:, :, 0, :].unsqueeze(-2).repeat(1,1,N,1), noise_sigmas), -1))
-        prob2 = self.log_prob(torch.cat((obs, obs_mu[:, :, 1, :].unsqueeze(-2).repeat(1,1,N,1), obs_rad[:, :, 1, :].unsqueeze(-2).repeat(1,1,N,1), noise_sigmas), -1))
-        prob3 = self.log_prob(torch.cat((obs, obs_mu[:, :, 2, :].unsqueeze(-2).repeat(1,1,N,1), obs_rad[:, :, 2, :].unsqueeze(-2).repeat(1,1,N,1), noise_sigmas), -1))
+        obs_rads = torch.ones((sample_size, batch_size, N, 1)).cuda().to(device) * obs_rad
+        prob1 = self.log_prob(torch.cat((obs, obs_mu[:, :, 0, :].unsqueeze(-2).repeat(1,1,N,1), obs_rads, noise_sigmas), -1))
+        prob2 = self.log_prob(torch.cat((obs, obs_mu[:, :, 1, :].unsqueeze(-2).repeat(1,1,N,1), obs_rads, noise_sigmas), -1))
+        prob3 = self.log_prob(torch.cat((obs, obs_mu[:, :, 2, :].unsqueeze(-2).repeat(1,1,N,1), obs_rads, noise_sigmas), -1))
 
         probs = torch.cat((prob1, prob2, prob3), -1) # S * B * N * K
         q_pi = F.softmax(probs, -1)
@@ -94,11 +94,11 @@ class Enc_z(nn.Module):
         _ = p.variable(cat, probs=self.prior_pi, value=z, name='zs')
         return q, p
 
-def initialize(NUM_HIDDEN_GLOBAL, STAT_SIZE, NUM_HIDDEN_LOCAL, K, D, CUDA, DEVICE, LR):
-    enc_mu_rad = Enc_mu_rad(K, D, num_hidden=NUM_HIDDEN_GLOBAL, num_stats=STAT_SIZE, CUDA=CUDA, device=DEVICE)
-    enc_z = Enc_z(K, D, num_hidden=NUM_HIDDEN_LOCAL, CUDA=CUDA, device=DEVICE)
+def initialize(num_hidden_global, stat_size, num_hidden_local, K, D, CUDA, device, LR):
+    enc_mu = Enc_mu(K, D, num_hidden=num_hidden_global, num_stats=stat_size, CUDA=CUDA, device=device)
+    enc_z = Enc_z(K, D, num_hidden=num_hidden_local, CUDA=CUDA, device=device)
     if CUDA:
-        enc_mu_rad.cuda().to(DEVICE)
-        enc_z.cuda().to(DEVICE)
-    optimizer =  torch.optim.Adam(list(enc_z.parameters())+list(enc_mu_rad.parameters()),lr=LR, betas=(0.9, 0.99))
-    return enc_mu_rad, enc_z, optimizer
+        enc_mu.cuda().to(device)
+        enc_z.cuda().to(device)
+    optimizer =  torch.optim.Adam(list(enc_z.parameters())+list(enc_mu.parameters()),lr=LR, betas=(0.9, 0.99))
+    return enc_mu, enc_z, optimizer

@@ -4,7 +4,6 @@ from matplotlib.patches import Ellipse
 import numpy as np
 import matplotlib.gridspec as gridspec
 
-
 def plot_cov_ellipse(cov, pos, nstd=2, ax=None, **kwargs):
     def eigsorted(cov):
         vals, vecs = np.linalg.eigh(cov)
@@ -31,25 +30,23 @@ def plot_rings(obs, states, K, bound):
     ax.set_xlim([-bound, bound])
     ax.set_ylim([-bound, bound])
 
-def plot_samples(obs, q_eta, q_z, K, batch_size, PATH):
+def plot_samples(obs, q_mu, q_z, K, PATH):
     colors = ['r', 'b', 'g']
+
     fig = plt.figure(figsize=(25,50))
     xs = obs[0].cpu()
-    mu_mu = q_eta['means'].dist.loc[0].cpu().data.numpy()
-    mu_sigma = q_eta['means'].dist.scale[0].cpu().data.numpy()
-    zs = q_z['zs'].dist.probs[0].cpu().data.numpy()
+    batch_size, N, D = xs.shape
+    E_mu = q_mu['means'].dist.loc[0].cpu().data.numpy()
+    Std_mu = q_mu['means'].dist.scale[0].cpu().data.numpy()
+    E_z = q_z['zs'].dist.probs[0].cpu().data.numpy()
     for b in range(batch_size):
         ax = fig.add_subplot(int(batch_size / 5), 5, b+1)
-        x = xs[b]
-        z = zs[b]
-        mu_mu_b = mu_mu[b]
-        mu_sigma_b = mu_sigma[b]
-        assignments = z.argmax(-1)
+        assignments = E_z[b].argmax(-1)
         for k in range(K):
-            cov_k = np.diag(mu_sigma_b[k]**2)
-            xk = x[np.where(assignments == k)]
+            cov_k = np.diag(Std_mu[b, k]**2)
+            xk = xs[b][np.where(assignments == k)]
             ax.scatter(xk[:, 0], xk[:, 1], c=colors[k], alpha=0.2)
-            plot_cov_ellipse(cov=cov_k, pos=mu_mu_b[k], nstd=2, ax=ax, alpha=1.0, color=colors[k])
-        ax.set_ylim([-8, 8])
-        ax.set_xlim([-8, 8])
-    plt.savefig('results/modes-' + PATH + '.svg')
+            plot_cov_ellipse(cov=cov_k, pos=E_mu[b, k], nstd=2, ax=ax, alpha=1.0, color=colors[k])
+        ax.set_ylim([-7, 7])
+        ax.set_xlim([-7, 7])
+    plt.savefig('../results/modes-' + PATH + '.svg')
