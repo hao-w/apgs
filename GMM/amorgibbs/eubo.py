@@ -43,7 +43,7 @@ def Eubo_idw_init_z(enc_eta, enc_z, obs, N, K, D, mcmc_size, sample_size, batch_
         eubos[m] =((weights_global * log_weights_global).sum(0).sum(-1).mean() + (weights_local * log_weights_local).sum(0).sum(-1).mean()) / 2
         elbos[m] = (log_weights_global.sum(-1).mean() + log_weights_local.sum(-1).mean()) / 2
         esss[m] = ((1. / (weights_local**2).sum(0)).mean() + (1. / (weights_global**2).sum(0)).mean() ) / 2
-    return eubos.mean(), elbos.mean(), esss.mean(), q_eta, p_eta, q_z, p_z, q_nu, enc_eta.prior_nu
+    return eubos, elbos, esss, q_eta, p_eta, q_z, p_z, q_nu, enc_eta.prior_nu
 
 def Eubo_idw_init_eta(enc_eta, enc_z, obs, N, K, D, mcmc_size, sample_size, batch_size, device, idw_flag=True):
     """
@@ -58,7 +58,6 @@ def Eubo_idw_init_eta(enc_eta, enc_z, obs, N, K, D, mcmc_size, sample_size, batc
     obs_mu, obs_sigma = enc_eta.sample_prior(sample_size, batch_size)
     for m in range(mcmc_size):
         if m != 0:
-            ## resample global
             obs_mu, obs_sigma = resample_eta(obs_mu, obs_sigma, weights_global, idw_flag=idw_flag)
         ## update z -- cluster assignments
         q_z, p_z = enc_z(obs, obs_sigma, obs_mu, N, sample_size, batch_size)
@@ -84,7 +83,7 @@ def Eubo_idw_init_eta(enc_eta, enc_z, obs, N, K, D, mcmc_size, sample_size, batc
         eubos[m] =((weights_global * log_weights_global).sum(0).sum(-1).mean() + (weights_local * log_weights_local).sum(0).sum(-1).mean()) / 2
         elbos[m] = (log_weights_global.sum(-1).mean() + log_weights_local.sum(-1).mean()) / 2
         esss[m] = ((1. / (weights_local**2).sum(0)).mean() + (1. / (weights_global**2).sum(0)).mean() ) / 2
-    return eubos.mean(), elbos.mean(), esss.mean(), q_eta, p_eta, q_z, p_z, q_nu, enc_eta.prior_nu
+    return eubos, elbos, esss, q_eta, p_eta, q_z, p_z, q_nu, enc_eta.prior_nu
 
 def Eubo_init_z(enc_eta, enc_z, obs, N, K, D, mcmc_size, sample_size, batch_size, device, idw_flag=False):
     """
