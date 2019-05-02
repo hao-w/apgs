@@ -27,12 +27,12 @@ class Enc_eta(nn.Module):
             self.prior_alpha = self.prior_alpha.cuda().to(device)
             self.prior_beta = self.prior_beta.cuda().to(device)
 
-    def forward(self, data, K, D):
+    def forward(self, obs, states, K, D):
         q = probtorch.Trace()
         p = probtorch.Trace()
-
-        gammas = self.gamma(data) # S * B * N * K --> S * B * N * K
-        xs = self.ob(data)  # S * B * N * D --> S * B * N * D
+        local_vars = torch.cat((obs, states), -1)
+        gammas = self.gamma(local_vars) # S * B * N * K --> S * B * N * K
+        xs = self.ob(local_vars)  # S * B * N * D --> S * B * N * D
         q_alpha, q_beta, q_mu, q_nu = Post_eta(xs, gammas,
                                                  self.prior_alpha, self.prior_beta, self.prior_mu, self.prior_nu, K, D)
         precisions = Gamma(q_alpha, q_beta).sample()
@@ -54,6 +54,13 @@ class Enc_eta(nn.Module):
                  value=q['means'],
                  name='means')
         return q, p, q_nu
+    def sample_prior(self, sample_size, batch_size):
+        p_tau = Gamma(self.prior_alpha, self.prior_beta)
+        obs_tau = p_tau.sample((sample_size, batch_size,))
+        p_mu = Normal(self.prior_mu.repeat(sample_size, batch_size, 1, 1), 1. / (self.prior_nu * obs_tau).sqrt())
+        obs_mu = p_mu.sample()
+        obs_sigma = 1. / obs_tau.sqrt()
+        return obs_mu, obs_sigma
 
 class Enc_z(nn.Module):
     def __init__(self, K, D, num_hidden, CUDA, device):
@@ -84,6 +91,11 @@ class Enc_z(nn.Module):
         _ = q.variable(cat, probs=q_probs, value=z, name='zs')
         _ = p.variable(cat, probs=self.prior_pi, value=z, name='zs')
         return q, p
+
+    def sample_prior(self, N, sample_size, batch_size):
+        p_init_z = cat(self.prior_pi)
+        states = p_init_z.sample((sample_size, batch_size, N,))
+        return states
 
 def initialize(K, D, num_hidden_local, CUDA, device, LR):
     enc_eta = Enc_eta(K, D, CUDA, device)

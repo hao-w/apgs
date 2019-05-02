@@ -13,23 +13,26 @@ def weights_init(m):
     if classname.find('Linear') != -1:
         m.weight.data.normal_(0.0, 1e-2)
 
-def resample_eta(obs_mu, obs_sigma, weights):
-    """
-    weights is S * B
-    """
+def resample_eta(obs_mu, obs_sigma, weights, idw_flag=False):
     S, B, K, D = obs_mu.shape
-    ancesters = Categorical(weights.transpose(0,1)).sample((S, )).unsqueeze(-1).unsqueeze(-1).repeat(1, 1, K, D) ## S * B * K * D
-    obs_mu_r = torch.gather(obs_mu, 0, ancesters)
-    obs_sigma_r = torch.gather(obs_sigma, 0, ancesters)
+    if idw_flag: ## individual importance weight S * B * K
+        ancesters = Categorical(weights.permute(1, 2, 0)).sample((S, )).unsqueeze(-1).repeat(1, 1, 1, D)
+        obs_mu_r = torch.gather(obs_mu, 0, ancesters)
+        obs_sigma_r = torch.gather(obs_sigma, 0, ancesters)
+    else: ## joint importance weight S * B
+        ancesters = Categorical(weights.transpose(0,1)).sample((S, )).unsqueeze(-1).unsqueeze(-1).repeat(1, 1, K, D)
+        obs_mu_r = torch.gather(obs_mu, 0, ancesters)
+        obs_sigma_r = torch.gather(obs_sigma, 0, ancesters)
     return obs_mu_r, obs_sigma_r
 
-def resample_states(states, weights):
-    """
-    weights is S * B
-    """
+def resample_states(states, weights, idw_flag=False):
     S, B, N, K = states.shape
-    ancesters = Categorical(weights.transpose(0,1)).sample((S, )).unsqueeze(-1).unsqueeze(-1).repeat(1, 1, N, K) ## S * B * N * K
-    states_r = torch.gather(states, 0, ancesters)
+    if idw_flag: ## individual importance weight S * B * K
+        ancesters = Categorical(weights.permute(1, 2, 0)).sample((S, )).unsqueeze(-1).repeat(1, 1, 1, K) ## S * B * N * K
+        states_r = torch.gather(states, 0, ancesters)
+    else: ## joint importance weight S * B
+        ancesters = Categorical(weights.transpose(0,1)).sample((S, )).unsqueeze(-1).unsqueeze(-1).repeat(1, 1, N, K) ## S * B * N * K
+        states_r = torch.gather(states, 0, ancesters)
     return states_r
 
 def Log_likelihood(obs, states, obs_mu, obs_sigma, K, D, cluster_flag=False):
