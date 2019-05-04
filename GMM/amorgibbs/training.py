@@ -35,22 +35,27 @@ def train(Eubo, enc_eta, enc_z, optimizer, Data, K, num_epochs, mcmc_size, sampl
             eubos, elbos, esss, q_eta, p_eta, q_z, p_z, q_nu, pr_nu = Eubo(enc_eta, enc_z, obs, N, K, D, mcmc_size, sample_size, batch_size, device)
             kl_eta_ex, kl_eta_in, kl_z_ex, kl_z_in = kl_train(q_eta, p_eta, q_z, p_z, q_nu, pr_nu, obs, K)
             ## gradient step
-            eubos.mean().backward()
+            eubos.sum().backward()
             optimizer.step()
             EUBO += eubos[-1].item()
             ELBO += elbos[-1].item()
-            ESS += esss[-1].item()
+            ESS += esss.mean().item()
             KL_eta_ex += kl_eta_ex.item()
             KL_eta_in += kl_eta_in.item()
             KL_z_ex += kl_z_ex.item()
             KL_z_in += kl_z_in.item()
-        EUBOs.append(EUBO / num_batches)
-        ELBOs.append(ELBO / num_batches)
-        ESSs.append(ESS / num_batches)
-        flog = open('../results/log-' + PATH + '.txt', 'a+')
-        print('%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f'
-                % (EUBO/num_batches, ELBO/num_batches, ESS/num_batches, KL_eta_ex/num_batches, KL_eta_in/num_batches, KL_z_ex/num_batches, KL_z_in/num_batches), file=flog)
-        flog.close()
+
+            flog = open('../results/log-' + PATH + '.txt', 'a+')
+            print('%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f'
+                    % (eubos[-1].item(), elbos[-1].item(), esss.mean().item(), kl_eta_ex.item(), kl_eta_in.item(), kl_z_ex.item(), kl_z_in.item()), file=flog)
+            flog.close()
+        # EUBOs.append(EUBO / num_batches)
+        # ELBOs.append(ELBO / num_batches)
+        # ESSs.append(ESS / num_batches)
+        # flog = open('../results/log-' + PATH + '.txt', 'a+')
+        # print('%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f'
+        #         % (EUBO/num_batches, ELBO/num_batches, ESS/num_batches, KL_eta_ex/num_batches, KL_eta_in/num_batches, KL_z_ex/num_batches, KL_z_in/num_batches), file=flog)
+        # flog.close()
         time_end = time.time()
         print('epoch=%d, EUBO=%.3f, ELBO=%.3f, ESS=%.3f (%ds)'
                 % (epoch, EUBO/num_batches, ELBO/num_batches, ESS/num_batches, time_end - time_start))

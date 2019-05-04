@@ -25,22 +25,22 @@ def resample_eta(obs_mu, obs_sigma, weights, idw_flag=False):
         obs_sigma_r = torch.gather(obs_sigma, 0, ancesters)
     return obs_mu_r, obs_sigma_r
 
-def resample_states(states, weights, idw_flag=False):
-    S, B, N, K = states.shape
+def resample_state(state, weights, idw_flag=False):
+    S, B, N, K = state.shape
     if idw_flag: ## individual importance weight S * B * K
         ancesters = Categorical(weights.permute(1, 2, 0)).sample((S, )).unsqueeze(-1).repeat(1, 1, 1, K) ## S * B * N * K
-        states_r = torch.gather(states, 0, ancesters)
+        state_r = torch.gather(state, 0, ancesters)
     else: ## joint importance weight S * B
         ancesters = Categorical(weights.transpose(0,1)).sample((S, )).unsqueeze(-1).unsqueeze(-1).repeat(1, 1, N, K) ## S * B * N * K
-        states_r = torch.gather(states, 0, ancesters)
-    return states_r
+        state_r = torch.gather(state, 0, ancesters)
+    return state_r
 
-def Log_likelihood(obs, states, obs_mu, obs_sigma, K, D, cluster_flag=False):
+def Log_likelihood(obs, state, obs_mu, obs_sigma, K, D, cluster_flag=False):
     """
     cluster_flag = False : return S * B * N
     cluster_flag = True, return S * B * K
     """
-    labels = states.argmax(-1)
+    labels = state.argmax(-1)
     labels_flat = labels.unsqueeze(-1).repeat(1, 1, 1, D)
     obs_mu_expand = torch.gather(obs_mu, 2, labels_flat)
     obs_sigma_expand = torch.gather(obs_sigma, 2, labels_flat)
