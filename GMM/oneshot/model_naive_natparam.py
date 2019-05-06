@@ -97,6 +97,26 @@ class Enc_z(nn.Module):
         state = p_init_z.sample((sample_size, batch_size, N,))
         return state
 
+## need to write this gibbs-z togther with sample prior function a a Class
+def Gibbs_z(obs, obs_sigma, obs_mu, N, K, CUDA, device):
+    """
+    Gibbs sampling for p(z | mu, tau, x) given mu, tau, x
+    """
+    q = probtorch.Trace()
+    p = probtorch.Trace()
+    prior_pi = torch.ones(K) * (1./ K)
+    if CUDA:
+        prior_pi = prior_pi.cuda().to(device)
+    obs_mu_expand = obs_mu.unsqueeze(-2).repeat(1, 1, 1, N, 1) # S * B * K * N * D
+    obs_sigma_expand = obs_sigma.unsqueeze(-2).repeat(1, 1, 1, N, 1) # S * B * K * N * D
+    obs_expand = obs.unsqueeze(2).repeat(1, 1, K, 1, 1) #  S * B * K * N * D
+    log_gammas = Normal(obs_mu_expand, obs_sigma_expand).log_prob(obs_expand).sum(-1).transpose(-1, -2) + prior_pi.log() # S * B * N * K
+    q_probs = F.softmax(log_gammas, dim=-1)
+
+    _ = q.variable(cat, probs=q_probs, value=z, name='zs')
+    _ = p.variable(cat, probs=prior_pi, value=z, name='zs')
+    return post_logits
+
 def initialize(K, D, num_hidden_local, CUDA, device, LR):
     enc_eta = Enc_eta(K, D, CUDA, device)
     enc_z = Enc_z(K, D, num_hidden_local, CUDA, device)
