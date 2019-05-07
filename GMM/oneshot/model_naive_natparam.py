@@ -6,7 +6,7 @@ from torch.distributions.one_hot_categorical import OneHotCategorical as cat
 from torch.distributions.gamma import Gamma
 from normal_gamma_conjugacy import *
 
-class Enc_eta(nn.Module):
+class Oneshot_eta(nn.Module):
     def __init__(self, K, D, CUDA, device):
         super(self.__class__, self).__init__()
 
@@ -54,13 +54,6 @@ class Enc_eta(nn.Module):
                  name='means')
         return q, p, q_nu
 
-    def sample_prior(self, sample_size, batch_size):
-        p_tau = Gamma(self.prior_alpha, self.prior_beta)
-        obs_tau = p_tau.sample((sample_size, batch_size,))
-        p_mu = Normal(self.prior_mu.repeat(sample_size, batch_size, 1, 1), 1. / (self.prior_nu * obs_tau).sqrt())
-        obs_mu = p_mu.sample()
-        obs_sigma = 1. / obs_tau.sqrt()
-        return obs_mu, obs_sigma
 
 class Enc_z(nn.Module):
     def __init__(self, K, D, num_hidden, CUDA, device):
@@ -97,30 +90,26 @@ class Enc_z(nn.Module):
         state = p_init_z.sample((sample_size, batch_size, N,))
         return state
 
-## need to write this gibbs-z togther with sample prior function a a Class
-class Gibbs_z()
+class Gibbs_z():
     """
     Gibbs sampling for p(z | mu, tau, x) given mu, tau, x
     """
-    def __init__(self, prior_pi==None, CUDA, device):
-        if prior_pi is None:
-            prior_pi = torch.ones(K) * (1./ K)
-        self.prior_pi = prior_pi
+    def __init__(self, K, CUDA, device):
 
+        self.prior_pi = torch.ones(K) * (1./ K)
         if CUDA:
             self.prior_pi = self.prior_pi.cuda().to(device)
-
 
     def forward(self, obs, obs_sigma, obs_mu, N, K):
         q = probtorch.Trace()
         p = probtorch.Trace()
-        
+
         obs_mu_expand = obs_mu.unsqueeze(-2).repeat(1, 1, 1, N, 1) # S * B * K * N * D
         obs_sigma_expand = obs_sigma.unsqueeze(-2).repeat(1, 1, 1, N, 1) # S * B * K * N * D
         obs_expand = obs.unsqueeze(2).repeat(1, 1, K, 1, 1) #  S * B * K * N * D
         log_gammas = Normal(obs_mu_expand, obs_sigma_expand).log_prob(obs_expand).sum(-1).transpose(-1, -2) + self.prior_pi.log() # S * B * N * K
         q_probs = F.softmax(log_gammas, dim=-1)
-
+        z = cat(q_probs).sample()
         _ = q.variable(cat, probs=q_probs, value=z, name='zs')
         _ = p.variable(cat, probs=self.prior_pi, value=z, name='zs')
         return q, p
@@ -130,11 +119,18 @@ class Gibbs_z()
         state = p_init_z.sample((sample_size, batch_size, N,))
         return state
 
-def initialize(K, D, num_hidden_local, CUDA, device, LR):
-    enc_eta = Enc_eta(K, D, CUDA, device)
-    enc_z = Enc_z(K, D, num_hidden_local, CUDA, device)
-    if CUDA:
-        enc_eta.cuda().to(device)
-        enc_z.cuda().to(device)
-    optimizer =  torch.optim.Adam(list(enc_z.parameters())+list(enc_eta.parameters()),lr=LR, betas=(0.9, 0.99))
+def initialize(K, D, num_hidden_local, CUDA, device, LR, closed_form_z=False):
+    if closed_form_z:
+        enc_z = Gibbs_z(K, CUDA, device)
+        enc_eta = Oneshot_eta(K, D, CUDA, device)
+        if CUDA:
+            enc_eta.cuda().to(device)
+        optimizer =  torch.optim.Adam(list(enc_eta.parameters()),lr=LR, betas=(0.9, 0.99))
+    else:
+        enc_eta = Oneshot_eta(K, D, CUDA, device)
+        enc_z = Enc_z(K, D, num_hidden_local, CUDA, device)
+        if CUDA:
+            enc_eta.cuda().to(device)
+            enc_z.cuda().to(device)
+        optimizer =  torch.optim.Adam(list(enc_z.parameters())+list(enc_eta.parameters()),lr=LR, betas=(0.9, 0.99))
     return enc_eta, enc_z, optimizer

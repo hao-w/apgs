@@ -186,7 +186,7 @@ def initialize(K, D, num_hidden_local, CUDA, device, LR, closed_form_z=False):
         optimizer =  torch.optim.Adam(list(oneshot_eta.parameters())+list(enc_eta.parameters()),lr=LR, betas=(0.9, 0.99))
     else:
         oneshot_eta = Oneshot_eta(K, D, CUDA, device)
-        enc_eta = Oneshot_eta(K, D, CUDA, device)
+        enc_eta = Enc_eta(K, D, CUDA, device)
         enc_z = Enc_z(K, D, num_hidden_local, CUDA, device)
         if CUDA:
             oneshot_eta.cuda().to(device)
