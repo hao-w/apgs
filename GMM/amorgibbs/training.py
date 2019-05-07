@@ -49,13 +49,6 @@ def train(Eubo, enc_eta, enc_z, optimizer, Data, K, num_epochs, mcmc_size, sampl
             print('%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f'
                     % (eubos[-1].item(), elbos[-1].item(), esss.mean().item(), kl_eta_ex.item(), kl_eta_in.item(), kl_z_ex.item(), kl_z_in.item()), file=flog)
             flog.close()
-        # EUBOs.append(EUBO / num_batches)
-        # ELBOs.append(ELBO / num_batches)
-        # ESSs.append(ESS / num_batches)
-        # flog = open('../results/log-' + PATH + '.txt', 'a+')
-        # print('%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f'
-        #         % (EUBO/num_batches, ELBO/num_batches, ESS/num_batches, KL_eta_ex/num_batches, KL_eta_in/num_batches, KL_z_ex/num_batches, KL_z_in/num_batches), file=flog)
-        # flog.close()
         time_end = time.time()
         print('epoch=%d, EUBO=%.3f, ELBO=%.3f, ESS=%.3f (%ds)'
                 % (epoch, EUBO/num_batches, ELBO/num_batches, ESS/num_batches, time_end - time_start))

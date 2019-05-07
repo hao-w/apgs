@@ -41,22 +41,6 @@ def Post_eta(obs, states, prior_alpha, prior_beta, prior_mu, prior_nu, K, D):
     post_mu = (prior_mu * prior_nu + stat2) / (stat1_expand + prior_nu)
     post_beta = prior_beta + (stat3 - (stat2 ** 2) / stat1_nonzero) / 2. + (stat1_expand * prior_nu / (stat1_expand + prior_nu)) * ((x_bar - prior_nu)**2) / 2.
     return post_alpha, post_beta, post_mu, post_nu
-# def Post_mu_tau_nat(obs, stat1, stat2, stat3, prior_nat1, prior_nat2, prior_nat3, prior_nat4, K, D):
-#     """
-#     natural parameters of conjugate posterior given the priors and sufficient statistics
-#     """
-#     stat1_expand = stat1.unsqueeze(-1).repeat(1, 1, 1, D) ## S * B * K * D
-#     return prior_nat1 + (stat1_expand / 2.), prior_nat2 - (stat3 / 2.), prior_nat3 + stat2, prior_nat4 - (stat1_expand / 2.)
-#
-# def Post_eta(obs, states, prior_alpha, prior_beta, prior_mu, prior_nu, K, D):
-#     """
-#     distribution parameters of posterior given priors and obs and states
-#     """
-#     stat1, stat2, stat3 = data_to_stats(obs, states, K, D)
-#     prior_nat1, prior_nat2, prior_nat3, prior_nat4 = params_to_nats(prior_alpha, prior_beta, prior_mu, prior_nu) ## K * D
-#     post_nat1, post_nat2, post_nat3, post_nat4 = Post_mu_tau_nat(obs, stat1, stat2, stat3 , prior_nat1, prior_nat2, prior_nat3, prior_nat4, K, D)
-#     post_alpha, post_beta, post_mu, post_nu = nats_to_params(post_nat1, post_nat2, post_nat3, post_nat4)
-#     return post_alpha, post_beta, post_mu, post_nu
 
 def Post_z(obs, obs_sigma, obs_mu, prior_pi, N, K):
     """

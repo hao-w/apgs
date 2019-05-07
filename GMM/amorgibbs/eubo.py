@@ -32,11 +32,6 @@ def Eubo_oneshot_eta_cfz(oneshot_eta, enc_eta, gibbs_z, obs, N, K, D, mcmc_size,
     elbos[0] = log_weights.mean()
     esss[0] = (1. / (weights**2).sum(0)).mean()
     for m in range(mcmc_size):
-        if m == 0:
-            ## resample z -- cluster assignments
-            state = resample_state(state, weights, idw_flag=False)
-        else:
-            state = resample_state(state, weights_local, idw_flag=idw_flag)
         ## update tau and mu -- global variables
         q_eta, p_eta, q_nu = enc_eta(obs, state, K, D)
         log_p_eta = p_eta['means'].log_prob.sum(-1) + p_eta['precisions'].log_prob.sum(-1)

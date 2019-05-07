@@ -174,24 +174,3 @@ class Gibbs_z():
         p_init_z = cat(self.prior_pi)
         state = p_init_z.sample((sample_size, batch_size, N,))
         return state
-
-def initialize(K, D, num_hidden_local, CUDA, device, LR, closed_form_z=False):
-    if closed_form_z:
-        oneshot_eta = Oneshot_eta(K, D, CUDA, device)
-        enc_eta = Enc_eta(K, D, CUDA, device)
-        enc_z = Gibbs_z(K, CUDA, device)
-        if CUDA:
-            oneshot_eta.cuda().to(device)
-            enc_eta.cuda().to(device)
-        optimizer =  torch.optim.Adam(list(oneshot_eta.parameters())+list(enc_eta.parameters()),lr=LR, betas=(0.9, 0.99))
-    else:
-        oneshot_eta = Oneshot_eta(K, D, CUDA, device)
-        enc_eta = Enc_eta(K, D, CUDA, device)
-        enc_z = Enc_z(K, D, num_hidden_local, CUDA, device)
-        if CUDA:
-            oneshot_eta.cuda().to(device)
-            enc_eta.cuda().to(device)
-            enc_z.cuda().to(device)
-        optimizer =  torch.optim.Adam(list(oneshot_eta.parameters())+list(enc_z.parameters())+list(enc_eta.parameters()),lr=LR, betas=(0.9, 0.99))
-    return oneshot_eta, enc_eta, enc_z, optimizer
-
