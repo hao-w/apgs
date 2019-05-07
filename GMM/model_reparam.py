@@ -34,19 +34,15 @@ class Oneshot_eta(nn.Module):
         xs = self.ob(obs)  # S * B * N * D --> S * B * N * D
         q_alpha, q_beta, q_mu, q_nu = Post_eta(xs, gammas,
                                                  self.prior_alpha, self.prior_beta, self.prior_mu, self.prior_nu, K, D)
-        precisions = Gamma(q_alpha, q_beta).sample()
         q.gamma(q_alpha,
                 q_beta,
-                value=precisions,
                 name='precisions')
         p.gamma(self.prior_alpha,
                 self.prior_beta,
                 value=q['precisions'],
                 name='precisions')
-        means = Normal(q_mu, 1. / (q_nu * q['precisions'].value).sqrt()).sample()
         q.normal(q_mu,
                  1. / (q_nu * q['precisions'].value).sqrt(),
-                 value=means,
                  name='means')
         p.normal(self.prior_mu,
                  1. / (self.prior_nu * p['precisions'].value).sqrt(),
@@ -84,19 +80,15 @@ class Enc_eta(nn.Module):
         xs = self.ob(local_vars)  # S * B * N * D --> S * B * N * D
         q_alpha, q_beta, q_mu, q_nu = Post_eta(xs, gammas,
                                                  self.prior_alpha, self.prior_beta, self.prior_mu, self.prior_nu, K, D)
-        precisions = Gamma(q_alpha, q_beta).sample()
         q.gamma(q_alpha,
                 q_beta,
-                value=precisions,
                 name='precisions')
         p.gamma(self.prior_alpha,
                 self.prior_beta,
                 value=q['precisions'],
                 name='precisions')
-        means = Normal(q_mu, 1. / (q_nu * q['precisions'].value).sqrt()).sample()
         q.normal(q_mu,
                  1. / (q_nu * q['precisions'].value).sqrt(),
-                 value=means,
                  name='means')
         p.normal(self.prior_mu,
                  1. / (self.prior_nu * p['precisions'].value).sqrt(),

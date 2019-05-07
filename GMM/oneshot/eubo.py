@@ -16,13 +16,13 @@ def Eubo_os(enc_eta, enc_z, obs, N, K, D, sample_size, batch_size, device, idw_f
     log_q_eta = q_eta['means'].log_prob.sum(-1) + q_eta['precisions'].log_prob.sum(-1)
     obs_mu = q_eta['means'].value
     obs_tau = q_eta['precisions'].value
-    obs_sigma = 1. / obs_tau.sqrt()
+    # obs_sigma = 1. / obs_tau.sqrt()
     ## update z -- cluster assignments
-    q_z, p_z = enc_z(obs, obs_sigma, obs_mu, N, sample_size, batch_size)
+    q_z, p_z = enc_z(obs, obs_tau, obs_mu, N, sample_size, batch_size)
     log_p_z = p_z['zs'].log_prob
     log_q_z = q_z['zs'].log_prob
     state = q_z['zs'].value ## S * B * N * K
-    log_obs_n = Log_likelihood(obs, state, obs_mu, obs_sigma, K, D, cluster_flag=False)
+    log_obs_n = Log_likelihood(obs, state, obs_tau, obs_mu, K, D, cluster_flag=False)
     log_weights = log_obs_n.sum(-1) + log_p_eta.sum(-1) - log_q_eta.sum(-1) + log_p_z.sum(-1) - log_q_z.sum(-1)
     weights = F.softmax(log_weights, 0).detach()
     ## EUBO, ELBO, ESS
@@ -42,13 +42,12 @@ def Eubo_os_cfz(enc_eta, gibbs_z, obs, N, K, D, sample_size, batch_size, device,
     log_q_eta = q_eta['means'].log_prob.sum(-1) + q_eta['precisions'].log_prob.sum(-1)
     obs_mu = q_eta['means'].value
     obs_tau = q_eta['precisions'].value
-    obs_sigma = 1. / obs_tau.sqrt()
     ## update z -- cluster assignments
-    q_z, p_z = gibbs_z.forward(obs, obs_sigma, obs_mu, N, K)
+    q_z, p_z = gibbs_z.forward(obs, obs_tau, obs_mu, N, K)
     log_p_z = p_z['zs'].log_prob
     log_q_z = q_z['zs'].log_prob
     state = q_z['zs'].value ## S * B * N * K
-    log_obs_n = Log_likelihood(obs, state, obs_mu, obs_sigma, K, D, cluster_flag=False)
+    log_obs_n = Log_likelihood(obs, state, obs_tau, obs_mu, K, D, cluster_flag=False)
     log_weights = log_obs_n.sum(-1) + log_p_eta.sum(-1) - log_q_eta.sum(-1) + log_p_z.sum(-1) - log_q_z.sum(-1)
     weights = F.softmax(log_weights, 0).detach()
     ## EUBO, ELBO, ESS

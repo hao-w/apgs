@@ -1,10 +1,9 @@
 import torch
 import time
 from utils import *
-from normal_gamma_kls import *
-from normal_gamma_conjugacy import *
 
-def train(Eubo, enc_eta, enc_z, optimizer, Data, K, num_epochs, mcmc_size, sample_size, batch_size, PATH, CUDA, device):
+
+def train(Eubo, enc_eta, enc_z, optimizer, Data, K, num_epochs, sample_size, batch_size, PATH, CUDA, device):
     EUBOs = []
     ELBOs = []
     ESSs = []
@@ -32,18 +31,19 @@ def train(Eubo, enc_eta, enc_z, optimizer, Data, K, num_epochs, mcmc_size, sampl
             obs = shuffler(obs).repeat(sample_size, 1, 1, 1)
             if CUDA:
                 obs =obs.cuda().to(device)
-            eubos, elbos, esss, q_eta, p_eta, q_z, p_z, q_nu, pr_nu = Eubo(enc_eta, enc_z, obs, K, mcmc_size, device)
+            eubo, elbo, ess, q_eta, p_eta, q_z, p_z, q_nu, pr_nu = Eubo(enc_eta, enc_z, obs, N, K, D, sample_size, batch_size, device)
             kl_eta_ex, kl_eta_in, kl_z_ex, kl_z_in = kl_train(q_eta, p_eta, q_z, p_z, q_nu, pr_nu, obs, K)
             ## gradient step
-            eubos.sum().backward()
+            eubo.backward()
             optimizer.step()
-            EUBO += eubos.sum().item()
-            ELBO += elbos.sum().item()
-            ESS += esss.mean().item()
+            EUBO += eubo.item()
+            ELBO += elbo.item()
+            ESS += ess.item()
             KL_eta_ex += kl_eta_ex.item()
             KL_eta_in += kl_eta_in.item()
             KL_z_ex += kl_z_ex.item()
             KL_z_in += kl_z_in.item()
+
         EUBOs.append(EUBO / num_batches)
         ELBOs.append(ELBO / num_batches)
         ESSs.append(ESS / num_batches)
@@ -55,31 +55,7 @@ def train(Eubo, enc_eta, enc_z, optimizer, Data, K, num_epochs, mcmc_size, sampl
         print('epoch=%d, EUBO=%.3f, ELBO=%.3f, ESS=%.3f (%ds)'
                 % (epoch, EUBO/num_batches, ELBO/num_batches, ESS/num_batches, time_end - time_start))
 
-def kl_train(q_eta, p_eta, q_z, p_z, q_nu, pr_nu, obs, K):
-    _, _, N, D = obs.shape
-    ## KLs for mu and sigma based on Normal-Gamma prior
-    q_alpha = q_eta['precisions'].dist.concentration
-    q_beta = q_eta['precisions'].dist.rate
-    q_mu = q_eta['means'].dist.loc
-    q_pi = q_z['zs'].dist.probs
-
-    pr_alpha = p_eta['precisions'].dist.concentration
-    pr_beta = p_eta['precisions'].dist.rate
-    pr_mu = p_eta['means'].dist.loc
-    pr_pi = p_z['zs'].dist.probs
-
-    states = q_z['zs'].value
-    obs_mu = q_eta['means'].value
-    obs_sigma = 1. / q_eta['precisions'].value.sqrt()
-
-    post_alpha, post_beta, post_mu, post_nu = Post_eta(obs, states, pr_alpha, pr_beta, pr_mu, pr_nu, K, D)
-    kl_eta_ex, kl_eta_in = kls_NGs(q_alpha, q_beta, q_mu, q_nu, post_alpha, post_beta, post_mu, post_nu)
-    ## KLs for cluster assignments
-    post_logits = Post_z(obs, obs_sigma, obs_mu, pr_pi, N, K)
-    kl_z_ex, kl_z_in = kls_cats(q_pi.log(), post_logits)
-    return kl_eta_ex.sum(-1).mean(), kl_eta_in.sum(-1).mean(), kl_z_ex.sum(-1).mean(), kl_z_in.sum(-1).mean()
-
-def test(Eubo, enc_eta, enc_z, Data, K, mcmc_size, sample_size, batch_size, CUDA, device):
+def test(Eubo, enc_eta, enc_z, Data, K, sample_size, batch_size, CUDA, device):
     NUM_SEQS, N, D = Data.shape
     indices = torch.randperm(NUM_SEQS)
     batch_indices = indices[0*batch_size : (0+1)*batch_size]
@@ -87,5 +63,5 @@ def test(Eubo, enc_eta, enc_z, Data, K, mcmc_size, sample_size, batch_size, CUDA
     obs = shuffler(obs).repeat(sample_size, 1, 1, 1)
     if CUDA:
         obs =obs.cuda().to(device)
-    _, _, _, q_eta, p_eta, q_z, p_z, _, _ = Eubo(enc_eta, enc_z, obs, K, mcmc_size, device)
+    _, _, _, q_eta, p_eta, q_z, p_z, _, _ = Eubo(enc_eta, enc_z, obs, N, K, D, sample_size, batch_size, device)
     return obs, q_eta, q_z
