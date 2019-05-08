@@ -3,7 +3,7 @@ import time
 from eubo import *
 from utils import True_Log_likelihood, shuffler
 
-def train_mu(Eubo, enc_mu, enc_z, optimizer, Data, obs_rad, noise_sigma, K, num_epochs, mcmc_size, sample_size, batch_size, PATH, CUDA, device, RESAMPLE, DETACH=True):
+def train_mu(Eubo, oneshot_mu, enc_mu, enc_z, optimizer, Data, obs_rad, noise_sigma, K, num_epochs, mcmc_size, sample_size, batch_size, PATH, CUDA, device, RESAMPLE, DETACH=True):
     NUM_SEQS, N, D = Data.shape
     num_batches = int((NUM_SEQS / batch_size))
 
@@ -24,7 +24,7 @@ def train_mu(Eubo, enc_mu, enc_z, optimizer, Data, obs_rad, noise_sigma, K, num_
             obs = shuffler(obs).repeat(sample_size, 1, 1, 1)
             if CUDA:
                 obs = obs.cuda().to(device)
-            symkls, eubos, elbos, esss, _, _, _, _ = Eubo(enc_mu, enc_z, obs, obs_rad, noise_sigma, N, K, D, mcmc_size, sample_size, batch_size, device, RESAMPLE, DETACH=DETACH)
+            symkls, eubos, elbos, esss, _, _, _, _ = Eubo(oneshot_mu, enc_mu, enc_z, obs, obs_rad, noise_sigma, N, K, D, mcmc_size, sample_size, batch_size, device, RESAMPLE, DETACH=DETACH)
             symkls.mean().backward()
             optimizer.step()
             SymKL += symkls.sum().item()
@@ -40,7 +40,7 @@ def train_mu(Eubo, enc_mu, enc_z, optimizer, Data, obs_rad, noise_sigma, K, num_
                 % (epoch, SymKL/num_batches, EUBO/num_batches, ELBO/num_batches, ESS/num_batches,
                    time_end - time_start))
 
-def test(Eubo, enc_mu, enc_z, Data, obs_rad, noise_sigma, K, mcmc_size, sample_size, batch_size, CUDA, device, RESAMPLE, DETACH):
+def test(Eubo, oneshot_mu, enc_mu, enc_z, Data, obs_rad, noise_sigma, K, mcmc_size, sample_size, batch_size, CUDA, device, RESAMPLE, DETACH):
     NUM_SEQS, N, D = Data.shape
     num_batches = int((NUM_SEQS / batch_size))
     indices = torch.randperm(NUM_SEQS)
@@ -49,5 +49,5 @@ def test(Eubo, enc_mu, enc_z, Data, obs_rad, noise_sigma, K, mcmc_size, sample_s
     obs = shuffler(obs).repeat(sample_size, 1, 1, 1)
     if CUDA:
         obs = obs.cuda().to(device)
-    symkls_test, eubos_test, elbos_test, _, q_mu, _, q_z, _ = Eubo(enc_mu, enc_z, obs, obs_rad, noise_sigma, N, K, D, mcmc_size, sample_size, batch_size, device, RESAMPLE, DETACH)
+    symkls_test, eubos_test, elbos_test, _, q_mu, _, q_z, _ = Eubo(oneshot_mu, enc_mu, enc_z, obs, obs_rad, noise_sigma, N, K, D, mcmc_size, sample_size, batch_size, device, RESAMPLE, DETACH)
     return obs, q_mu, q_z, symkls_test, eubos_test, elbos_test

@@ -6,6 +6,60 @@ from torch.distributions.one_hot_categorical import OneHotCategorical as cat
 import probtorch
 import math
 
+class Oneshot_mu(nn.Module):
+    def __init__(self, K, D, num_hidden, num_stats, CUDA, device):
+        super(self.__class__, self).__init__()
+
+        self.neural_stats = nn.Sequential(
+            nn.Linear(D, num_hidden),
+            nn.Tanh(),
+            nn.Linear(num_hidden, num_stats))
+
+        self.mean_mu = nn.Sequential(
+            nn.Linear(num_stats+2*K*D, num_hidden),
+            nn.Tanh(),
+            nn.Linear(num_hidden, K*D))
+
+        self.mean_log_sigma = nn.Sequential(
+            nn.Linear(num_stats+2*K*D, num_hidden),
+            nn.Tanh(),
+            nn.Linear(num_hidden, K*D))
+
+        self.prior_mean_mu = torch.zeros(K*D)
+        self.prior_mean_sigma = torch.ones(K*D) * 5.0
+
+        if CUDA:
+            self.prior_mean_mu = self.prior_mean_mu.cuda().to(device)
+            self.prior_mean_sigma = self.prior_mean_sigma.cuda().to(device)
+
+    def forward(self, obs, K, D, sample_size, batch_size):
+        q = probtorch.Trace()
+        p = probtorch.Trace()
+
+        neural_stats = self.neural_stats(obs)
+        mean_stats = neural_stats.mean(-2)  # S * B * STAT_DIM
+
+        stat_mu = torch.cat((self.prior_mean_mu.repeat(sample_size, batch_size, 1), self.prior_mean_sigma.repeat(sample_size, batch_size, 1), mean_stats), -1)
+
+        q_mean_mu = self.mean_mu(stat_mu).view(sample_size, batch_size, K, D)
+        q_mean_sigma = self.mean_log_sigma(stat_mu).exp().view(sample_size, batch_size, K, D)
+
+
+        q.normal(q_mean_mu,
+                 q_mean_sigma,
+                 name='means')
+        
+        p.normal(self.prior_mean_mu.view(K, D),
+                 self.prior_mean_sigma.view(K, D),
+                 value=q['means'],
+                 name='means')
+        return q, p
+    
+    def sample_prior(self, sample_size, batch_size):
+        p_mu = Normal(self.prior_mean_mu, self.prior_mean_sigma)
+        obs_mu = p_mu.sample((sample_size, batch_size,))
+        return obs_mu
+    
 class Enc_mu(nn.Module):
     def __init__(self, K, D, num_hidden, num_stats, CUDA, device):
         super(self.__class__, self).__init__()
@@ -26,22 +80,22 @@ class Enc_mu(nn.Module):
             nn.Linear(num_hidden, D))
 
         self.prior_mean_mu = torch.zeros((K, D))
-        self.prior_mean_sigma = torch.ones((K, D)) * 4.0
+        self.prior_mean_sigma = torch.ones((K, D)) * 5.0
 
         if CUDA:
             self.prior_mean_mu = self.prior_mean_mu.cuda().to(device)
             self.prior_mean_sigma = self.prior_mean_sigma.cuda().to(device)
 
-    def forward(self, obs, states, K, sample_size, batch_size):
+    def forward(self, obs, state, K, sample_size, batch_size):
         q = probtorch.Trace()
         p = probtorch.Trace()
 
-        neural_stats = self.neural_stats(torch.cat((obs, states), -1))
+        neural_stats = self.neural_stats(torch.cat((obs, state), -1))
         _, _, _, stat_size = neural_stats.shape
-        cluster_size = states.sum(-2)
+        cluster_size = state.sum(-2)
         cluster_size[cluster_size == 0.0] = 1.0 # S * B * K
         neural_stats_expand = neural_stats.unsqueeze(-1).repeat(1, 1, 1, 1, K).transpose(-1, -2) ## S * B * N * K * STAT_SIZE
-        states_expand = states.unsqueeze(-1).repeat(1, 1, 1, 1, stat_size) ## S * B * N * K * STAT_SIZE
+        states_expand = state.unsqueeze(-1).repeat(1, 1, 1, 1, stat_size) ## S * B * N * K * STAT_SIZE
         sum_stats = (states_expand * neural_stats_expand).sum(2) ## S * B * K * STAT_SIZE
         mean_stats = sum_stats / cluster_size.unsqueeze(-1)
 
