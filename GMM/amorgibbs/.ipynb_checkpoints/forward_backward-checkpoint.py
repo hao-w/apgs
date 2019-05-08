@@ -25,7 +25,7 @@ def Incremental_eta(q_eta, p_eta, obs, state, K, D, obs_tau_prev, obs_mu_prev):
     log_obs_prev = Log_likelihood(obs, state, obs_tau_prev, obs_mu_prev, K, D, cluster_flag=True)
     log_ratio_backward = log_obs_prev + log_p_eta_prev - log_q_eta_prev
     log_weights_eta = log_ratio_forward - log_ratio_backward
-    weights_eta = F.softmax(log_weights_eta, 0)
+    weights_eta = F.softmax(log_weights_eta, 0).detach()
     eubo_eta = (weights_eta * log_weights_eta).sum(0).sum(-1).mean()
     elbo_eta = log_weights_eta.sum(-1).mean(0).mean()
     symkl = eubo_eta - elbo_eta
