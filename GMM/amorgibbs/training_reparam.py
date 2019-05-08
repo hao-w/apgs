@@ -2,7 +2,7 @@ import torch
 import time
 from utils import *
 
-def train_cfz_reparam(Eubo, enc_eta, gibbs_z, optimizer, Data, K, num_epochs, mcmc_size, sample_size, batch_size, PATH, CUDA, device, RESAMPLE):
+def train_cfz_reparam(Eubo, enc_eta, gibbs_z, optimizer, Data, K, num_epochs, mcmc_size, sample_size, batch_size, PATH, CUDA, device, RESAMPLE, DETACH):
     NUM_SEQS, N, D = Data.shape
     num_batches = int((NUM_SEQS / batch_size))
 
@@ -28,7 +28,7 @@ def train_cfz_reparam(Eubo, enc_eta, gibbs_z, optimizer, Data, K, num_epochs, mc
             obs = shuffler(obs).repeat(sample_size, 1, 1, 1)
             if CUDA:
                 obs =obs.cuda().to(device)
-            symkls, eubos, elbos, esss, q_eta, p_eta, q_z, p_z, q_nu, pr_nu = Eubo(enc_eta, gibbs_z, obs, N, K, D, mcmc_size, sample_size, batch_size, device, RESAMPLE=RESAMPLE)
+            symkls, eubos, elbos, esss, q_eta, p_eta, q_z, p_z, q_nu, pr_nu = Eubo(enc_eta, gibbs_z, obs, N, K, D, mcmc_size, sample_size, batch_size, device, RESAMPLE=RESAMPLE, DETACH=DETACH)
             kl_eta_ex, kl_eta_in, kl_z_ex, kl_z_in = kl_train(q_eta, p_eta, q_z, p_z, q_nu, pr_nu, obs, K)
             ## gradient step
             symkls.sum().backward()

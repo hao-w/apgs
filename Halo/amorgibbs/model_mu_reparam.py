@@ -4,6 +4,7 @@ import torch.nn.functional as F
 from torch.distributions.normal import Normal
 from torch.distributions.one_hot_categorical import OneHotCategorical as cat
 import probtorch
+import math
 
 class Enc_mu(nn.Module):
     def __init__(self, K, D, num_hidden, num_stats, CUDA, device):
@@ -51,17 +52,20 @@ class Enc_mu(nn.Module):
         q_mean_mu = torch.cat((self.mean_mu(stat_mu1).unsqueeze(-2), self.mean_mu(stat_mu2).unsqueeze(-2), self.mean_mu(stat_mu3).unsqueeze(-2)), -2)
         q_mean_sigma = torch.cat((self.mean_log_sigma(stat_mu1).exp().unsqueeze(-2), self.mean_log_sigma(stat_mu2).exp().unsqueeze(-2), self.mean_log_sigma(stat_mu3).exp().unsqueeze(-2)), -2)
 
-        means = Normal(q_mean_mu, q_mean_sigma).sample()
         q.normal(q_mean_mu,
                  q_mean_sigma,
-                 value=means,
                  name='means')
         p.normal(self.prior_mean_mu,
                  self.prior_mean_sigma,
                  value=q['means'],
                  name='means')
         return q, p
-
+    
+    def sample_prior(self, sample_size, batch_size):
+        p_mu = Normal(self.prior_mean_mu, self.prior_mean_sigma)
+        obs_mu = p_mu.sample((sample_size, batch_size,))
+        return obs_mu
+    
 class Enc_z(nn.Module):
     def __init__(self, K, D, num_hidden, CUDA, device):
         super(self.__class__, self).__init__()
@@ -90,12 +94,37 @@ class Enc_z(nn.Module):
         _ = q.variable(cat, probs=q_pi, value=z, name='zs')
         _ = p.variable(cat, probs=self.prior_pi, value=z, name='zs')
         return q, p
+    def sample_prior(self, N, sample_size, batch_size):
+        p_init_z = cat(self.prior_pi)
+        state = p_init_z.sample((sample_size, batch_size, N,))
+        return state
+    
+class Gibbs_z():
+    """
+    Gibbs sampling for p(z | mu, tau, x) given mu, tau, x
+    """
+    def __init__(self, K, CUDA, device):
 
-def initialize(num_hidden_global, stat_size, num_hidden_local, K, D, CUDA, device, LR):
-    enc_mu = Enc_mu(K, D, num_hidden=num_hidden_global, num_stats=stat_size, CUDA=CUDA, device=device)
-    enc_z = Enc_z(K, D, num_hidden=num_hidden_local, CUDA=CUDA, device=device)
-    if CUDA:
-        enc_mu.cuda().to(device)
-        enc_z.cuda().to(device)
-    optimizer =  torch.optim.Adam(list(enc_z.parameters())+list(enc_mu.parameters()),lr=LR, betas=(0.9, 0.99))
-    return enc_mu, enc_z, optimizer
+        self.prior_pi = torch.ones(K) * (1./ K)
+        if CUDA:
+            self.prior_pi = self.prior_pi.cuda().to(device)
+            
+    def forward(self, obs, obs_mu, obs_rad, noise_sigma, N, K, sample_size, batch_size):
+        obs_mu_expand = obs_mu.unsqueeze(-2).repeat(1, 1, 1, N, 1) # S * B * K * N * D
+        obs_expand = obs.unsqueeze(2).repeat(1, 1, K, 1, 1) #  S * B * K * N * D
+        distance = ((obs_expand - obs_mu_expand)**2).sum(-1).sqrt()
+        obs_dist = Normal(obs_rad,  noise_sigma)
+        log_distance = (obs_dist.log_prob(distance) - (2*math.pi*distance).log()).transpose(-1, -2) + self.prior_pi.log() # S * B * N * K   
+
+        q_pi = F.softmax(log_distance, -1)
+        q = probtorch.Trace()
+        p = probtorch.Trace()
+        z = cat(q_pi).sample()
+        _ = q.variable(cat, probs=q_pi, value=z, name='zs')
+        _ = p.variable(cat, probs=self.prior_pi, value=z, name='zs')
+        return q, p
+
+    def sample_prior(self, N, sample_size, batch_size):
+        p_init_z = cat(self.prior_pi)
+        state = p_init_z.sample((sample_size, batch_size, N,))
+        return state
