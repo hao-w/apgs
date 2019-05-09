@@ -27,7 +27,7 @@ def train_mu(Eubo, oneshot_mu, enc_mu, enc_z, optimizer, Data, obs_rad, noise_si
             symkls, eubos, elbos, esss, _, _, _, _ = Eubo(oneshot_mu, enc_mu, enc_z, obs, obs_rad, noise_sigma, N, K, D, mcmc_size, sample_size, batch_size, device, RESAMPLE, DETACH=DETACH)
             symkls.mean().backward()
             optimizer.step()
-            SymKL += symkls.sum().item()
+            SymKL += symkls.mean().item()
             EUBO += eubos.sum().item()
             ELBO += elbos.sum().item()
             ESS += esss.mean().item()
