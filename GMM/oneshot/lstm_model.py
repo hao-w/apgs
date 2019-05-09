@@ -41,7 +41,7 @@ class LSTM_eta(nn.Module):
     def forward(self, obs, K, D, batch_first=True):
         S, B, T, D = obs.shape
         in_seqs = obs.reshape(S*B, T, D).transpose(0, 1)
-        out_seqs, self.hidden = self.lstm(in_seqs, self.hidden)
+        out_seqs, _ = self.lstm(in_seqs, self.hidden)
         out_seqs = out_seqs.transpose(0, 1).reshape(S, B, T, -1)
         # out_last = out_seqs[:, :, T-1, :]
         # Computing sufficient stats 
