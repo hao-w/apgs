@@ -107,7 +107,7 @@ def Eubo_cfz_os_eta(oneshot_eta, enc_eta, gibbs_z, obs, N, K, D, mcmc_size, samp
     elbos = torch.zeros(mcmc_size+1).cuda().to(device)
     esss = torch.zeros(mcmc_size+1).cuda().to(device)
     ## initialize mu, tau from the prior
-    q_eta, p_eta, q_nu = oneshot_eta(K, D)
+    q_eta, p_eta, q_nu = oneshot_eta(obs, K, D)
     log_p_eta = p_eta['means'].log_prob.sum(-1) + p_eta['precisions'].log_prob.sum(-1)
     log_q_eta = q_eta['means'].log_prob.sum(-1) + q_eta['precisions'].log_prob.sum(-1)
     obs_mu = q_eta['means'].value

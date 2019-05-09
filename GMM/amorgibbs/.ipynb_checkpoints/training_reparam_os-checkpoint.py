@@ -33,7 +33,7 @@ def train_cfz_reparam(Eubo, oneshot_eta, enc_eta, gibbs_z, optimizer, Data, K, n
             ## gradient step
             symkls.sum().backward()
             optimizer.step()
-            SymKL += symkls.sum().item()
+            SymKL += symkls.mean().item()
             EUBO += eubos.sum().item()
             ELBO += elbos.sum().item()
             ESS += esss.mean().item()
@@ -50,7 +50,7 @@ def train_cfz_reparam(Eubo, oneshot_eta, enc_eta, gibbs_z, optimizer, Data, K, n
         print('epoch=%d, symKL=%.3f, EUBO=%.3f, ELBO=%.3f, ESS=%.3f (%ds)'
                 % (epoch, SymKL/num_batches, EUBO/num_batches, ELBO/num_batches, ESS/num_batches, time_end - time_start))
 
-def test(Eubo, oneshot_eta, enc_eta, enc_z, Data, K, mcmc_size, sample_size, batch_size, CUDA, device, RESAMPLE):
+def test(Eubo, oneshot_eta, enc_eta, enc_z, Data, K, mcmc_size, sample_size, batch_size, CUDA, device, RESAMPLE, DETACH):
     NUM_SEQS, N, D = Data.shape
     indices = torch.randperm(NUM_SEQS)
     batch_indices = indices[0*batch_size : (0+1)*batch_size]
@@ -58,6 +58,6 @@ def test(Eubo, oneshot_eta, enc_eta, enc_z, Data, K, mcmc_size, sample_size, bat
     obs = shuffler(obs).repeat(sample_size, 1, 1, 1)
     if CUDA:
         obs =obs.cuda().to(device)
-    symkl_test, eubo_test, elbo_test, _, q_eta, p_eta, q_z, p_z, _, _ = Eubo(oneshot_eta, enc_eta, enc_z, obs, N, K, D, mcmc_size, sample_size, batch_size, device, RESAMPLE=RESAMPLE)
+    symkl_test, eubo_test, elbo_test, _, q_eta, p_eta, q_z, p_z, _, _ = Eubo(oneshot_eta, enc_eta, enc_z, obs, N, K, D, mcmc_size, sample_size, batch_size, device, RESAMPLE=RESAMPLE, DETACH=DETACH)
     return obs, q_eta, q_z, symkl_test, eubo_test, elbo_test
 
