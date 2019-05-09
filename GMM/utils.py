@@ -14,9 +14,9 @@ def shuffler(data):
 def weights_init(m):
     classname = m.__class__.__name__
     if classname.find('Linear') != -1:
-        m.weight.data.normal_(0.0, 1e-2)
+        m.weight.data.normal_(0.0, 1e-3)
 
-def resample_eta(obs_mu, obs_sigma, weights, idw_flag=False):
+def resample_eta(obs_mu, obs_sigma, weights, idw_flag=True):
     S, B, K, D = obs_mu.shape
     if idw_flag: ## individual importance weight S * B * K
         ancesters = Categorical(weights.permute(1, 2, 0)).sample((S, )).unsqueeze(-1).repeat(1, 1, 1, D)
@@ -28,7 +28,7 @@ def resample_eta(obs_mu, obs_sigma, weights, idw_flag=False):
         obs_sigma_r = torch.gather(obs_sigma, 0, ancesters)
     return obs_mu_r, obs_sigma_r
 
-def resample_state(state, weights, idw_flag=False):
+def resample_state(state, weights, idw_flag=True):
     S, B, N, K = state.shape
     if idw_flag: ## individual importance weight S * B * K
         ancesters = Categorical(weights.permute(1, 2, 0)).sample((S, )).unsqueeze(-1).repeat(1, 1, 1, K) ## S * B * N * K
