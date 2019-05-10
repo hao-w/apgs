@@ -2,6 +2,8 @@ import numpy as np
 import torch
 import torch.nn as nn
 from collections.abc import Iterable
+from normal_gamma import *
+import probtorch
 
 def initialize(K, D, B, S, HG, HL, L, CUDA, device, LR):
     enc_eta = LSTM_eta(K, D, B, S, HG, L, CUDA, device)
@@ -17,8 +19,8 @@ class LSTM_eta(nn.Module):
     def __init__(self, K, D, B, S, H, L, CUDA, device):
         super(self.__class__, self).__init__()
         self.lstm = nn.LSTM(D, H, L)
-        self.hidden = (torch.zeros(L, B*S, H),
-                       torch.zeros(L, B*S, H))
+        self.hidden = (torch.zeros(L, B*S, H).cuda().to(device),
+                       torch.zeros(L, B*S, H).cuda().to(device))
 
         self.gamma = nn.Sequential(
             nn.Linear(H, K),

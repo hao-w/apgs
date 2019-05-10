@@ -7,7 +7,7 @@ from torch.distributions.one_hot_categorical import OneHotCategorical as cat
 from torch.distributions.gamma import Gamma
 import probtorch
 
-def Init_step_eta(obs, N, K, D, oneshot_eta, enc_z):
+def Init_step_eta(obs, oneshot_eta, enc_z, N, K, D, sample_size, batch_size):
     """
     initialize eta, using oneshot encoder, and then update z using its (gibbs or neural gibbs) encoder
     return the samples and log_weights
@@ -17,7 +17,7 @@ def Init_step_eta(obs, N, K, D, oneshot_eta, enc_z):
     log_q_eta = q_eta['means'].log_prob.sum(-1) + q_eta['precisions'].log_prob.sum(-1)
     obs_mu = q_eta['means'].value
     obs_tau = q_eta['precisions'].value
-    q_z, p_z = enc_z.forward(obs, obs_tau, obs_mu, N, K)
+    q_z, p_z = enc_z.forward(obs, obs_tau, obs_mu, N, K, sample_size, batch_size)
     log_p_z = p_z['zs'].log_prob
     log_q_z = q_z['zs'].log_prob
     state = q_z['zs'].value ## S * B * N * K

@@ -110,7 +110,7 @@ def Eubo_cfz_os_eta(obs, Model_Params, device, models):
     elbos = torch.zeros(mcmc_size+1).cuda().to(device)
     esss = torch.zeros(mcmc_size+1).cuda().to(device)
     ## initialize mu, tau from the prior
-    obs_tau, obs_mu, state, log_weights_state = Init_step_eta(obs, N, K, D, oneshot_eta, enc_z)
+    obs_tau, obs_mu, state, log_weights_state = Init_step_eta(obs, oneshot_eta, enc_z, N, K, D, sample_size, batch_size)
     weights_state = F.softmax(log_weights_state, 0)
     ## EUBO, ELBO, ESS
     eubos[0] = (weights_state * log_weights_state).sum(0).sum(-1).mean()
@@ -130,7 +130,7 @@ def Eubo_cfz_os_eta(obs, Model_Params, device, models):
         ## resample eta
         obs_mu, obs_tau = resample_eta(obs_mu, obs_tau, weights_eta, idw_flag=True)
         ## update z using Gibbs sampler -- cluster assignments
-        q_z, p_z = enc_z.forward(obs, obs_tau, obs_mu, N, K)
+        q_z, p_z = enc_z.forward(obs, obs_tau, obs_mu, N, K, sample_size, batch_size)
         state = q_z['zs'].value ## S * B * N * K
     reused = (q_eta, p_eta, q_z, p_z, q_nu, enc_eta.prior_nu)
     loss = symkls.sum()

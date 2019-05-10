@@ -15,7 +15,7 @@ class Gibbs_z():
         if CUDA:
             self.prior_pi = self.prior_pi.cuda().to(device)
 
-    def forward(self, obs, obs_tau, obs_mu, N, K):
+    def forward(self, obs, obs_tau, obs_mu, N, K, sample_size, batch_size):
         q = probtorch.Trace()
         p = probtorch.Trace()
         obs_sigma = 1. / obs_tau.sqrt()
