@@ -6,8 +6,10 @@ def train_baseline(objective, optimizer, data, Train_Params, Model_Params, model
     """
     generic training function
     """
-    (NUM_EPOCHS, NUM_BATCHES, NUM_SEQS, CUDA, device, path) = Train_Params
-    (N, K, D, sample_size, batch_size) = Model_Params
+    (NUM_EPOCHS, NUM_DATASETS, S, B, CUDA, device, path) = Train_Params
+    ## (N, K, D) = Model_Params
+    NUM_BATCHES = int((NUM_DATASETS / B))
+
     for epoch in range(NUM_EPOCHS):
         metrics = dict()
         time_start = time.time()
@@ -19,7 +21,7 @@ def train_baseline(objective, optimizer, data, Train_Params, Model_Params, model
             obs = shuffler(obs).repeat(sample_size, 1, 1, 1)
             if CUDA:
                 obs =obs.cuda().to(device)
-            loss, metric_step, reused = objective(obs, Model_Params, device, models)
+            loss, metric_step, reused = objective(obs, Model_Params, S, B, device, models)
             ## gradient step
             loss.backward()
             optimizer.step()
