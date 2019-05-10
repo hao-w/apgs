@@ -50,3 +50,21 @@ def Incremental_eta(q_eta, p_eta, obs, state, K, D, obs_tau_prev, obs_mu_prev):
     log_obs_prev = Log_likelihood(obs, state, obs_tau_prev, obs_mu_prev, K, D, cluster_flag=True)
     log_w_backward = log_obs_prev + log_p_eta_prev - log_q_eta_prev
     return obs_tau, obs_mu, log_w_forward, log_w_backward
+
+
+def Incremental_z(q_z, p_z, obs, obs_tau, obs_mu, K, D, state_prev):
+    """
+    Given the current samples for global variable (eta = mu + tau),
+    sample new local variable (state).
+    """
+    log_p_z = p_z['zs'].log_prob
+    log_q_z = q_z['zs'].log_prob
+    state = q_z['zs'].value
+    log_obs = Log_likelihood(obs, state, obs_tau, obs_mu, K, D, cluster_flag=False)
+    log_w_forward = log_obs + log_p_z - log_q_z
+    ## backward
+    log_p_z_prev = cat(probs=p_z['zs'].dist.probs).log_prob(state_prev)
+    log_q_z_prev = cat(probs=q_z['zs'].dist.probs).log_prob(state_prev)
+    log_obs_prev = Log_likelihood(obs, state_prev, obs_tau, obs_mu, K, D, cluster_flag=False)
+    log_w_backward = log_obs_prev + log_p_z_prev - log_q_z_prev
+    return state, log_w_forward, log_w_backward

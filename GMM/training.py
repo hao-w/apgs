@@ -28,9 +28,9 @@ def train(models, objective, optimizer, data, Model_Params, Train_Params):
             optimizer.step()
             for key in metric_step.keys():
                 if key in metrics:
-                    metrics[key] += metric_step[key]
+                    metrics[key] += metric_step[key].sum().item()
                 else:
-                    metrics[key] = metric_step[key]
+                    metrics[key] = metric_step[key].sum().item()
             ## compute KL
             kl_step = kl_train(obs, reused, EPS)
             for key in kl_step.keys():
@@ -39,7 +39,7 @@ def train(models, objective, optimizer, data, Model_Params, Train_Params):
                 else:
                     metrics[key] = kl_step[key]
         time_end = time.time()
-        metrics_print = ",  ".join(['%s: %.3f' % (k, float(v)/NUM_BATCHES) for k, v in metrics.items()])
+        metrics_print = ",  ".join(['%s: %.3f' % (k, v/NUM_BATCHES) for k, v in metrics.items()])
         flog = open('../results/log-' + path + '.txt', 'a+')
         print(metrics_print, file=flog)
         flog.close()
