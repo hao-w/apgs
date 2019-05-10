@@ -54,7 +54,7 @@ def SKL_init_eta(models, obs, SubTrain_Params):
         state = q_z['zs'].value ## S * B * N * K
     reused = (q_eta, p_eta, q_z, p_z, q_nu, enc_eta.prior_nu)
     loss = symkls.sum()
-    metric_step = {"symKL" : symkls.sum().item(), "eubo" : eubos.sum().item(), "elbo" : elbos.sum().item(), "ess" : esss.mean().item()}
+    metric_step = {"symKL" : symkls, "eubo" : eubos, "elbo" : elbos, "ess" : esss}
     return loss, metric_step, reused
 
 
@@ -99,5 +99,5 @@ def SKL_init_z(models, obs, SubTrain_Params):
         esss[m+1] = (1. / (weights_eta**2).sum(0)).mean()
     reused = (q_eta, p_eta, q_z, p_z, q_nu, enc_eta.prior_nu)
     loss = symkls.sum()
-    metric_step = {"symKL" : symkls.sum().item(), "eubo" : eubos.sum().item(), "elbo" : elbos.sum().item(), "ess" : esss.mean().item()}
+    metric_step = {"symKL" : symkls, "eubo" : eubos, "elbo" : elbos, "ess" : esss}
     return loss, metric_step, reused

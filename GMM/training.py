@@ -28,9 +28,9 @@ def train(models, objective, optimizer, data, Model_Params, Train_Params):
             optimizer.step()
             for key in metric_step.keys():
                 if key in metrics:
-                    metrics[key] += metric_step[key].sum().item()
+                    metrics[key] += metric_step[key].mean().item()
                 else:
-                    metrics[key] = metric_step[key].sum().item()
+                    metrics[key] = metric_step[key].mean().item()
             ## compute KL
             kl_step = kl_train(obs, reused, EPS)
             for key in kl_step.keys():
