@@ -4,7 +4,7 @@ import probtorch
 from torch.distributions.normal import Normal
 from torch.distributions.one_hot_categorical import OneHotCategorical as cat
 from torch.distributions.gamma import Gamma
-from normal_gamma_conjugacy import *
+from normal_gamma import *
 
 class Oneshot_eta(nn.Module):
     def __init__(self, K, D, CUDA, device):

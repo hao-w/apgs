@@ -2,7 +2,6 @@ import numpy as np
 import torch
 import torch.nn as nn
 from collections.abc import Iterable
-from model_naive_natparam import *
 
 def initialize(K, D, B, S, HG, HL, L, CUDA, device, LR):
     enc_eta = LSTM_eta(K, D, B, S, HG, L, CUDA, device)
@@ -44,7 +43,7 @@ class LSTM_eta(nn.Module):
         out_seqs, self.hidden = self.lstm(in_seqs, self.hidden)
         out_seqs = out_seqs.transpose(0, 1).reshape(S, B, T, -1)
         # out_last = out_seqs[:, :, T-1, :]
-        # Computing sufficient stats 
+        # Computing sufficient stats
         gammas = self.gamma(out_seqs)
         xs = self.ob(out_seqs)
         #Computing true post params
@@ -81,16 +80,16 @@ class LSTM_eta(nn.Module):
         return obs_mu, obs_sigma
 
 # def packSeq(Seqs, Lens, batch_size=None):
-#     if batch_size is None: 
+#     if batch_size is None:
 #         batch_size = len(Seqs)
 #     num_batches = len(Seqs) // batch_size
-    
+
 #     batches = []
 #     for b in range(num_batches):
 #         Seqs_batch_sorted = []
 #         Lens_batch_sorted = []
 #         # Sort Sequences
-#         for l,s in sorted(zip(Lens[b*batch_size:(b+1)*batch_size], 
+#         for l,s in sorted(zip(Lens[b*batch_size:(b+1)*batch_size],
 #                                 Seqs[b*batch_size:(b+1)*batch_size]),
 #                             key=lambda pair: -pair[0]):
 #             Seqs_batch_sorted.append(s)
@@ -102,6 +101,3 @@ class LSTM_eta(nn.Module):
 #         Seqs_batch_packed  = torch.nn.utils.rnn.pack_padded_sequence(Seqs_batch_padded, Lens_batch_sorted)
 #         batches.append((Seqs_batch_packed, Lens_batch_sorted))
 #     return batches
-                
-
-    
