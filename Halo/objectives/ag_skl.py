@@ -19,7 +19,7 @@ def SKL_init_eta(models, obs, SubTrain_Params):
     esss = torch.zeros(mcmc_size+1).cuda().to(device)
     symkls_DB_eta = torch.zeros(mcmc_size+1).cuda().to(device)
     ## initialize mu, tau from the prior
-    obs_tau, obs_mu, state, log_w_f_z = Init_step_eta(models, obs, N, K, D, sample_size, batch_size, prior_flag)
+    obs_mu, state, log_w_f_z = Init_step_eta(models, obs, N, K, D, sample_size, batch_size, prior_flag)
     w_f_z = F.softmax(log_w_f_z, 0).detach()
     if prior_flag:
         (enc_eta, enc_z) = models
@@ -33,15 +33,15 @@ def SKL_init_eta(models, obs, SubTrain_Params):
     esss[0] = (1. / (w_f_z**2).sum(0)).mean()
     for m in range(mcmc_size):
         q_eta, p_eta = enc_eta(obs, state, K, D)
-        obs_tau, obs_mu, log_w_eta_f, log_w_eta_b  = Incremental_eta(q_eta, p_eta, obs, state, K, D, obs_tau, obs_mu)
+        obs_mu, log_w_eta_f, log_w_eta_b  = Incremental_eta(q_eta, p_eta, obs, state, obs_rad, obs_sigma, K, D, obs_mu)
         symkl_detailed_balance_eta, eubo_p_q_eta, w_sym_eta, w_f_eta = detailed_balances(log_w_eta_f, log_w_eta_b)
-        obs_mu, obs_tau = resample_eta(obs_mu, obs_tau, w_f_eta, idw_flag=True) ## resample eta
-        q_z, p_z = enc_z.forward(obs, obs_tau, obs_mu, N, K, sample_size, batch_size)
-        state = q_z['zs'].value
+        obs_mu = resample_mu(obs_mu, w_f_eta, idw_flag=True) ## resample eta
+        q_z, p_z = enc_z.forward(obs, obs_mu, obs_rad, noise_sigma, N, K, sample_size, batch_size)
+        state = q_z["zs"].value
         losss[m+1] = symkl_detailed_balance_eta
         ## symmetric KLs as metrics
         symkls_DB_eta[m+1] = symkl_detailed_balance_eta
         esss[m+1] = (1. / (w_sym_eta**2).sum(0)).mean()
-    reused = (q_eta, p_eta, q_z, p_z, q_nu, enc_eta.prior_nu)
+    reused = (q_eta, p_eta, q_z, p_z)
     metric_step = {"symKL_DB_eta" : symkls_DB_eta, "loss" : losss,  "ess" : esss}
     return losss.sum(), metric_step, reused
