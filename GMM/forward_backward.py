@@ -1,5 +1,5 @@
 import torch
-import torch.nn as nn
+import torch.nn.functional as F
 from utils import *
 from normal_gamma import *
 from torch.distributions.normal import Normal
@@ -68,3 +68,28 @@ def Incremental_z(q_z, p_z, obs, obs_tau, obs_mu, K, D, state_prev):
     log_obs_prev = Log_likelihood(obs, state_prev, obs_tau, obs_mu, K, D, cluster_flag=False)
     log_w_backward = log_obs_prev + log_p_z_prev - log_q_z_prev
     return state, log_w_forward, log_w_backward
+
+
+def detailed_balances(log_w_f, log_w_b):
+    """
+    log_w_f : log \frac {p(x, z')} {q_\f (z' | z, x)}
+    log_w_b : log \frac {p(x, z)} {q_\f (z | z', x)}
+    """
+    ## symmetric KLs, i.e., Expectation w.r.t. q_\f
+    log_w_sym = log_w_f - log_w_b
+    w_sym = F.softmax(log_w_sym, 0).detach()
+    kl_f_b = - log_w_sym.sum(-1).mean()
+    kl_b_f = (w_sym * log_w_sym).sum(0).sum(-1).mean()
+    symkl_db = kl_f_b + kl_b_f
+    ## "asymmetric detailed balance"
+    w_f = F.softmax(log_w_f, 0).detach()
+    eubo_p_qf = (w_f * log_w_f).sum(0).sum(-1).mean()
+    # elbo_p_qf = log_w_f.sum(-1).mean()
+    # symkl_p_qf = eubo_p_qf - elbo_p_qf
+    #
+    eubo_p_qb = (w_f * log_w_b).sum(0).sum(-1).mean()
+    # elbo_p_qb = (w_sym * log_w_b).sum(-1).mean()
+    # symkl_p_qb = eubo_p_qb - elbo_p_qb
+
+    eubo_p_q = eubo_p_qf + eubo_p_qb
+    return symkl_db, eubo_p_q, w_sym, w_f
