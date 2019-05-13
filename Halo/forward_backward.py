@@ -67,7 +67,7 @@ def Incremental_z(q_z, p_z, obs, obs_mu, obs_rad, noise_sigma, K, D, state_prev)
     return state, log_w_forward, log_w_backward
 
 
-def detailed_balances(log_w_f, log_w_b):
+def detailed_balances(log_w_f, log_w_b, only_forward):
     """
     log_w_f : log \frac {p(x, z')} {q_\f (z' | z, x)}
     log_w_b : log \frac {p(x, z)} {q_\f (z | z', x)}
@@ -87,6 +87,8 @@ def detailed_balances(log_w_f, log_w_b):
     eubo_p_qb = (w_f * log_w_b).sum(0).sum(-1).mean()
     # elbo_p_qb = (w_sym * log_w_b).sum(-1).mean()
     # symkl_p_qb = eubo_p_qb - elbo_p_qb
-
-    eubo_p_q = eubo_p_qf
+    if only_forward:
+        eubo_p_q = eubo_p_qf
+    else:
+        eubo_p_q = eubo_p_qf + eubo_p_qb
     return symkl_db, eubo_p_q, w_sym, w_f

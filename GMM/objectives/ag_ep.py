@@ -17,7 +17,7 @@ def EUBO_init_eta(models, obs, SubTrain_Params):
     non-reparameterized-style gradient estimation
     initialize eta
     """
-    (device, sample_size, batch_size, N, K, D, mcmc_size, prior_flag) = SubTrain_Params
+    (device, sample_size, batch_size, N, K, D, mcmc_size, prior_flag, only_forward) = SubTrain_Params
     losss = torch.zeros(mcmc_size+1).cuda().to(device)
     esss = torch.zeros(mcmc_size+1).cuda().to(device)
     symkls_DB_eta = torch.zeros(mcmc_size+1).cuda().to(device)
@@ -40,11 +40,11 @@ def EUBO_init_eta(models, obs, SubTrain_Params):
         state = resample_state(state, w_f_z, idw_flag=True) ## resample state
         q_eta, p_eta, q_nu = enc_eta(obs, state, K, D)
         obs_tau, obs_mu, log_w_eta_f, log_w_eta_b  = Incremental_eta(q_eta, p_eta, obs, state, K, D, obs_tau, obs_mu)
-        symkl_detailed_balance_eta, eubo_p_q_eta, w_sym_eta, w_f_eta = detailed_balances(log_w_eta_f, log_w_eta_b)
+        symkl_detailed_balance_eta, eubo_p_q_eta, w_sym_eta, w_f_eta = detailed_balances(log_w_eta_f, log_w_eta_b, only_forward=only_forward)
         obs_mu, obs_tau = resample_eta(obs_mu, obs_tau, w_f_eta, idw_flag=True) ## resample eta
         q_z, p_z = enc_z.forward(obs, obs_tau, obs_mu, N, K, sample_size, batch_size)
         state, log_w_z_f, log_w_z_b = Incremental_z(q_z, p_z, obs, obs_tau, obs_mu, K, D, state)
-        symkl_detailed_balance_z, eubo_p_q_z, w_sym_z, w_f_z = detailed_balances(log_w_z_f, log_w_z_b)
+        symkl_detailed_balance_z, eubo_p_q_z, w_sym_z, w_f_z = detailed_balances(log_w_z_f, log_w_z_b, only_forward=only_forward)
         losss[m+1] = eubo_p_q_eta + eubo_p_q_z
         ## symmetric KLs as metrics
         symkls_DB_eta[m+1] = symkl_detailed_balance_eta
