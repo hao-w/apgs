@@ -32,7 +32,7 @@ def train(models, objective, optimizer, data, Model_Params, Train_Params):
                 else:
                     metrics[key] = metric_step[key].mean().item()
             ## compute KL
-            kl_step = kl_train(obs, reused, EPS)
+            kl_step = kl_train((enc_eta, enc_z), obs, reused, EPS)
             for key in kl_step.keys():
                 if key in metrics:
                     metrics[key] += kl_step[key]
@@ -58,23 +58,23 @@ def test(models, objective, Data, Model_Params, Train_Params):
     loss, metric_step, reused = objective(models, obs, SubTrain_Params)
     return obs, metric_step, reused
 
-def kl_train(obs, reused, EPS):
-    (q_eta, p_eta, q_z, p_z, q_nu, pr_nu) = reused
+def kl_train(models, obs, reused, EPS):
+    (enc_eta, enc_z) = models
+    (state) = reused
     S, B, N, D = obs.shape
+    q_eta, p_eta, q_nu = enc_eta(obs, state, K, D)
+    obs_mu = q_eta['means'].value
+    obs_tau = q_eta['precisions'].value
+    q_z, p_z = enc_z.forward(obs, obs_tau, obs_mu, N, K, sample_size, batch_size)
     ## KLs for mu and sigma based on Normal-Gamma prior
     q_alpha = q_eta['precisions'].dist.concentration
     q_beta = q_eta['precisions'].dist.rate
     q_mu = q_eta['means'].dist.loc
     q_pi = q_z['zs'].dist.probs
-
     pr_alpha = p_eta['precisions'].dist.concentration
     pr_beta = p_eta['precisions'].dist.rate
     pr_mu = p_eta['means'].dist.loc
     pr_pi = p_z['zs'].dist.probs
-
-    state = q_z['zs'].value
-    obs_mu = q_eta['means'].value
-    obs_tau = q_eta['precisions'].value
 
     _, _, _, K = state.shape
     post_alpha, post_beta, post_mu, post_nu = Post_eta(obs, state, pr_alpha, pr_beta, pr_mu, pr_nu, K, D)

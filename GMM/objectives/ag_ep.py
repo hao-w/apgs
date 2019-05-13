@@ -22,8 +22,7 @@ def EUBO_init_eta(models, obs, SubTrain_Params):
     esss = torch.zeros(mcmc_size+1).cuda().to(device)
     symkls_DB_eta = torch.zeros(mcmc_size+1).cuda().to(device)
     symkls_DB_z = torch.zeros(mcmc_size+1).cuda().to(device)
-
-
+    
     obs_tau, obs_mu, state, log_w_f_z = Init_step_eta(models, obs, N, K, D, sample_size, batch_size, prior_flag)
     w_f_z = F.softmax(log_w_f_z, 0).detach()
     if prior_flag:
@@ -53,7 +52,7 @@ def EUBO_init_eta(models, obs, SubTrain_Params):
         symkls_DB_eta[m+1] = symkl_detailed_balance_eta
         symkls_DB_z[m+1] = symkl_detailed_balance_z
         esss[m+1] = ((1. / (w_sym_eta**2).sum(0)).mean() + (1. / (w_sym_z**2).sum(0)).mean() ) / 2
-    reused = (q_eta, p_eta, q_z, p_z, q_nu, enc_eta.prior_nu)
+    reused = (state)
     metric_step = {"symKL_DB_eta" : symkls_DB_eta, "symKL_DB_z" : symkls_DB_z, "loss" : losss,  "ess" : esss}
     return losss.sum(), metric_step, reused
 

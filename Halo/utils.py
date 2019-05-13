@@ -64,3 +64,11 @@ def True_Log_likelihood(obs, state, obs_mu, obs_rad, noise_sigma, K, D, cluster_
     if cluster_flag:
         log_distance = torch.cat([((labels==k).float() * log_distance).sum(-1).unsqueeze(-1) for k in range(K)], -1) # S * B * K
     return log_distance
+
+def Learn_log_likelihood(dec_x, obs, state, obs_mu, obs_rad, noise_sigma, K, cluster_flag=False):
+    p_recon = dec_x(obs, state, obs_mu, obs_rad, noise_sigma)
+    log_obs = p_recon['x_recon'].log_prob.sum(-1)
+    labels = state.argmax(-1)
+    if cluster_flag:
+        log_obs = torch.cat([((labels==k).float() * log_obs).sum(-1).unsqueeze(-1) for k in range(K)], -1) # S * B * K
+    return log_obs
