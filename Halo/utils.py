@@ -36,13 +36,14 @@ def resample_mu(obs_mu, weights):
     obs_mu_r = torch.gather(obs_mu, 0, ancesters)
     return obs_mu_r
 
-def resample_state(state, weights):
-    """
-    weights is S * B * N
-    """
+def resample_state(state, weights, idw_flag=True):
     S, B, N, K = state.shape
-    ancesters = Categorical(weights.transpose(0,1).transpose(1,2)).sample((S, )).unsqueeze(-1).repeat(1, 1, 1, K) ## S * B * N * K
-    state_r = torch.gather(state, 0, ancesters)
+    if idw_flag: ## individual importance weight S * B * K
+        ancesters = Categorical(weights.permute(1, 2, 0)).sample((S, )).unsqueeze(-1).repeat(1, 1, 1, K) ## S * B * N * K
+        state_r = torch.gather(state, 0, ancesters)
+    else: ## joint importance weight S * B
+        ancesters = Categorical(weights.transpose(0,1)).sample((S, )).unsqueeze(-1).unsqueeze(-1).repeat(1, 1, N, K) ## S * B * N * K
+        state_r = torch.gather(state, 0, ancesters)
     return state_r
 
 def True_Log_likelihood(obs, state, obs_mu, obs_rad, noise_sigma, K, D, cluster_flag=False, fixed_radius=True):

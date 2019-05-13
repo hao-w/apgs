@@ -16,7 +16,7 @@ def Init_step_eta(models, obs, obs_rad, noise_sigma, N, K, D, sample_size, batch
         obs_mu = enc_eta.sample_prior(sample_size, batch_size)
     else:
         (oneshot_eta, enc_eta, enc_z) = models
-        q_eta, p_eta = oneshot_eta(obs, K, D)
+        q_eta, p_eta = oneshot_eta(obs, K, D, sample_size, batch_size)
         log_p_eta = p_eta['means'].log_prob.sum(-1)
         log_q_eta = q_eta['means'].log_prob.sum(-1)
         obs_mu = q_eta['means'].value
