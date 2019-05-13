@@ -36,8 +36,8 @@ def EUBO_init_eta(models, obs, SubTrain_Params):
         losss[0] = (w_f_z * log_w_f_z).sum(0).mean()  ## weights S * B
         symkls_DB_eta[0] = (w_f_z * log_w_f_z).sum(0).mean() - log_w_f_z.mean()
         symkls_DB_z[0] = symkls_DB_eta[0] ##
-        gaps_eta[0] = symkls_DB_eta
-        gaps_z[0] = symkls_DB_eta
+        gaps_eta[0] = symkls_DB_eta[0]
+        gaps_z[0] = symkls_DB_eta[0]
     esss[0] = (1. / (w_f_z**2).sum(0)).mean()
     for m in range(mcmc_size):
         if m == 0:
