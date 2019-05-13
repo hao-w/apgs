@@ -27,9 +27,9 @@ def train(models, objective, optimizer, data, Model_Params, Train_Params):
             optimizer.step()
             for key in metric_step.keys():
                 if key in metrics:
-                    metrics[key] += metric_step[key].mean().item()
+                    metrics[key] += metric_step[key][-1].item()
                 else:
-                    metrics[key] = metric_step[key].mean().item()
+                    metrics[key] = metric_step[key][-1].item()
 
         time_end = time.time()
         metrics_print = ",  ".join(['%s: %.3f' % (k, v/NUM_BATCHES) for k, v in metrics.items()])

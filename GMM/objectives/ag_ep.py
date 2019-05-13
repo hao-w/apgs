@@ -22,7 +22,7 @@ def EUBO_init_eta(models, obs, SubTrain_Params):
     esss = torch.zeros(mcmc_size+1).cuda().to(device)
     symkls_DB_eta = torch.zeros(mcmc_size+1).cuda().to(device)
     symkls_DB_z = torch.zeros(mcmc_size+1).cuda().to(device)
-    
+
     obs_tau, obs_mu, state, log_w_f_z = Init_step_eta(models, obs, N, K, D, sample_size, batch_size, prior_flag)
     w_f_z = F.softmax(log_w_f_z, 0).detach()
     if prior_flag:

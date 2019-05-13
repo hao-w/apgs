@@ -30,9 +30,9 @@ def train(models, objective, optimizer, data, Model_Params, Train_Params):
             optimizer.step()
             for key in metric_step.keys():
                 if key in metrics:
-                    metrics[key] += metric_step[key].mean().item()
+                    metrics[key] += metric_step[key][-1].item()
                 else:
-                    metrics[key] = metric_step[key].mean().item()
+                    metrics[key] = metric_step[key][-1].item()
             ## compute KL
             kl_step = kl_train(models, obs, reused, EPS)
             for key in kl_step.keys():
@@ -79,7 +79,7 @@ def kl_train(models, obs, reused, EPS):
     pr_mu = p_eta['means'].dist.loc
     pr_nu = enc_eta.prior_nu
     pr_pi = p_z['zs'].dist.probs
-    
+
     post_alpha, post_beta, post_mu, post_nu = Post_eta(obs, state, pr_alpha, pr_beta, pr_mu, pr_nu, K, D)
     kl_eta_ex, kl_eta_in = kls_NGs(q_alpha, q_beta, q_mu, q_nu, post_alpha, post_beta, post_mu, post_nu)
     ## KLs for cluster assignments
