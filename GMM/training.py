@@ -10,7 +10,9 @@ def train(models, objective, optimizer, data, Model_Params, Train_Params):
     SubTrain_Params = (device, S, B) + Model_Params
 
     NUM_BATCHES = int((NUM_DATASETS / B))
-    EPS = torch.FloatTensor([1e-15]).log().cuda().to(device) ## EPS for KL between categorial distributions
+    EPS = torch.FloatTensor([1e-15]).log() ## EPS for KL between categorial distributions
+    if CUDA:
+        EPS = EPS.cuda().to(device) ## EPS for KL between categorial distributions
     for epoch in range(NUM_EPOCHS):
         metrics = dict()
         time_start = time.time()
