@@ -22,8 +22,12 @@ class LSTM_eta(nn.Module):
         self.Reparameterized = Reparameterized
 
         self.lstm = nn.LSTM(D, H, L)
-        self.hidden = (torch.zeros(L, B*S, H).cuda().to(device),
-                       torch.zeros(L, B*S, H).cuda().to(device))
+        if CUDA:
+            self.hidden = (torch.zeros(L, B*S, H).cuda().to(device),
+                        torch.zeros(L, B*S, H).cuda().to(device))
+        else:
+            self.hidden = (torch.zeros(L, B*S, H),
+                           torch.zeros(L, B*S, H))
 
         self.gamma = nn.Sequential(
             nn.Linear(H, K),
