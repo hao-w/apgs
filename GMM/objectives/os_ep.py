@@ -26,10 +26,10 @@ def EP(models, obs, SubTrain_Params):
     log_weights = log_obs_n.sum(-1) + log_p_z.sum(-1) - log_q_z.sum(-1) + log_p_eta.sum(-1) - log_q_eta.sum(-1)
     weights = F.softmax(log_weights, 0).detach()
     ## EUBO, ELBO, ESS
-    eubo = (weights * log_weights).sum(0).mean()
-    elbo = log_weights.mean()
-    ess = (1. / (weights**2).sum(0)).mean()
-    loss = eubo
-    metric_step = {"eubo" : eubo.item(), "elbo" : elbo.item(), "ess" : ess.item()}
+    eubo = (weights * log_weights).sum(0)
+    elbo = log_weights.mean(0)
+    ess = (1. / (weights**2).sum(0))
+    loss = eubo.mean()
+    metric_step = {"eubo" : eubo, "elbo" : elbo, "ess" : ess}
     reused = (q_eta, p_eta, q_z, p_z, q_nu, oneshot_eta.prior_nu)
     return loss, metric_step, reused
