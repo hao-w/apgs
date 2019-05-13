@@ -37,7 +37,10 @@ def EUBO_init_eta(models, obs, SubTrain_Params):
         symkls_DB_z[0] = symkls_DB_eta[0] ##
     esss[0] = (1. / (w_f_z**2).sum(0)).mean()
     for m in range(mcmc_size):
-        state = resample_state(state, w_f_z, idw_flag=True) ## resample state
+        if m == 0:
+            state = resample_state(state, w_f_z, idw_flag=prior_flag) ## resample state
+        else:
+            state = resample_state(state, w_f_z, idw_flag=True)
         q_eta, p_eta, q_nu = enc_eta(obs, state, K, D)
         obs_tau, obs_mu, log_w_eta_f, log_w_eta_b  = Incremental_eta(q_eta, p_eta, obs, state, K, D, obs_tau, obs_mu)
         symkl_detailed_balance_eta, eubo_p_q_eta, w_sym_eta, w_f_eta = detailed_balances(log_w_eta_f, log_w_eta_b, only_forward=only_forward)

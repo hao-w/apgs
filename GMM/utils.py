@@ -27,6 +27,7 @@ def resample_eta(obs_mu, obs_sigma, weights, idw_flag=True):
         obs_sigma_r = torch.gather(obs_sigma, 0, ancesters)
     return obs_mu_r, obs_sigma_r
 
+
 def resample_state(state, weights, idw_flag=True):
     S, B, N, K = state.shape
     if idw_flag: ## individual importance weight S * B * K

@@ -36,7 +36,7 @@ def EUBO_init_eta(models, obs, SubTrain_Params):
     esss[0] = (1. / (w_f_z**2).sum(0)).mean()
     for m in range(mcmc_size):
         if m == 0:
-            state = resample_state(state, w_f_z, idw_flag=False) ## resample state
+            state = resample_state(state, w_f_z, idw_flag=prior_flag) ## resample state
         else:
             state = resample_state(state, w_f_z, idw_flag=True)
         q_eta, p_eta = enc_eta(obs, state, K, sample_size, batch_size)
