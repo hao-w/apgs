@@ -45,7 +45,7 @@ def train(models, objective, optimizer, data, Model_Params, Train_Params):
         flog.close()
         print("epoch: %d\\%d (%ds),  " % (epoch, NUM_EPOCHS, time_end - time_start) + metrics_print)
 
-def test(models, objective, Data, Train_Params):
+def test(models, objective, Data, Model_Params, Train_Params):
     (NUM_EPOCHS, NUM_DATASETS, S, B, CUDA, device, path) = Train_Params
     SubTrain_Params = (device, S, B) + Model_Params
     ##(N, K, D, mcmc_size) = Model_Params
