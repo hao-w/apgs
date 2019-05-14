@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 from utils import *
-from forward_backward import *
+from forward_backward_rad import *
 import probtorch
 """
 EUBO : loss function is  E_{p(z'|x)}[KL(p(z | z', x) || q_\f(z | z', x))]
@@ -24,33 +24,31 @@ def EUBO_init_eta(models, obs, SubTrain_Params):
     gaps_eta = torch.zeros(mcmc_size+1).cuda().to(device)
     gaps_z = torch.zeros(mcmc_size+1).cuda().to(device)
 
+    obs_mu, state, rad, log_w_f = Init_step_eta(models, obs, noise_sigma, N, K, D, sample_size, batch_size)
+    w_f = F.softmax(log_w_f, 0).detach()
 
-    obs_mu, state, log_w_f_z = Init_step_eta(models, obs, obs_rad, noise_sigma, N, K, D, sample_size, batch_size, prior_flag)
-    w_f_z = F.softmax(log_w_f_z, 0).detach()
-    if prior_flag:
-        (enc_eta, enc_z) = models
-        losss[0] = (w_f_z * log_w_f_z).sum(0).sum(-1).mean() ## weights S * B * N
-        symkls_DB_z[0] = (w_f_z * log_w_f_z).sum(0).sum(-1).mean() - log_w_f_z.sum(-1).mean()
-    else:
-        (oneshot_eta, enc_eta, enc_z) = models
-        losss[0] = (w_f_z * log_w_f_z).sum(0).mean()  ## weights S * B
-        symkls_DB_eta[0] = (w_f_z * log_w_f_z).sum(0).mean() - log_w_f_z.mean()
-        symkls_DB_z[0] = symkls_DB_eta[0] ##
-        gaps_eta[0] = symkls_DB_eta[0]
-        gaps_z[0] = symkls_DB_eta[0]
-    esss[0] = (1. / (w_f_z**2).sum(0)).mean()
+    (oneshot_eta, enc_eta, enc_z, enc_rad) = models
+    losss[0] = (w_f * log_w_f).sum(0).mean()  ## weights S * B
+    #symkls_DB_eta[0] = (w_f_z * log_w_f_z).sum(0).mean() - log_w_f_z.mean()
+    #symkls_DB_z[0] = symkls_DB_eta[0] ##
+    #gaps_eta[0] = symkls_DB_eta[0]
+    #gaps_z[0] = symkls_DB_eta[0]
+    esss[0] = (1. / (w_f**2).sum(0)).mean()
     for m in range(mcmc_size):
         if m == 0:
-            state = resample_state(state, w_f_z, idw_flag=prior_flag) ## resample state
+            obs_mu = resample_mu(state, w_f, idw_flag=False) ## resample state
+            rad = resample_rad(rad, w_f, idw_flag=False)
         else:
-            state = resample_state(state, w_f_z, idw_flag=True)
+            obs_mu = resample_mu(state, w_f_z, idw_flag=True)
+        q_z, p_z = enc_z.forward(obs, obs_mu, obs_rad, noise_sigma, N, K, sample_size, batch_size)
+        state, log_w_z_f, log_w_z_b = Incremental_z(q_z, p_z, obs, obs_mu, rad, noise_sigma, K, D, state)
+        symkl_detailed_balance_z, eubo_p_q_z, gap_gibbs_q_z, w_sym_z, w_f_z = detailed_balances(log_w_z_f, log_w_z_b, only_forward=only_forward)
+        
         q_eta, p_eta = enc_eta(obs, state, K, sample_size, batch_size)
-        obs_mu, log_w_eta_f, log_w_eta_b  = Incremental_eta(q_eta, p_eta, obs, state, obs_rad, noise_sigma, K, D, obs_mu)
+        obs_mu, log_w_eta_f, log_w_eta_b  = Incremental_eta(q_eta, p_eta, obs, state, rad, noise_sigma, K, D, obs_mu)
         symkl_detailed_balance_eta, eubo_p_q_eta, gap_gibbs_q_eta, w_sym_eta, w_f_eta = detailed_balances(log_w_eta_f, log_w_eta_b, only_forward=only_forward)
         obs_mu = resample_mu(obs_mu, w_f_eta) ## resample eta
-        q_z, p_z = enc_z.forward(obs, obs_mu, obs_rad, noise_sigma, N, K, sample_size, batch_size)
-        state, log_w_z_f, log_w_z_b = Incremental_z(q_z, p_z, obs, obs_mu, obs_rad, noise_sigma, K, D, state)
-        symkl_detailed_balance_z, eubo_p_q_z, gap_gibbs_q_z, w_sym_z, w_f_z = detailed_balances(log_w_z_f, log_w_z_b, only_forward=only_forward)
+
         losss[m+1] = eubo_p_q_eta + eubo_p_q_z
         gaps_eta[m+1] = gap_gibbs_q_eta
         gaps_z[m+1] = gap_gibbs_q_z

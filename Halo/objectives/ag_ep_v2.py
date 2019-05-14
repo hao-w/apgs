@@ -16,7 +16,7 @@ def EUBO_init_eta_v2(models, obs, SubTrain_Params, p_flag):
     non-reparameterized-style gradient estimation
     initialize eta
     """
-    (device, sample_size, batch_size, obs_rad, noise_sigma, N, K, D, mcmc_size, only_forward) = SubTrain_Params
+    (device, sample_size, batch_size, obs_rad, noise_sigma, N, K, D, mcmc_size) = SubTrain_Params
     losss = torch.zeros(mcmc_size+1).cuda().to(device)
     esss = torch.zeros(mcmc_size+1).cuda().to(device)
     symkls_DB_eta = torch.zeros(mcmc_size+1).cuda().to(device)
@@ -27,7 +27,7 @@ def EUBO_init_eta_v2(models, obs, SubTrain_Params, p_flag):
     w_f_z = F.softmax(log_w_f_z, 0).detach()
 
     (oneshot_eta, enc_eta, enc_z, dec_x) = models
-    if p_flag == True:
+    if p_flag:
         losss[0] = - log_w_f_z.mean()
     else:
         losss[0] = (w_f_z * log_w_f_z).sum(0).mean()  ## EUBO for updating inference network
@@ -39,12 +39,12 @@ def EUBO_init_eta_v2(models, obs, SubTrain_Params, p_flag):
         else:
             state = resample_state(state, w_f_z, idw_flag=True)
         q_eta, p_eta = enc_eta(obs, state, K, sample_size, batch_size)
-        obs_mu, log_w_eta_f, log_w_eta_b  = Incremental_eta(dec_x, q_eta, p_eta, obs, state, obs_rad, noise_sigma, K, D, obs_mu)
-        symkl_detailed_balance_eta, eubo_p_q_eta, elbo_p_q_eta, w_sym_eta, w_f_eta = detailed_balances(log_w_eta_f, log_w_eta_b, only_forward=only_forward)
-        obs_mu = resample_mu(obs_mu, w_f_eta) ## resample eta
+        obs_mu, log_w_eta_f, log_w_eta_b, x_recon  = Incremental_eta(dec_x, q_eta, p_eta, obs, state, obs_rad, noise_sigma, K, D, obs_mu)
+        symkl_detailed_balance_eta, eubo_p_q_eta, elbo_p_q_eta, w_sym_eta, w_f_eta = detailed_balances(log_w_eta_f, log_w_eta_b)
+        obs_mu = resample_mu(obs_mu, w_f_eta, idw_flag=True) ## resample eta
         q_z, p_z = enc_z.forward(obs, obs_mu, obs_rad, noise_sigma, N, K, sample_size, batch_size)
-        state, log_w_z_f, log_w_z_b = Incremental_z(dec_x, q_z, p_z, obs, obs_mu, obs_rad, noise_sigma, K, D, state)
-        symkl_detailed_balance_z, eubo_p_q_z, elbo_p_q_z, w_sym_z, w_f_z = detailed_balances(log_w_z_f, log_w_z_b, only_forward=only_forward)
+        state, log_w_z_f, log_w_z_b, x_recon = Incremental_z(dec_x, q_z, p_z, obs, obs_mu, obs_rad, noise_sigma, K, D, state)
+        symkl_detailed_balance_z, eubo_p_q_z, elbo_p_q_z, w_sym_z, w_f_z = detailed_balances(log_w_z_f, log_w_z_b)
         if p_flag:
             losss[m+1] = - elbo_p_q_z - elbo_p_q_eta
         else:
@@ -54,6 +54,6 @@ def EUBO_init_eta_v2(models, obs, SubTrain_Params, p_flag):
         symkls_DB_eta[m] = symkl_detailed_balance_eta
         symkls_DB_z[m] = symkl_detailed_balance_z
         esss[m+1] = ((1. / (w_sym_eta**2).sum(0)).mean() + (1. / (w_sym_z**2).sum(0)).mean() ) / 2
-    reused = (q_eta, p_eta, q_z, p_z)
+    reused = (q_eta, p_eta, q_z, p_z, x_recon)
     metric_step = {"symKL_DB_eta" : symkls_DB_eta, "symKL_DB_z" : symkls_DB_z, "gap" : gaps, "loss" : losss,  "ess" : esss}
     return losss.sum(), metric_step, reused

@@ -26,7 +26,7 @@ def train_v2(models, objective, optimizer_enc, optimizer_dec, data, Model_Params
             loss.backward()
             optimizer_enc.step()
             ## update generative network
-            optimizer_enc.zero_grad()
+            optimizer_dec.zero_grad()
             loss, metric_step, reused = objective(models, obs, SubTrain_Params, p_flag=True)
             ## gradient step
             loss.backward()
@@ -56,5 +56,5 @@ def test_v2(models, objective, Data, Model_Params, Train_Params):
     obs = shuffler(obs).repeat(S, 1, 1, 1)
     if CUDA:
         obs =obs.cuda().to(device)
-    loss, metric_step, reused = objective(models, obs, SubTrain_Params)
+    loss, metric_step, reused = objective(models, obs, SubTrain_Params, p_flag)
     return obs, metric_step, reused

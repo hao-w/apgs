@@ -16,25 +16,16 @@ def weights_init(m):
 
 from torch.distributions.categorical import Categorical
 
-def resample_eta(obs_mu, obs_rad, weights):
-    """
-    weights is S * B * K
-    """
+def resample_mu(obs_mu, weights, idw_flag=True):
     S, B, K, D = obs_mu.shape
-    ancesters_mu = Categorical(weights.transpose(0,1).transpose(1,2)).sample((S, )).unsqueeze(-1).repeat(1, 1, 1, D) ## S * B * K * D
-    ancesters_rad = Categorical(weights.transpose(0,1).transpose(1,2)).sample((S, )).unsqueeze(-1) ## S * B * K * 1
-    obs_mu_r = torch.gather(obs_mu, 0, ancesters_mu)
-    obs_rad_r = torch.gather(obs_rad, 0, ancesters_rad)
-    return obs_mu_r, obs_rad_r
-
-def resample_mu(obs_mu, weights):
-    """
-    weights is S * B * K
-    """
-    S, B, K, D = obs_mu.shape
-    ancesters = Categorical(weights.transpose(0,1).transpose(1,2)).sample((S, )).unsqueeze(-1).repeat(1, 1, 1, D) ## S * B * K * D
-    obs_mu_r = torch.gather(obs_mu, 0, ancesters)
+    if idw_flag: ## individual importance weight S * B * K
+        ancesters = Categorical(weights.permute(1, 2, 0)).sample((S, )).unsqueeze(-1).repeat(1, 1, 1, D)
+        obs_mu_r = torch.gather(obs_mu, 0, ancesters)
+    else: ## joint importance weight S * B
+        ancesters = Categorical(weights.transpose(0,1)).sample((S, )).unsqueeze(-1).unsqueeze(-1).repeat(1, 1, K, D)
+        obs_mu_r = torch.gather(obs_mu, 0, ancesters)
     return obs_mu_r
+
 
 def resample_state(state, weights, idw_flag=True):
     S, B, N, K = state.shape
@@ -45,6 +36,17 @@ def resample_state(state, weights, idw_flag=True):
         ancesters = Categorical(weights.transpose(0,1)).sample((S, )).unsqueeze(-1).unsqueeze(-1).repeat(1, 1, N, K) ## S * B * N * K
         state_r = torch.gather(state, 0, ancesters)
     return state_r
+
+def resample_rad(rad, weights, idw_flag=True):
+    S, B, N, 1 = rad.shape
+    if idw_flag: ## individual importance weight S * B * K
+        ancesters = Categorical(weights.permute(1, 2, 0)).sample((S, )).unsqueeze(-1) ## S * B * N * 1
+        rad_r = torch.gather(rad, 0, ancesters)
+    else: ## joint importance weight S * B
+        ancesters = Categorical(weights.transpose(0,1)).sample((S, )).unsqueeze(-1).unsqueeze(-1).repeat(1, 1, N, 1) ## S * B * N * K
+        rad_r = torch.gather(rad, 0, ancesters)
+    return rad_r
+
 
 def True_Log_likelihood(obs, state, obs_mu, obs_rad, noise_sigma, K, D, cluster_flag=False, fixed_radius=True):
     """
@@ -71,4 +73,4 @@ def Learn_log_likelihood(dec_x, obs, state, obs_mu, obs_rad, noise_sigma, K, clu
     labels = state.argmax(-1)
     if cluster_flag:
         log_obs = torch.cat([((labels==k).float() * log_obs).sum(-1).unsqueeze(-1) for k in range(K)], -1) # S * B * K
-    return log_obs
+    return log_obs, p_recon['x_recon'].value
