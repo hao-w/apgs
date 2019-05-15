@@ -80,10 +80,11 @@ class Enc_eta(nn.Module):
                  value=q['means'],
                  name='means')
 
-        means = q['means']
-        stat_mu1 = torch.cat((mean_stats[:,:,0,:].unsqueeze(-1), means[:,:,0,:].unsqueeze(-1), -1))
-        stat_mu2 = torch.cat((mean_stats[:,:,1,:].unsqueeze(-1), means[:,:,1,:].unsqueeze(-1), -1))
-        stat_mu3 = torch.cat((mean_stats[:,:,2,:].unsqueeze(-1), means[:,:,2,:].unsqueeze(-1), -1))
+        means = q['means'].value
+        
+        stat_mu1 = torch.cat((mean_stats[:,:,0,:], means[:,:,0,:]), -1)
+        stat_mu2 = torch.cat((mean_stats[:,:,1,:], means[:,:,1,:]), -1)
+        stat_mu3 = torch.cat((mean_stats[:,:,2,:], means[:,:,2,:]), -1)
 
         q_radi_alpha = torch.cat((self.radi_log_alpha(stat_mu1).exp().unsqueeze(-2), self.radi_log_alpha(stat_mu2).exp().unsqueeze(-2), self.radi_log_alpha(stat_mu3).exp().unsqueeze(-2)), -2)
         q_radi_beta = torch.cat((self.radi_log_beta(stat_mu1).exp().unsqueeze(-2), self.radi_log_beta(stat_mu2).exp().unsqueeze(-2), self.radi_log_beta(stat_mu3).exp().unsqueeze(-2)), -2)

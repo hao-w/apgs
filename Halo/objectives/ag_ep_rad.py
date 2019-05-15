@@ -19,11 +19,11 @@ def EUBO_init_eta(models, obs, SubTrain_Params):
     (device, sample_size, batch_size, noise_sigma, N, K, D, mcmc_size) = SubTrain_Params
     losss = torch.zeros(mcmc_size+1).cuda().to(device)
     esss = torch.zeros(mcmc_size+1).cuda().to(device)
-    symkls_DB_eta = torch.zeros(mcmc_size+1).cuda().to(device)
-    symkls_DB_z = torch.zeros(mcmc_size+1).cuda().to(device)
+    symkls_DB_eta = torch.zeros(mcmc_size).cuda().to(device)
+    symkls_DB_z = torch.zeros(mcmc_size).cuda().to(device)
     gaps = torch.zeros(mcmc_size+1).cuda().to(device)
 
-    obs_mu, radi, state, log_w_f_z = Init_step_eta(models, obs, obs_rad, noise_sigma, N, K, D, sample_size, batch_size)
+    obs_mu, radi, state, log_w_f_z = Init_step_eta(models, obs, noise_sigma, N, K, D, sample_size, batch_size)
     w_f_z = F.softmax(log_w_f_z, 0).detach()
 
     (oneshot_eta, enc_eta, enc_z) = models
