@@ -16,6 +16,20 @@ def weights_init(m):
 
 from torch.distributions.categorical import Categorical
 
+def resample_eta(obs_mu, radi, weights, idw_flag=True):
+    S, B, K, D = obs_mu.shape
+    if idw_flag: ## individual importance weight S * B * K
+        ancesters_mu = Categorical(weights.permute(1, 2, 0)).sample((S, )).unsqueeze(-1).repeat(1, 1, 1, D)
+        ancesters_radi = Categorical(weights.permute(1, 2, 0)).sample((S, )).unsqueeze(-1)
+        obs_mu_r = torch.gather(obs_mu, 0, ancesters_mu)
+        radi_r = torch.gather(radi, 0, ancesters_radi)
+    else: ## joint importance weight S * B
+        ancesters_mu = Categorical(weights.transpose(0,1)).sample((S, )).unsqueeze(-1).unsqueeze(-1).repeat(1, 1, K, D)
+        ancesters_radi = Categorical(weights.transpose(0,1)).sample((S, )).unsqueeze(-1).unsqueeze(-1).repeat(1, 1, K, 1)
+        obs_mu_r = torch.gather(obs_mu, 0, ancesters_mu)
+        radi_r = torch.gather(radi, 0, ancesters_radi)
+    return obs_mu_r, radi_r
+
 def resample_mu(obs_mu, weights, idw_flag=True):
     S, B, K, D = obs_mu.shape
     if idw_flag: ## individual importance weight S * B * K
@@ -37,17 +51,6 @@ def resample_state(state, weights, idw_flag=True):
         state_r = torch.gather(state, 0, ancesters)
     return state_r
 
-def resample_rad(rad, weights, idw_flag=True):
-    S, B, N, _ = rad.shape
-    if idw_flag: ## individual importance weight S * B * K
-        ancesters = Categorical(weights.permute(1, 2, 0)).sample((S, )).unsqueeze(-1) ## S * B * N * 1
-        rad_r = torch.gather(rad, 0, ancesters)
-    else: ## joint importance weight S * B
-        ancesters = Categorical(weights.transpose(0,1)).sample((S, )).unsqueeze(-1).unsqueeze(-1).repeat(1, 1, N, 1) ## S * B * N * K
-        rad_r = torch.gather(rad, 0, ancesters)
-    return rad_r
-
-
 def True_Log_likelihood(obs, state, obs_mu, obs_rad, noise_sigma, K, D, cluster_flag=False, fixed_radius=True):
     """
     cluster_flag = False : return S * B * N
@@ -67,20 +70,18 @@ def True_Log_likelihood(obs, state, obs_mu, obs_rad, noise_sigma, K, D, cluster_
         log_distance = torch.cat([((labels==k).float() * log_distance).sum(-1).unsqueeze(-1) for k in range(K)], -1) # S * B * K
     return log_distance
 
-def True_Log_likelihood_rad(obs, state, obs_mu, obs_rad, noise_sigma, cluster_flag=False):
+def True_Log_likelihood_rad(obs, state, obs_mu, radi, noise_sigma, K, D, cluster_flag=False):
     """
     cluster_flag = False : return S * B * N
     cluster_flag = True, return S * B * K
     """
-    S, B, N, D = obs.shape
-    _, _, _, K = state.shape
     labels = state.argmax(-1)
     labels_mu = labels.unsqueeze(-1).repeat(1, 1, 1, D)
+    # labels_rad = labels.unsqueeze(-1)
     obs_mu_expand = torch.gather(obs_mu, 2, labels_mu)
-    distance = ((obs - obs_mu_expand)**2).sum(-1).sqrt().unsqueeze(-1)
-
-    obs_dist = Normal(obs_rad, noise_sigma.repeat(S, B, N, 1))
-    log_distance = (obs_dist.log_prob(distance) - (2*math.pi*distance).log()).sum(-1)
+    distance = ((obs - obs_mu_expand)**2).sum(-1).sqrt()
+    obs_dist = Normal(torch.gather(radi.squeeze(-1), 2, labels), noise_sigma)
+    log_distance = obs_dist.log_prob(distance) - (2*math.pi*distance).log()
     if cluster_flag:
         log_distance = torch.cat([((labels==k).float() * log_distance).sum(-1).unsqueeze(-1) for k in range(K)], -1) # S * B * K
     return log_distance
