@@ -172,3 +172,4 @@ symKL_DB_eta: 574.098,  symKL_DB_z: 5.582,  gap: 572.156,  loss: -4153.886,  ess
 symKL_DB_eta: 573.626,  symKL_DB_z: 5.557,  gap: 571.580,  loss: -4155.844,  ess: 5.508
 symKL_DB_eta: 564.166,  symKL_DB_z: 5.659,  gap: 562.234,  loss: -4152.876,  ess: 5.509
 symKL_DB_eta: 565.558,  symKL_DB_z: 5.304,  gap: 563.838,  loss: -4144.066,  ess: 5.509
+symKL_DB_eta: 571.124,  symKL_DB_z: 5.250,  gap: 569.312,  loss: -4140.002,  ess: 5.511

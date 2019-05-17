@@ -22,7 +22,7 @@ def data_to_stats(obs, states):
     stat3 = (states_expand * (obs_expand**2)).sum(2)
     return stat1, stat2, stat3
 # ============================
-class Enc_eta_v2(nn.Module):
+class Enc_eta(nn.Module):
     def __init__(self, K, D, num_hidden, num_stats, CUDA, device, Reparameterized):
         super(self.__class__, self).__init__()
         self.Reparameterized = Reparameterized
