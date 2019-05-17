@@ -1,10 +1,9 @@
 import torch
 import torch.nn as nn
+import probtorch
 import torch.nn.functional as F
 from torch.distributions.normal import Normal
 from torch.distributions.one_hot_categorical import OneHotCategorical as cat
-import probtorch
-import math
 
 class Gibbs_z():
     """
@@ -16,18 +15,17 @@ class Gibbs_z():
         if CUDA:
             self.prior_pi = self.prior_pi.cuda().to(device)
 
-    def forward(self, obs, obs_mu, obs_rad, noise_sigma, N, K, sample_size, batch_size):
-        obs_mu_expand = obs_mu.unsqueeze(-2).repeat(1, 1, 1, N, 1) # S * B * K * N * D
-        obs_expand = obs.unsqueeze(2).repeat(1, 1, K, 1, 1) #  S * B * K * N * D
-        distance = ((obs_expand - obs_mu_expand)**2).sum(-1).sqrt()
-        obs_dist = Normal(obs_rad.repeat(1, 1, 1, N),  noise_sigma.repeat(sample_size, batch_size, K, N))
-        log_distance = (obs_dist.log_prob(distance) - (2*math.pi*distance).log()).transpose(-1, -2) + self.prior_pi.log() # S * B * N * K
-
-        q_pi = F.softmax(log_distance, -1)
+    def forward(self, obs, obs_tau, obs_mu, N, K, sample_size, batch_size):
         q = probtorch.Trace()
         p = probtorch.Trace()
-        z = cat(q_pi).sample()
-        _ = q.variable(cat, probs=q_pi, value=z, name='zs')
+        obs_sigma = 1. / obs_tau.sqrt()
+        obs_mu_expand = obs_mu.unsqueeze(-2).repeat(1, 1, 1, N, 1) # S * B * K * N * D
+        obs_sigma_expand = obs_sigma.unsqueeze(-2).repeat(1, 1, 1, N, 1) # S * B * K * N * D
+        obs_expand = obs.unsqueeze(2).repeat(1, 1, K, 1, 1) #  S * B * K * N * D
+        log_gammas = Normal(obs_mu_expand, obs_sigma_expand).log_prob(obs_expand).sum(-1).transpose(-1, -2) + self.prior_pi.log() # S * B * N * K
+        q_probs = F.softmax(log_gammas, dim=-1)
+        z = cat(q_probs).sample()
+        _ = q.variable(cat, probs=q_probs, value=z, name='zs')
         _ = p.variable(cat, probs=self.prior_pi, value=z, name='zs')
         return q, p
 

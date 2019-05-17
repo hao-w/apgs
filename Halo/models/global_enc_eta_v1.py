@@ -53,7 +53,7 @@ class Enc_eta_v2(nn.Module):
             nn.Linear(num_hidden, 1))
 
         self.prior_mean_mu = torch.zeros((K, D))
-        self.prior_mean_sigma = torch.ones((K, D)) * 7.0
+        self.prior_mean_sigma = torch.ones((K, D)) * 4.0
         self.prior_radi_alpha = torch.ones((K, 1)) * 8.0
         self.prior_radi_beta = torch.ones((K, 1)) * 16.0
 
