@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 from utils import *
-from forward_backward_rad import *
+from forward_backward_rad_v3 import *
 import probtorch
 """
 EUBO : loss function is  E_{p(z'|x)}[KL(p(z | z', x) || q_\f(z | z', x))]

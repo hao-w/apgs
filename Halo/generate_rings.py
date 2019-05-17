@@ -18,7 +18,7 @@ def rings(K, bound, N, rad_low, rad_high, period, noise_std):
     obs = []
     states = []
     rads = []
-    mus = np.random.normal(0, 4, (K, 2))
+    mus = np.random.uniform(-bound+rad_high, bound-rad_high, (K, 2))
     for k in range(K):
         pos, rad = ring(N, period, rad_low, rad_high, noise_std)
         state = np.zeros(K)

@@ -1,0 +1,3 @@
+symKL_DB_eta: 2344.378,  symKL_DB_z: 8078.599,  gap: 10367.488,  loss: -2267.807,  ess: 4.159
+symKL_DB_eta: 1703.869,  symKL_DB_z: 986.943,  gap: 2652.383,  loss: -2502.197,  ess: 4.745
+symKL_DB_eta: 1591.801,  symKL_DB_z: 997.914,  gap: 2552.474,  loss: -2205.964,  ess: 4.723

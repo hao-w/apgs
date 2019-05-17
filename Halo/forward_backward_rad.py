@@ -6,48 +6,28 @@ from torch.distributions.one_hot_categorical import OneHotCategorical as cat
 from torch.distributions.gamma import Gamma
 import probtorch
 
-def Init_step_eta(models, obs, noise_sigma, N, K, D, sample_size, batch_size):
+def Init_step_eta(models, obs, noise_sigma, K):
     """
     initialize eta, using oneshot encoder, and then update z using its (gibbs or neural gibbs) encoder
     return the samples and log_weights
     """
 
     (oneshot_eta, enc_eta, enc_z) = models
-    q_eta, p_eta = oneshot_eta(obs, K, D, sample_size, batch_size)
+    q_eta, p_eta = oneshot_eta(obs, K)
     log_p_eta = p_eta['means'].log_prob.sum(-1) + p_eta['radi'].log_prob.sum(-1)
     log_q_eta = q_eta['means'].log_prob.sum(-1) + q_eta['radi'].log_prob.sum(-1)
     obs_mu = q_eta['means'].value
     radi = q_eta['radi'].value
 
-    q_z, p_z = enc_z.forward(obs, obs_mu, radi, noise_sigma, N, K, sample_size, batch_size)
+    q_z, p_z = enc_z.forward(obs, obs_mu, radi, noise_sigma)
     log_p_z = p_z['zs'].log_prob
     log_q_z = q_z['zs'].log_prob
     state = q_z['zs'].value ## S * B * N * K
-    log_obs_n = True_Log_likelihood_rad(obs, state, obs_mu, radi, noise_sigma, K, D, cluster_flag=False)
+    log_obs_n = True_Log_likelihood_rad(obs, state, obs_mu, radi, noise_sigma, cluster_flag=False)
     log_weights = log_obs_n.sum(-1) + log_p_z.sum(-1) - log_q_z.sum(-1) + log_p_eta.sum(-1) - log_q_eta.sum(-1)
     return obs_mu, radi, state, log_weights
 
-
-def Init_step_z(models, obs, noise_sigma, N, K, D, sample_size, batch_size):
-    """
-    initialize eta, using oneshot encoder, and then update z using its (gibbs or neural gibbs) encoder
-    return the samples and log_weights
-    """
-
-    (oneshot_eta, enc_eta, enc_z) = models
-    state = enc_z.sample_prior(N, sample_size, batch_size)
-    
-    q_eta, p_eta = enc_eta(obs, state, K, sample_size, batch_size)
-    log_p_eta = p_eta['means'].log_prob.sum(-1) + p_eta['radi'].log_prob.sum(-1)
-    log_q_eta = q_eta['means'].log_prob.sum(-1) + q_eta['radi'].log_prob.sum(-1)
-    obs_mu = q_eta['means'].value
-    radi = q_eta['radi'].value
-    
-    log_obs_n = True_Log_likelihood_rad(obs, state, obs_mu, radi, noise_sigma, K, D, cluster_flag=True)
-    log_weights = log_obs_n + log_p_eta - log_q_eta
-    return obs_mu, radi, state, log_weights
-
-def Incremental_eta(q_eta, p_eta, obs, state, noise_sigma, K, D, obs_mu_prev, radi_prev):
+def Incremental_eta(q_eta, p_eta, obs, state, noise_sigma, obs_mu_prev, radi_prev):
     """
     Given the current samples for local variable (state),
     sample new global variable (eta = mu ).
@@ -56,17 +36,17 @@ def Incremental_eta(q_eta, p_eta, obs, state, noise_sigma, K, D, obs_mu_prev, ra
     log_q_eta = q_eta['means'].log_prob.sum(-1) + q_eta['radi'].log_prob.sum(-1)
     obs_mu = q_eta['means'].value
     radi = q_eta['radi'].value
-    log_obs = True_Log_likelihood_rad(obs, state, obs_mu, radi, noise_sigma, K, D, cluster_flag=True)
+    log_obs = True_Log_likelihood_rad(obs, state, obs_mu, radi, noise_sigma, cluster_flag=True)
     log_w_forward = log_obs + log_p_eta - log_q_eta
     ## backward
     log_p_eta_prev = Normal(p_eta['means'].dist.loc, p_eta['means'].dist.scale).log_prob(obs_mu_prev).sum(-1) + Gamma(p_eta['radi'].dist.concentration, p_eta['radi'].dist.rate).log_prob(radi_prev).sum(-1)
     log_q_eta_prev = Normal(q_eta['means'].dist.loc, q_eta['means'].dist.scale).log_prob(obs_mu_prev).sum(-1) + Gamma(q_eta['radi'].dist.concentration, q_eta['radi'].dist.rate).log_prob(radi_prev).sum(-1)
-    log_obs_prev = True_Log_likelihood_rad(obs, state, obs_mu_prev, radi_prev, noise_sigma, K, D, cluster_flag=True)
+    log_obs_prev = True_Log_likelihood_rad(obs, state, obs_mu_prev, radi_prev, noise_sigma, cluster_flag=True)
     log_w_backward = log_obs_prev + log_p_eta_prev - log_q_eta_prev
     return obs_mu, radi, log_w_forward, log_w_backward
 
 
-def Incremental_z(q_z, p_z, obs, obs_mu, radi, noise_sigma, K, D, state_prev):
+def Incremental_z(q_z, p_z, obs, obs_mu, radi, noise_sigma, state_prev):
     """
     Given the current samples for global variable (eta = mu),
     sample new local variable (state).
@@ -74,12 +54,12 @@ def Incremental_z(q_z, p_z, obs, obs_mu, radi, noise_sigma, K, D, state_prev):
     log_p_z = p_z['zs'].log_prob
     log_q_z = q_z['zs'].log_prob
     state = q_z['zs'].value
-    log_obs = True_Log_likelihood_rad(obs, state, obs_mu, radi, noise_sigma, K, D, cluster_flag=False)
+    log_obs = True_Log_likelihood_rad(obs, state, obs_mu, radi, noise_sigma, cluster_flag=False)
     log_w_forward = log_obs + log_p_z - log_q_z
     ## backward
     log_p_z_prev = cat(probs=p_z['zs'].dist.probs).log_prob(state_prev)
     log_q_z_prev = cat(probs=q_z['zs'].dist.probs).log_prob(state_prev)
-    log_obs_prev = True_Log_likelihood_rad(obs, state_prev, obs_mu, radi, noise_sigma, K, D, cluster_flag=False)
+    log_obs_prev = True_Log_likelihood_rad(obs, state_prev, obs_mu, radi, noise_sigma, cluster_flag=False)
     log_w_backward = log_obs_prev + log_p_z_prev - log_q_z_prev
     return state, log_w_forward, log_w_backward
 
