@@ -22,11 +22,17 @@ class Enc_z(nn.Module):
         q = probtorch.Trace()
         p = probtorch.Trace()
         gamma_list = []
+        radi = radi.repeat((sample_size, batch_size, N, 1))
         for k in range(K):
-            data_ck = torch.cat((obs, obs_mu[:, :, k, :].unsqueeze(-2).repeat(1,1,N,1), radi[:, :, k, :].unsqueeze(-2).repeat(1,1,N,1)), -1)
+            data_ck = torch.cat((obs, obs_mu[:, :, k, :].unsqueeze(-2).repeat(1,1,N,1), radi), -1)
             gamma_list.append(self.pi_log_prob(data_ck))
         q_probs = F.softmax(torch.cat(gamma_list, -1), -1) # S * B * N * K
         z = cat(q_probs).sample()
         _ = q.variable(cat, probs=q_probs, value=z, name='zs')
         _ = p.variable(cat, probs=self.prior_pi, value=z, name='zs')
         return q, p
+    
+    def sample_prior(self, N, sample_size, batch_size):
+        p_init_z = cat(self.prior_pi)
+        state = p_init_z.sample((sample_size, batch_size, N,))
+        return state

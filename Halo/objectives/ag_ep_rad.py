@@ -35,7 +35,7 @@ def EUBO_init_eta(models, obs, SubTrain_Params):
             state = resample_state(state, w_f_z, idw_flag=False) ## resample state
         else:
             state = resample_state(state, w_f_z, idw_flag=True)
-        q_eta, p_eta = enc_eta(obs, state, K, sample_size, batch_size)
+        q_eta, p_eta = enc_eta(obs, state, radi, K, sample_size, batch_size)
         obs_mu, radi, log_w_eta_f, log_w_eta_b  = Incremental_eta(q_eta, p_eta, obs, state, noise_sigma, K, D, obs_mu, radi)
         symkl_detailed_balance_eta, eubo_p_q_eta, gap_gibbs_q_eta, w_sym_eta, w_f_eta = detailed_balances(log_w_eta_f, log_w_eta_b)
         obs_mu, radi = resample_eta(obs_mu, radi, w_f_eta, idw_flag=True) ## resample eta
@@ -83,7 +83,7 @@ def EUBO_init_z(models, obs, SubTrain_Params):
         q_eta, p_eta = enc_eta(obs, state, K, sample_size, batch_size)
         obs_mu, radi, log_w_eta_f, log_w_eta_b  = Incremental_eta(q_eta, p_eta, obs, state, noise_sigma, K, D, obs_mu, radi)
         symkl_detailed_balance_eta, eubo_p_q_eta, gap_gibbs_q_eta, w_sym_eta, w_f_eta = detailed_balances(log_w_eta_f, log_w_eta_b)        
-        losss[m+1] = eubo_p_q_eta + eubo_p_q_z
+        losss[m+1] = (eubo_p_q_eta + eubo_p_q_z) * ((m+1) / mcmc_size)
         gaps[m+1] = gap_gibbs_q_eta +  gap_gibbs_q_z
         ## symmetric KLs as metrics
         symkls_DB_eta[m] = symkl_detailed_balance_eta
