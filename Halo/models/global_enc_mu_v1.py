@@ -49,9 +49,11 @@ class Enc_mu(nn.Module):
         stat_mu1 = torch.cat((self.prior_mean_mu[0].repeat(sample_size, batch_size, 1), self.prior_mean_sigma[0].repeat(sample_size, batch_size, 1), mean_stats[:,:,0,:]), -1)
         stat_mu2 = torch.cat((self.prior_mean_mu[1].repeat(sample_size, batch_size, 1), self.prior_mean_sigma[1].repeat(sample_size, batch_size, 1), mean_stats[:,:,1,:]), -1)
         stat_mu3 = torch.cat((self.prior_mean_mu[2].repeat(sample_size, batch_size, 1), self.prior_mean_sigma[2].repeat(sample_size, batch_size, 1), mean_stats[:,:,2,:]), -1)
+        stat_mu4 = torch.cat((self.prior_mean_mu[3].repeat(sample_size, batch_size, 1), self.prior_mean_sigma[3].repeat(sample_size, batch_size, 1), mean_stats[:,:,3,:]), -1)
+        stat_mu5 = torch.cat((self.prior_mean_mu[4].repeat(sample_size, batch_size, 1), self.prior_mean_sigma[4].repeat(sample_size, batch_size, 1), mean_stats[:,:,4,:]), -1)
 
-        q_mean_mu = torch.cat((self.mean_mu(stat_mu1).unsqueeze(-2), self.mean_mu(stat_mu2).unsqueeze(-2), self.mean_mu(stat_mu3).unsqueeze(-2)), -2)
-        q_mean_sigma = torch.cat((self.mean_log_sigma(stat_mu1).exp().unsqueeze(-2), self.mean_log_sigma(stat_mu2).exp().unsqueeze(-2), self.mean_log_sigma(stat_mu3).exp().unsqueeze(-2)), -2)
+        q_mean_mu = torch.cat((self.mean_mu(stat_mu1).unsqueeze(-2), self.mean_mu(stat_mu2).unsqueeze(-2), self.mean_mu(stat_mu3).unsqueeze(-2), self.mean_mu(stat_mu4).unsqueeze(-2), self.mean_mu(stat_mu5).unsqueeze(-2)), -2)
+        q_mean_sigma = torch.cat((self.mean_log_sigma(stat_mu1).exp().unsqueeze(-2), self.mean_log_sigma(stat_mu2).exp().unsqueeze(-2), self.mean_log_sigma(stat_mu3).exp().unsqueeze(-2), self.mean_log_sigma(stat_mu4).exp().unsqueeze(-2), self.mean_log_sigma(stat_mu5).exp().unsqueeze(-2)), -2)
         if self.Reparameterized:
             q.normal(q_mean_mu,
                      q_mean_sigma,

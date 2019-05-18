@@ -26,7 +26,7 @@ def plot_rings(obs, states, K, bound):
     ax = fig.add_subplot(1,1,1)
     for k in range(K):
         obs_k = obs[np.where(assignments==k)]
-        ax.scatter(obs_k[:,0], obs_k[:, 1], c=colors[k])
+        ax.scatter(obs_k[:,0], obs_k[:, 1])
     ax.set_xlim([-bound, bound])
     ax.set_ylim([-bound, bound])
 
