@@ -11,9 +11,9 @@ class Enc_eta(nn.Module):
 
         self.Reparameterized = Reparameterized
 
-        self.gamma = nn.Sequential(
-            nn.Linear(K+D, K),
-            nn.Softmax(-1))
+#         self.gamma = nn.Sequential(
+#             nn.Linear(K+D, K),
+#             nn.Softmax(-1))
 
         self.ob = nn.Sequential(
             nn.Linear(K+D, D))
@@ -32,9 +32,8 @@ class Enc_eta(nn.Module):
         q = probtorch.Trace()
         p = probtorch.Trace()
         local_vars = torch.cat((obs, state), -1)
-        gammas = self.gamma(local_vars) # S * B * N * K --> S * B * N * K
         xs = self.ob(local_vars)  # S * B * N * D --> S * B * N * D
-        q_alpha, q_beta, q_mu, q_nu = Post_eta(xs, gammas,
+        q_alpha, q_beta, q_mu, q_nu = Post_eta(xs, state,
                                                  self.prior_alpha, self.prior_beta, self.prior_mu, self.prior_nu, K, D)
         if self.Reparameterized:
             q.gamma(q_alpha,
