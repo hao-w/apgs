@@ -70,4 +70,4 @@ class Enc_eta(nn.Module):
         obs_tau = p_tau.sample((sample_size, batch_size,))
         p_mu = Normal(self.prior_mu.repeat(sample_size, batch_size, 1, 1), 1. / (self.prior_nu * obs_tau).sqrt())
         obs_mu = p_mu.sample()
-        return obs_mu, obs_tau
+        return obs_tau, obs_mu
