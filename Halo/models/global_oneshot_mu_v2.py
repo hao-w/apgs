@@ -8,18 +8,19 @@ import probtorch
 import math
 from utils import *
 
-class Enc_mu(nn.Module):
+class Oneshot_mu(nn.Module):
     def __init__(self, K, D, num_hidden, num_stats, CUDA, device, Reparameterized):
         super(self.__class__, self).__init__()
+
         self.Reparameterized = Reparameterized
 
         self.neural_stats = nn.Sequential(
-            nn.Linear(K+D, num_hidden),
+            nn.Linear(D, num_hidden),
             nn.Tanh(),
             nn.Linear(num_hidden, num_stats))
         
         self.gammas = nn.Sequential(
-            nn.Linear(D+K, K),
+            nn.Linear(D, K),
             nn.Softmax(-1))
         
         self.mean_mu = nn.Sequential(
@@ -39,12 +40,12 @@ class Enc_mu(nn.Module):
             self.prior_mean_mu = self.prior_mean_mu.cuda().to(device)
             self.prior_mean_sigma = self.prior_mean_sigma.cuda().to(device)
 
-    def forward(self, obs, state, K, sample_size, batch_size):
+    def forward(self, obs, K, D, sample_size, batch_size):
         q = probtorch.Trace()
         p = probtorch.Trace()
-        D = obs.shape[-1]
-        ss = self.neural_stats(torch.cat((obs, state), -1))
-        gammas = self.gammas(torch.cat((obs, state), -1))
+
+        ss = self.neural_stats(obs)
+        gammas = self.gammas(obs)
         nss = ss_to_stats(ss, gammas) # S * B * K * STAT_DIM
         
         mus = []
@@ -55,10 +56,9 @@ class Enc_mu(nn.Module):
             mus.append(mu_k.unsqueeze(-2))
             sigmas.append(sigma_k.unsqueeze(-2))
             
-            
         q_mean_mu = torch.cat(mus, -2)
         q_mean_sigma = torch.cat(sigmas, -2)
-        
+
         if self.Reparameterized:
             q.normal(q_mean_mu,
                      q_mean_sigma,
@@ -74,5 +74,5 @@ class Enc_mu(nn.Module):
                  self.prior_mean_sigma,
                  value=q['means'],
                  name='means')
-        return q, p
 
+        return q, p

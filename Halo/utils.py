@@ -85,15 +85,15 @@ def True_Log_likelihood_rad(obs, state, obs_mu, radi, noise_sigma, cluster_flag=
         log_distance = torch.cat([((labels==k).float() * log_distance).sum(-1).unsqueeze(-1) for k in range(K)], -1) # S * B * K
     return log_distance
 
-def data_to_stats(obs, states, K, D):
+def ss_to_stats(ss, state):
     """
-    stat1 : sum of I[z_n=k], S * B * K
-    stat2 : sum of I[z_n=k]*x_n, S * B * K * D
-    stat3 : sum of I[z_n=k]*x_n^2, S * B * K * D
+    ss :  S * B * N * D
+    state : S * B * N * K
+    
     """
-    stat1 = states.sum(2)
-    states_expand = states.unsqueeze(-1).repeat(1, 1, 1, 1, D)
-    obs_expand = obs.unsqueeze(-1).repeat(1, 1, 1, 1, K).transpose(-1, -2)
-    stat2 = (states_expand * obs_expand).sum(2)
-    stat3 = (states_expand * (obs_expand**2)).sum(2)
-    return stat1, stat2, stat3
+    D = ss.shape[-1]
+    K = state.shape[-1]
+    state_expand = state.unsqueeze(-1).repeat(1, 1, 1, 1, D)
+    ss_expand = ss.unsqueeze(-1).repeat(1, 1, 1, 1, K).transpose(-1, -2)
+    nss = (state_expand * ss_expand).sum(2)
+    return nss

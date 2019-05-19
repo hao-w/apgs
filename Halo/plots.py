@@ -31,7 +31,7 @@ def plot_rings(obs, states, K, bound):
     ax.set_ylim([-bound, bound])
 
 def plot_samples(obs, q_mu, q_z, K, PATH):
-    colors = ['r', 'b', 'g']
+    colors = ['r', 'b', 'g', 'm', 'y']
 
     fig = plt.figure(figsize=(25,25))
     xs = obs[0].cpu()
