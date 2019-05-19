@@ -1,5 +1,0 @@
-symKL_DB_eta: 489.662,  symKL_DB_z: 503.363,  loss: -1744.509,  ess: 2.747,  kl_eta_ex: 759.323,  kl_eta_in: 191.983,  kl_z_ex: 169.241,  kl_z_in: 32.687
-symKL_DB_eta: 388.689,  symKL_DB_z: 383.313,  loss: -1425.195,  ess: 3.029,  kl_eta_ex: 561.861,  kl_eta_in: 203.041,  kl_z_ex: 127.453,  kl_z_in: 27.208
-symKL_DB_eta: 324.350,  symKL_DB_z: 290.872,  loss: -1237.121,  ess: 3.259,  kl_eta_ex: 448.937,  kl_eta_in: 228.902,  kl_z_ex: 113.763,  kl_z_in: 24.710
-symKL_DB_eta: 291.651,  symKL_DB_z: 251.249,  loss: -1129.058,  ess: 3.349,  kl_eta_ex: 375.538,  kl_eta_in: 262.261,  kl_z_ex: 98.110,  kl_z_in: 22.388
-symKL_DB_eta: 282.089,  symKL_DB_z: 228.777,  loss: -1069.017,  ess: 3.415,  kl_eta_ex: 328.353,  kl_eta_in: 303.252,  kl_z_ex: 79.985,  kl_z_in: 19.731
