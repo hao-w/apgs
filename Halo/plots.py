@@ -20,18 +20,18 @@ def plot_cov_ellipse(cov, pos, nstd=2, ax=None, **kwargs):
     return ellip
 
 def plot_rings(obs, states, K, bound):
-    colors = ['r', 'b', 'g']
+    colors = ['r', 'b', 'g', 'k', 'y']
     assignments = states.argmax(-1)
     fig = plt.figure(figsize=(5,5))
     ax = fig.add_subplot(1,1,1)
     for k in range(K):
         obs_k = obs[np.where(assignments==k)]
-        ax.scatter(obs_k[:,0], obs_k[:, 1], c=colors[k])
+        ax.scatter(obs_k[:,0], obs_k[:, 1])
     ax.set_xlim([-bound, bound])
     ax.set_ylim([-bound, bound])
 
 def plot_samples(obs, q_mu, q_z, K, PATH):
-    colors = ['r', 'b', 'g']
+    colors = ['r', 'b', 'g', 'm', 'y']
 
     fig = plt.figure(figsize=(25,25))
     xs = obs[0].cpu()

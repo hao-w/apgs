@@ -51,7 +51,7 @@ def resample_state(state, weights, idw_flag=True):
         state_r = torch.gather(state, 0, ancesters)
     return state_r
 
-def True_Log_likelihood(obs, state, obs_mu, obs_rad, noise_sigma, K, D, cluster_flag=False, fixed_radius=True):
+def True_Log_likelihood(obs, state, obs_mu, obs_rad, noise_sigma, K, D, cluster_flag=False):
     """
     cluster_flag = False : return S * B * N
     cluster_flag = True, return S * B * K
@@ -61,20 +61,19 @@ def True_Log_likelihood(obs, state, obs_mu, obs_rad, noise_sigma, K, D, cluster_
     # labels_rad = labels.unsqueeze(-1)
     obs_mu_expand = torch.gather(obs_mu, 2, labels_mu)
     distance = ((obs - obs_mu_expand)**2).sum(-1).sqrt()
-    if fixed_radius:
-        obs_dist = Normal(obs_rad, noise_sigma)
-    else:
-        obs_dist = Normal(torch.gather(obs_rad.squeeze(-1), 2, labels), noise_sigma)
+    obs_dist = Normal(obs_rad, noise_sigma)
     log_distance = obs_dist.log_prob(distance) - (2*math.pi*distance).log()
     if cluster_flag:
         log_distance = torch.cat([((labels==k).float() * log_distance).sum(-1).unsqueeze(-1) for k in range(K)], -1) # S * B * K
     return log_distance
 
-def True_Log_likelihood_rad(obs, state, obs_mu, radi, noise_sigma, K, D, cluster_flag=False):
+def True_Log_likelihood_rad(obs, state, obs_mu, radi, noise_sigma, cluster_flag=False):
     """
     cluster_flag = False : return S * B * N
     cluster_flag = True, return S * B * K
     """
+    D = obs.shape[-1]
+    K = state.shape[-1]
     labels = state.argmax(-1)
     labels_mu = labels.unsqueeze(-1).repeat(1, 1, 1, D)
     # labels_rad = labels.unsqueeze(-1)
@@ -86,10 +85,15 @@ def True_Log_likelihood_rad(obs, state, obs_mu, radi, noise_sigma, K, D, cluster
         log_distance = torch.cat([((labels==k).float() * log_distance).sum(-1).unsqueeze(-1) for k in range(K)], -1) # S * B * K
     return log_distance
 
-def Learn_log_likelihood(dec_x, obs, state, obs_mu, obs_rad, noise_sigma, K, cluster_flag=False):
-    p_recon = dec_x(obs, state, obs_mu, obs_rad, noise_sigma)
-    log_obs = p_recon['x_recon'].log_prob.sum(-1)
-    labels = state.argmax(-1)
-    if cluster_flag:
-        log_obs = torch.cat([((labels==k).float() * log_obs).sum(-1).unsqueeze(-1) for k in range(K)], -1) # S * B * K
-    return log_obs, p_recon['x_recon'].value
+def ss_to_stats(ss, state):
+    """
+    ss :  S * B * N * D
+    state : S * B * N * K
+    
+    """
+    D = ss.shape[-1]
+    K = state.shape[-1]
+    state_expand = state.unsqueeze(-1).repeat(1, 1, 1, 1, D)
+    ss_expand = ss.unsqueeze(-1).repeat(1, 1, 1, 1, K).transpose(-1, -2)
+    nss = (state_expand * ss_expand).sum(2)
+    return nss

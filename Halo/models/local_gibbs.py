@@ -20,7 +20,7 @@ class Gibbs_z():
         obs_mu_expand = obs_mu.unsqueeze(-2).repeat(1, 1, 1, N, 1) # S * B * K * N * D
         obs_expand = obs.unsqueeze(2).repeat(1, 1, K, 1, 1) #  S * B * K * N * D
         distance = ((obs_expand - obs_mu_expand)**2).sum(-1).sqrt()
-        obs_dist = Normal(obs_rad,  noise_sigma)
+        obs_dist = Normal(obs_rad.repeat(1, 1, 1, N),  noise_sigma.repeat(sample_size, batch_size, K, N))
         log_distance = (obs_dist.log_prob(distance) - (2*math.pi*distance).log()).transpose(-1, -2) + self.prior_pi.log() # S * B * N * K
 
         q_pi = F.softmax(log_distance, -1)
