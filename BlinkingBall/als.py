@@ -6,7 +6,9 @@ def solve_rr(X, y, lamb):
     Xy = torch.matmul(X, y)
     return torch.matmul(G_inv, Xy)
 
-def solve_als(H, W, reg=1e-3, iterations=10)
+def solve_als(R, H0, W0, reg=1e-3, iterations=10):
+    H = H0.clone()
+    W = W0.clone()
     for i in range(iterations):
         for t, Rt in enumerate(R):
             H[t] = solve_rr(W, Rt, reg)

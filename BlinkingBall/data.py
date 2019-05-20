@@ -1,4 +1,5 @@
 import torch
+from torch.distributions.bernoulli import Bernoulli
 
 def gen_frames(dims, balls):
     Dy, Dx, T = dims
