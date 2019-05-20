@@ -60,7 +60,7 @@ def plot_results(EUBOs, ELBOs, ESSs, KLs_eta_ex, KLs_eta_in, KLs_z_ex, KLs_z_in,
     plt.savefig('results/train-' + PATH + '.svg')
 
 def plot_samples(obs, q_eta, q_z, PATH):
-    colors = ['r', 'b', 'g']
+    colors = ['#0077BB', '#009988', '#EE7733']
     fig = plt.figure(figsize=(25,50))
     xs = obs[0].cpu().data.numpy()
     E_z = q_z['zs'].dist.probs[0].cpu().data.numpy()
