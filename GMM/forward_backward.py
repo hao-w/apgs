@@ -12,7 +12,7 @@ def Init_step_eta(models, obs, N, K, D, sample_size, batch_size):
     initialize eta, using oneshot encoder, and then update z using its (gibbs or neural gibbs) encoder
     return the samples and log_weights
     """
-    (oneshot_eta, enc_eta, enc_z) = models
+    (oneshot_eta, enc_z) = models
     q_eta, p_eta, q_nu = oneshot_eta(obs, K, D)
     log_p_eta = p_eta['means'].log_prob.sum(-1) + p_eta['precisions'].log_prob.sum(-1)
     log_q_eta = q_eta['means'].log_prob.sum(-1) + q_eta['precisions'].log_prob.sum(-1)
@@ -24,7 +24,7 @@ def Init_step_eta(models, obs, N, K, D, sample_size, batch_size):
     state = q_z['zs'].value ## S * B * N * K
     log_obs_n = Log_likelihood(obs, state, obs_tau, obs_mu, K, D, cluster_flag=False)
     log_weights = log_obs_n.sum(-1) + log_p_z.sum(-1) - log_q_z.sum(-1) + log_p_eta.sum(-1) - log_q_eta.sum(-1)
-    return obs_tau, obs_mu, state, log_weights
+    return obs_tau, obs_mu, state, log_weights, q_eta, p_eta, q_z, p_z
 
 def Incremental_eta(q_eta, p_eta, obs, state, K, D, obs_tau_prev, obs_mu_prev):
     """
@@ -77,5 +77,23 @@ def detailed_balances(log_w_f, log_w_b):
     ## "asymmetric detailed balance"
     w_f = F.softmax(log_w_f, 0).detach()
     eubo_p_qf = (w_sym * log_w_f).sum(0).sum(-1).mean()
+
+    return symkl_db, eubo_p_qf, w_sym, w_f
+
+
+def detailed_balances_wf(log_w_f, log_w_b):
+    """
+    log_w_f : log \frac {p(x, z')} {q_\f (z' | z, x)}
+    log_w_b : log \frac {p(x, z)} {q_\f (z | z', x)}
+    """
+    ## symmetric KLs, i.e., Expectation w.r.t. q_\f
+    log_w_sym = log_w_f - log_w_b
+    w_sym = F.softmax(log_w_sym, 0).detach()
+    kl_f_b = - log_w_sym.sum(-1).mean()
+    kl_b_f = (w_sym * log_w_sym).sum(0).sum(-1).mean()
+    symkl_db = kl_f_b + kl_b_f
+    ## "asymmetric detailed balance"
+    w_f = F.softmax(log_w_f, 0).detach()
+    eubo_p_qf = (w_f * log_w_f).sum(0).sum(-1).mean()
 
     return symkl_db, eubo_p_qf, w_sym, w_f

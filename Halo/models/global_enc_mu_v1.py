@@ -45,13 +45,17 @@ class Enc_mu(nn.Module):
         states_expand = state.unsqueeze(-1).repeat(1, 1, 1, 1, stat_size) ## S * B * N * K * STAT_SIZE
         sum_stats = (states_expand * neural_stats_expand).sum(2) ## S * B * K * STAT_SIZE
         mean_stats = sum_stats / cluster_size.unsqueeze(-1)
+        mus = []
+        sigmas = []
+        for k in range(K):
+            stat_muk = torch.cat((self.prior_mean_mu[k].repeat(sample_size, batch_size, 1), self.prior_mean_sigma[k].repeat(sample_size, batch_size, 1), mean_stats[:,:,k,:]), -1)
+            mu_k = self.mean_mu(stat_muk)
+            sigma_k = self.mean_log_sigma(stat_muk).exp()
+            mus.append(mu_k.unsqueeze(-2))
+            sigmas.append(sigma_k.unsqueeze(-2))
 
-        stat_mu1 = torch.cat((self.prior_mean_mu[0].repeat(sample_size, batch_size, 1), self.prior_mean_sigma[0].repeat(sample_size, batch_size, 1), mean_stats[:,:,0,:]), -1)
-        stat_mu2 = torch.cat((self.prior_mean_mu[1].repeat(sample_size, batch_size, 1), self.prior_mean_sigma[1].repeat(sample_size, batch_size, 1), mean_stats[:,:,1,:]), -1)
-        stat_mu3 = torch.cat((self.prior_mean_mu[2].repeat(sample_size, batch_size, 1), self.prior_mean_sigma[2].repeat(sample_size, batch_size, 1), mean_stats[:,:,2,:]), -1)
-
-        q_mean_mu = torch.cat((self.mean_mu(stat_mu1).unsqueeze(-2), self.mean_mu(stat_mu2).unsqueeze(-2), self.mean_mu(stat_mu3).unsqueeze(-2)), -2)
-        q_mean_sigma = torch.cat((self.mean_log_sigma(stat_mu1).exp().unsqueeze(-2), self.mean_log_sigma(stat_mu2).exp().unsqueeze(-2), self.mean_log_sigma(stat_mu3).exp().unsqueeze(-2)), -2)
+        q_mean_mu = torch.cat(mus, -2)
+        q_mean_sigma = torch.cat(sigmas, -2)
         if self.Reparameterized:
             q.normal(q_mean_mu,
                      q_mean_sigma,
