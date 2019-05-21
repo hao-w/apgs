@@ -30,7 +30,7 @@ def sampling_gmm_fixed_sigma(T, K, D):
 
 def sampling_gmm_nonconjugate(T, K, D):
     obs_mu = Normal(torch.zeros((K, D)), torch.ones((K, D)) * 5).sample()
-    obs_precision = Gamma(torch.ones((K, D)) * 4, torch.ones((K, D)) * 4).sample()
+    obs_precision = Gamma(torch.ones((K, D)) * 3, torch.ones((K, D)) * 3).sample()
     obs_sigma = 1. / obs_precision.sqrt()
     Pi = torch.ones((K)) * (1. / K)
     states = cat(Pi).sample((T,))

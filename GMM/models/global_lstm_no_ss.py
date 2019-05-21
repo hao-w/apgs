@@ -1,0 +1,120 @@
+import numpy as np
+import torch
+import torch.nn as nn
+from collections.abc import Iterable
+from normal_gamma import *
+import probtorch
+#
+# def initialize(K, D, B, S, HG, HL, L, CUDA, device, LR):
+#     enc_eta = LSTM_eta(K, D, B, S, HG, L, CUDA, device)
+#     enc_z = Enc_z(K, D, HL, CUDA, device)
+#     if CUDA:
+#         enc_eta.cuda().to(device)
+#         enc_z.cuda().to(device)
+#     optimizer =  torch.optim.Adam(list(enc_z.parameters())+list(enc_eta.parameters()),lr=LR, betas=(0.9, 0.99))
+#     return enc_eta, enc_z, optimizer
+
+class LSTM_eta(nn.Module):
+
+    def __init__(self, K, D, B, S, H, L, CUDA, device, Reparameterized):
+        super(self.__class__, self).__init__()
+
+        self.Reparameterized = Reparameterized
+
+        self.lstm = nn.LSTM(D, H, L)
+        if CUDA:
+            self.hidden = (torch.zeros(L, B*S, H).cuda().to(device),
+                        torch.zeros(L, B*S, H).cuda().to(device))
+        else:
+            self.hidden = (torch.zeros(L, B*S, H),
+                           torch.zeros(L, B*S, H))
+
+        self.log_q_alpha = nn.Sequential(
+                nn.Linear(H, K*D))
+
+        self.log_q_beta = nn.Sequential(
+                nn.Linear(H, K*D))
+
+        self.q_mu = nn.Sequential(
+                nn.Linear(H, K*D))
+        
+        self.log_q_nu = nn.Sequential(
+                nn.Linear(H, K*D)
+
+        self.ob = nn.Sequential(
+            nn.Linear(H, D))
+
+        self.prior_mu = torch.zeros((K, D))
+        self.prior_nu = torch.ones((K, D)) * 0.3
+        self.prior_alpha = torch.ones((K, D)) * 4
+        self.prior_beta = torch.ones((K, D)) * 4
+        if CUDA:
+            self.prior_mu = self.prior_mu.cuda().to(device)
+            self.prior_nu = self.prior_nu.cuda().to(device)
+            self.prior_alpha = self.prior_alpha.cuda().to(device)
+            self.prior_beta = self.prior_beta.cuda().to(device)
+
+    def forward(self, obs, K, D, batch_first=True):
+        q = probtorch.Trace()
+        p = probtorch.Trace()
+        S, B, T, D = obs.shape
+        in_seqs = obs.reshape(S*B, T, D).transpose(0, 1)
+        out_seqs, _ = self.lstm(in_seqs, self.hidden)
+        out_seqs = out_seqs.transpose(0, 1).reshape(S, B, T, -1)
+        out_last = out_seqs[:, :, T-1, :]
+        # Computing sufficient stats
+        q_alpha = torch.exp(self.log_q_alpha(out_last)).reshape(S, B, K, D)
+        q_beta = torch.exp(self.log_q_beta(out_last)).reshape(S, B, K, D)
+        q_mu = self.q_mu(out_last).reshape(S, B, K, D)
+        q_nu = torch.exp(self.log_q_nu(out_last)).reshape(S, B, K, D)
+
+        if self.Reparameterized:
+            q.gamma(q_alpha,
+                    q_beta,
+                    name='precisions')
+            q.normal(q_mu,
+                     1. / (q_nu * q['precisions'].value).sqrt(),
+                     name='means')
+        else:
+            precisions = Gamma(q_alpha, q_beta).sample()
+            q.gamma(q_alpha,
+                    q_beta,
+                    value=precisions,
+                    name='precisions')
+            means = Normal(q_mu, 1. / (q_nu * q['precisions'].value).sqrt()).sample()
+            q.normal(q_mu,
+                     1. / (q_nu * q['precisions'].value).sqrt(),
+                     value=means,
+                     name='means')
+        ## prior distributions
+        p.gamma(self.prior_alpha,
+                self.prior_beta,
+                value=q['precisions'],
+                name='precisions')
+        p.normal(self.prior_mu,
+                 1. / (self.prior_nu * p['precisions'].value).sqrt(),
+                 value=q['means'],
+                 name='means')
+        return q, p, q_nu
+# def packSeq(Seqs, Lens, batch_size=None):
+#     if batch_size is None:
+#         batch_size = len(Seqs)
+#     num_batches = len(Seqs) // batch_size
+
+#     batches = []
+#     for b in range(num_batches):
+#         Seqs_batch_sorted = []
+#         Lens_batch_sorted = []
+#         # Sort Sequences
+#         for l,s in sorted(zip(Lens[b*batch_size:(b+1)*batch_size],
+#                                 Seqs[b*batch_size:(b+1)*batch_size]),
+#                             key=lambda pair: -pair[0]):
+#             Seqs_batch_sorted.append(s)
+#             Lens_batch_sorted.append(l)
+#         Lens_batch_sorted = torch.tensor(Lens_batch_sorted, dtype=torch.long)
+
+#         # Pack Sequences
+#         Seqs_batch_padded = torch.nn.utils.rnn.pad_sequence(Seqs_batch_sorted)
+#         Seqs_batch_packed  = torch.nn.utils.rnn.pack_padded_sequence(Seqs_batch_padded, Lens_batch_sorted)
+#         batches.append((Seqs_batch_packed, Lens_batch_sorted))
+#     return batches
