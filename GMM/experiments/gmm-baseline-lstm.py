@@ -23,7 +23,7 @@ from training import *
 
 
 ## Load dataset
-data_path = "../gmm_dataset_c5k"
+data_path = "../gmm_dataset_c20k"
 Data = torch.from_numpy(np.load(data_path + '/obs.npy')).float()
 
 NUM_DATASETS, N, D = Data.shape
@@ -34,7 +34,7 @@ NUM_HIDDEN_GLOBAL = 32
 NUM_LAYERS = 32
 
 BATCH_SIZE = 20
-NUM_EPOCHS = 1000
+NUM_EPOCHS = 1
 LEARNING_RATE = 1e-4
 CUDA = torch.cuda.is_available()
 PATH = 'baseline-lstm-%dsamples' % (SAMPLE_SIZE)
@@ -66,14 +66,14 @@ models = (oneshot_eta, enc_z)
 
 
 from os_ep import *
-train(models, EP, optimizer, Data, Model_Params, Train_Params)
+train_baseline(models, EP, optimizer, Data, Model_Params, Train_Params)
 
 
 # In[5]:
-
-
-torch.save(enc_z.state_dict(), '../weights/enc-z-%s' + PATH)
-torch.save(oneshot_eta.state_dict(), '../weights/oneshot-eta-%s' + PATH)
+from datetime import datetime
+TIMESTAMP = str(datetime.now())
+torch.save(enc_z.state_dict(), '../weights/enc-z-%s' + PATH + TIMESTAMP)
+torch.save(oneshot_eta.state_dict(), '../weights/oneshot-eta-%s' + PATH + TIMESTAMP)
 
 
 # In[12]:
@@ -95,8 +95,8 @@ def test(models, objective, Data, Model_Params, Train_Params):
 
 # In[13]:
 
-
-BATCH_SIZE_TEST = 50
+# This must be the same as BATCHSIZE for LSTM
+BATCH_SIZE_TEST = BATCH_SIZE
 Train_Params_Test = (NUM_EPOCHS, NUM_DATASETS, SAMPLE_SIZE, BATCH_SIZE_TEST, CUDA, DEVICE, PATH)
 obs, metric_step, reused = test(models, EP, Data, Model_Params, Train_Params_Test)
 (q_eta, _, q_z, _, _, _) = reused

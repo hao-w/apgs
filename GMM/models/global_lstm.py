@@ -4,15 +4,6 @@ import torch.nn as nn
 from collections.abc import Iterable
 from normal_gamma import *
 import probtorch
-#
-# def initialize(K, D, B, S, HG, HL, L, CUDA, device, LR):
-#     enc_eta = LSTM_eta(K, D, B, S, HG, L, CUDA, device)
-#     enc_z = Enc_z(K, D, HL, CUDA, device)
-#     if CUDA:
-#         enc_eta.cuda().to(device)
-#         enc_z.cuda().to(device)
-#     optimizer =  torch.optim.Adam(list(enc_z.parameters())+list(enc_eta.parameters()),lr=LR, betas=(0.9, 0.99))
-#     return enc_eta, enc_z, optimizer
 
 class LSTM_eta(nn.Module):
 
@@ -24,7 +15,7 @@ class LSTM_eta(nn.Module):
         self.lstm = nn.LSTM(D, H, L)
         if CUDA:
             self.hidden = (torch.zeros(L, B*S, H).cuda().to(device),
-                        torch.zeros(L, B*S, H).cuda().to(device))
+                           torch.zeros(L, B*S, H).cuda().to(device))
         else:
             self.hidden = (torch.zeros(L, B*S, H),
                            torch.zeros(L, B*S, H))
@@ -87,25 +78,3 @@ class LSTM_eta(nn.Module):
                  value=q['means'],
                  name='means')
         return q, p, q_nu
-# def packSeq(Seqs, Lens, batch_size=None):
-#     if batch_size is None:
-#         batch_size = len(Seqs)
-#     num_batches = len(Seqs) // batch_size
-
-#     batches = []
-#     for b in range(num_batches):
-#         Seqs_batch_sorted = []
-#         Lens_batch_sorted = []
-#         # Sort Sequences
-#         for l,s in sorted(zip(Lens[b*batch_size:(b+1)*batch_size],
-#                                 Seqs[b*batch_size:(b+1)*batch_size]),
-#                             key=lambda pair: -pair[0]):
-#             Seqs_batch_sorted.append(s)
-#             Lens_batch_sorted.append(l)
-#         Lens_batch_sorted = torch.tensor(Lens_batch_sorted, dtype=torch.long)
-
-#         # Pack Sequences
-#         Seqs_batch_padded = torch.nn.utils.rnn.pad_sequence(Seqs_batch_sorted)
-#         Seqs_batch_packed  = torch.nn.utils.rnn.pack_padded_sequence(Seqs_batch_padded, Lens_batch_sorted)
-#         batches.append((Seqs_batch_packed, Lens_batch_sorted))
-#     return batches

@@ -39,10 +39,7 @@ class LSTM_eta(nn.Module):
                 nn.Linear(H, K*D))
         
         self.log_q_nu = nn.Sequential(
-                nn.Linear(H, K*D)
-
-        self.ob = nn.Sequential(
-            nn.Linear(H, D))
+                nn.Linear(H, K*D))
 
         self.prior_mu = torch.zeros((K, D))
         self.prior_nu = torch.ones((K, D)) * 0.3
@@ -61,9 +58,10 @@ class LSTM_eta(nn.Module):
         in_seqs = obs.reshape(S*B, T, D).transpose(0, 1)
         out_seqs, _ = self.lstm(in_seqs, self.hidden)
         out_seqs = out_seqs.transpose(0, 1).reshape(S, B, T, -1)
-        out_last = out_seqs[:, :, T-1, :]
+        out_last = out_seqs[:, :, T-1, :] #S, B, H
+        asd
         # Computing sufficient stats
-        q_alpha = torch.exp(self.log_q_alpha(out_last)).reshape(S, B, K, D)
+        q_alpha = torch.exp(self.log_q_alpha(out_last)).reshape(S, B, K, D) # S, B, K*D
         q_beta = torch.exp(self.log_q_beta(out_last)).reshape(S, B, K, D)
         q_mu = self.q_mu(out_last).reshape(S, B, K, D)
         q_nu = torch.exp(self.log_q_nu(out_last)).reshape(S, B, K, D)
