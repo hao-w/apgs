@@ -78,7 +78,7 @@ def test_propagation(models, objective, data, Model_Params, Train_Params):
                 Metrics[key] = [metric_step[key].cpu().data.numpy()]
             else:
                 Metrics[key].append(metric_step[key].cpu().data.numpy())
-                
+
         if step % 100 == 0:
             time_end = time.time()
             print('iteration:%d/%d' % (step, NUM_BATCHES))
@@ -162,9 +162,9 @@ def train_baseline(models, objective, optimizer, data, Model_Params, Train_Param
             optimizer.step()
             for key in metric_step.keys():
                 if key in metrics:
-                    metrics[key] += metric_step[key].item()
+                    metrics[key] += metric_step[key].mean().item()
                 else:
-                    metrics[key] = metric_step[key].item()
+                    metrics[key] = metric_step[key].mean().item()
         time_end = time.time()
         metrics_print = ",  ".join(['%s: %.3f' % (k, v/NUM_BATCHES) for k, v in metrics.items()])
         flog = open('../results/log-' + path + '.txt', 'a+')

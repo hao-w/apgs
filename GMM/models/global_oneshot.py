@@ -19,8 +19,8 @@ class Oneshot_eta(nn.Module):
 
         self.prior_mu = torch.zeros((K, D))
         self.prior_nu = torch.ones((K, D)) * 0.3
-        self.prior_alpha = torch.ones((K, D)) * 4
-        self.prior_beta = torch.ones((K, D)) * 4
+        self.prior_alpha = torch.ones((K, D)) * 2
+        self.prior_beta = torch.ones((K, D)) * 2
         if CUDA:
             self.prior_mu = self.prior_mu.cuda().to(device)
             self.prior_nu = self.prior_nu.cuda().to(device)
