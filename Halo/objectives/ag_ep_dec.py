@@ -42,11 +42,11 @@ def EUBO_fixed_radi_enc(models, obs, SubTrain_Params):
         else:
             state = resample_state(state, w_sym_z, idw_flag=True)
         q_eta, p_eta = enc_eta(obs, state, K, sample_size, batch_size)
-        obs_mu, log_w_eta_f, log_w_eta_b  = Incremental_eta(q_eta, p_eta, obs, state, obs_rad, noise_sigma, K, D, obs_mu)
+        obs_mu, log_w_eta_f, log_w_eta_b  = Incremental_eta(dec_x, q_eta, p_eta, obs, state, obs_rad, noise_sigma, K, D, obs_mu)
         db_eta, eubo_p_q_eta, elbo_p_q_eta, w_sym_eta = detailed_balances(log_w_eta_f, log_w_eta_b)
         obs_mu = resample_mu(obs_mu, w_sym_eta, idw_flag=True) ## resample eta
         q_z, p_z = enc_z.forward(obs, obs_mu, obs_rad, noise_sigma, N, K, sample_size, batch_size)
-        state, log_w_z_f, log_w_z_b = Incremental_z(q_z, p_z, obs, obs_mu, obs_rad, noise_sigma, K, D, state)
+        state, log_w_z_f, log_w_z_b = Incremental_z(dec_x, q_z, p_z, obs, obs_mu, obs_rad, noise_sigma, K, D, state)
         db_z, eubo_p_q_z, elbo_p_q_z, w_sym_z = detailed_balances(log_w_z_f, log_w_z_b)
         losss[m+1] = eubo_p_q_eta + eubo_p_q_z
         gaps_eta[m+1] = eubo_p_q_eta - elbo_p_q_eta
