@@ -4,7 +4,7 @@ import als
 import models
 torch.set_printoptions(precision=3)
 
-dims = (10, 10, 100)
+dims = (100, 100, 100)
 balls = [(3, 3, 2, 0.3), 
          (2, 8, 1, 0.5),
          (7, 7, 2, 0.9)]
@@ -22,45 +22,45 @@ W0 = torch.randn((K, T*2))
 H, W = als.solve_als(R, H0, W0)
 print('squared reconstruction error:', torch.norm(torch.matmul(H, W) - R))
 
-def train(R, H0, W0):
-    H = H0.clone()
-    W = W0.clone()
+# def train(R, H0, W0):
+#     H = H0.clone()
+#     W = W0.clone()
     
-    fH = models.Enc_H(K)
-    fW = models.Enc_W(K)
-    optimizerH = torch.optim.Adam(list(fH.parameters()), lr=1e-2)
-    mse_lossH = torch.nn.MSELoss()
-    optimizerW = torch.optim.Adam(list(fW.parameters()), lr=1e-2)
-    mse_lossW = torch.nn.MSELoss()
-    regH = .1
-    regW = .1
+#     fH = models.Enc_H(K)
+#     fW = models.Enc_W(K)
+#     optimizerH = torch.optim.Adam(list(fH.parameters()), lr=1e-2)
+#     mse_lossH = torch.nn.MSELoss()
+#     optimizerW = torch.optim.Adam(list(fW.parameters()), lr=1e-2)
+#     mse_lossW = torch.nn.MSELoss()
+#     regH = .1
+#     regW = .1
 
-    for i in range(100):
-        for i in range(500):
-            WR = torch.stack([torch.matmul(W.detach(), Rt) for Rt in R])
-            H = fH(WR)
-            lossH = mse_lossH(torch.matmul(H, W.detach()), R) + regH*torch.norm(H, p=2)
-            # for param in fH.parameters():
-            #     lossH += regH * torch.norm(param, 2)
-            lossH.backward()
-            optimizerH.step()
-            optimizerH.zero_grad()
-        print('error:', torch.norm(torch.matmul(H, W) - R))
+#     for i in range(100):
+#         for i in range(500):
+#             WR = torch.stack([torch.matmul(W.detach(), Rt) for Rt in R])
+#             H = fH(WR)
+#             lossH = mse_lossH(torch.matmul(H, W.detach()), R) + regH*torch.norm(H, p=2)
+#             # for param in fH.parameters():
+#             #     lossH += regH * torch.norm(param, 2)
+#             lossH.backward()
+#             optimizerH.step()
+#             optimizerH.zero_grad()
+#         print('error:', torch.norm(torch.matmul(H, W) - R))
 
-        for i in range(500):
-            HR = torch.stack([torch.matmul(H.t().detach(), Rt) for Rt in R.t()]) 
-            W = fW(HR).t()
-            lossW = mse_lossW(torch.matmul(H.detach(), W), R) + regW*torch.norm(W, p=2)
-            # for param in fW.parameters():
-            #     lossH += regW * torch.norm(param, 2)
-            lossW.backward()
-            optimizerW.step()
-            optimizerW.zero_grad()
+#         for i in range(500):
+#             HR = torch.stack([torch.matmul(H.t().detach(), Rt) for Rt in R.t()]) 
+#             W = fW(HR).t()
+#             lossW = mse_lossW(torch.matmul(H.detach(), W), R) + regW*torch.norm(W, p=2)
+#             # for param in fW.parameters():
+#             #     lossH += regW * torch.norm(param, 2)
+#             lossW.backward()
+#             optimizerW.step()
+#             optimizerW.zero_grad()
 
-        print('error2:', torch.norm(torch.matmul(H, W) - R))
-    return H, W
+#         print('error2:', torch.norm(torch.matmul(H, W) - R))
+#     return H, W
 
-H, W = train(R, H0, W0)
+# H, W = train(R, H0, W0)
 
 # def train_jointly(R, H0, W0):
 #     H = H0.clone()
