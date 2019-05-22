@@ -81,12 +81,13 @@ def EUBO_init_eta_joint_both(models, obs, SubTrain_Params):
         log_p = p_eta['means'].log_prob.sum(-1).sum(-1) + p_eta['precisions'].log_prob.sum(-1).sum(-1) + p_z['zs'].log_prob.sum(-1)
         log_q = q_eta['means'].log_prob.sum(-1).sum(-1) + q_eta['precisions'].log_prob.sum(-1).sum(-1) + q_z['zs'].log_prob.sum(-1)
         log_obs = Log_likelihood(obs, state, obs_tau, obs_mu, K, D, cluster_flag=False)
-        log_w_f = log_obs.sum(-1) + log_p_eta - log_q_eta ## S * B
+        log_w_f = log_obs.sum(-1) + log_p - log_q ## S * B
         log_p_prev = Normal(p_eta['means'].dist.loc, p_eta['means'].dist.scale).log_prob(obs_mu_prev).sum(-1).sum(-1) + Gamma(p_eta['precisions'].dist.concentration, p_eta['precisions'].dist.rate).log_prob(obs_tau_prev).sum(-1).sum(-1) + cat(probs=p_z['zs'].dist.probs).log_prob(state_prev).sum(-1)
         log_q_prev = Normal(q_eta['means'].dist.loc, q_eta['means'].dist.scale).log_prob(obs_mu_prev).sum(-1).sum(-1) + Gamma(q_eta['precisions'].dist.concentration, q_eta['precisions'].dist.rate).log_prob(obs_tau_prev).sum(-1).sum(-1) + cat(probs=q_z['zs'].dist.probs).log_prob(state_prev).sum(-1)
         log_obs_prev = Log_likelihood(obs, state_prev, obs_tau_prev, obs_mu_prev, K, D, cluster_flag=False)
         log_w_b = log_obs_prev.sum(-1) + log_p_prev - log_q_prev ## S * B
-        symkl_detailed_balance, eubo_p_q, w_sym, w_f = detailed_balances(log_w_f, log_w_b)
+        w_sym = F.softmax(log_w_f - log_w_b, 0).detach()
+        eubo_p_q = (w_sym * log_w_f).sum(0).sum(-1).mean()
         losss[m+1] = eubo_p_q
         ## symmetric KLs as metrics
         esss[m+1] = (1. / (w_sym**2).sum(0)).mean()
