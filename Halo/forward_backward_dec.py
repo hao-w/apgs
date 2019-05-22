@@ -27,7 +27,7 @@ def Init_step_eta(models, obs, obs_rad, noise_sigma, N, K, D, sample_size, batch
     log_weights = log_obs_n.sum(-1) + log_p_z.sum(-1) - log_q_z.sum(-1) + log_p_eta.sum(-1) - log_q_eta.sum(-1)
     return obs_mu, state, log_weights
 
-def Incremental_eta(q_eta, p_eta, obs, state, obs_rad, noise_sigma, K, D, obs_mu_prev):
+def Incremental_eta(dec_x, q_eta, p_eta, obs, state, obs_rad, noise_sigma, K, D, obs_mu_prev):
     """
     Given the current samples for local variable (state),
     sample new global variable (eta = mu ).
@@ -51,7 +51,7 @@ def Incremental_eta(q_eta, p_eta, obs, state, obs_rad, noise_sigma, K, D, obs_mu
     return obs_mu, log_w_forward, log_w_backward
 
 
-def Incremental_z(q_z, p_z, obs, obs_mu, obs_rad, noise_sigma, K, D, state_prev):
+def Incremental_z(dec_x, q_z, p_z, obs, obs_mu, obs_rad, noise_sigma, K, D, state_prev):
     """
     Given the current samples for global variable (eta = mu),
     sample new local variable (state).

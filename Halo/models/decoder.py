@@ -23,7 +23,7 @@ class Dec_x(nn.Module):
         labels = state.argmax(-1)
         labels_mu = labels.unsqueeze(-1).repeat(1, 1, 1, D)
         obs_mu_expand = torch.gather(obs_mu, 2, labels_mu)
-        distances = ((obs - obs_mu) ** 2).sum(-1).sqrt().unsqueeze(-1) ## S * B * N * 1
+        distances = ((obs - obs_mu_expand) ** 2).sum(-1).sqrt().unsqueeze(-1) ## S * B * N * 1
         vars = torch.cat((distances, obs_rad.repeat(S, B, N, 1)), -1)
         x_mu = self.x_mu(vars)
         x_sigma = self.x_log_sigma(vars).exp()
