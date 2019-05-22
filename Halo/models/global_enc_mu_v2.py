@@ -33,7 +33,7 @@ class Enc_mu(nn.Module):
             nn.Linear(num_hidden, D))
 
         self.prior_mean_mu = torch.zeros((K, D))
-        self.prior_mean_sigma = torch.ones((K, D)) * 7.0
+        self.prior_mean_sigma = torch.ones((K, D)) * 4.0
 
         if CUDA:
             self.prior_mean_mu = self.prior_mean_mu.cuda().to(device)
@@ -76,3 +76,7 @@ class Enc_mu(nn.Module):
                  name='means')
         return q, p
 
+    def sample_prior(self, sample_size, batch_size):
+        p_mu = Normal(self.prior_mean_mu, self.prior_mean_sigma)
+        obs_mu = p_mu.sample((sample_size, batch_size,))
+        return obs_mu

@@ -73,10 +73,10 @@ def detailed_balances(log_w_f, log_w_b):
     kl_b_f = (w_sym * log_w_sym).sum(0).sum(-1).mean()
     symkl_db = kl_f_b + kl_b_f
     ## "asymmetric detailed balance"
-    w_f = F.softmax(log_w_f, 0).detach()
+#     w_f = F.softmax(log_w_f, 0).detach()
     eubo_p_qf = (w_sym * log_w_f).sum(0).sum(-1).mean()
     elbo_p_qf = log_w_f.sum(-1).mean()
     # symkl_p_qf = eubo_p_qf - elbo_p_qf
     gap_gibbs_q = (eubo_p_qf - elbo_p_qf)
 
-    return symkl_db, eubo_p_qf, gap_gibbs_q, w_sym, w_f
+    return symkl_db, eubo_p_qf, gap_gibbs_q, w_sym
