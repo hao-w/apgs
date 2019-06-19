@@ -43,15 +43,15 @@ def plot_cov_ellipse(cov, pos, nstd=2, ax=None, **kwargs):
     ax.add_artist(ellip)
     return ellip
 
-def plot_clusters(Xs, mus_true, covs_true):
+def plot_clusters(Xs, mus_true, covs_true, K):
     Xs = Xs.data.numpy()
     mus_true = mus_true.data.numpy()
     covs_true = covs_true.data.numpy()
     fig, ax = plt.subplots(figsize=(6, 6))
     ax.plot(Xs[:,0], Xs[:,1], 'ro')
-    plot_cov_ellipse(cov=covs_true[0], pos=mus_true[0], nstd=2, ax=ax, alpha=0.5)
-    plot_cov_ellipse(cov=covs_true[1], pos=mus_true[1], nstd=2, ax=ax, alpha=0.5)
-    plot_cov_ellipse(cov=covs_true[2], pos=mus_true[2], nstd=2, ax=ax, alpha=0.5)
+    for k in range(K):
+        plot_cov_ellipse(cov=covs_true[k], pos=mus_true[k], nstd=2, ax=ax, alpha=0.5)
+
     ax.set_ylim([-10, 10])
     ax.set_xlim([-10, 10])
     plt.show()

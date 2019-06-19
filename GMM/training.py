@@ -3,6 +3,7 @@ import time
 from utils import *
 from normal_gamma import *
 from forward_backward import *
+from kls import *
 
 def train(models, objective, optimizer, data, Model_Params, Train_Params):
     """

@@ -41,7 +41,7 @@ def train(models, objective, optimizer, data, Model_Params, Train_Params):
 def test(models, objective, Data, Model_Params, Train_Params):
     (NUM_EPOCHS, NUM_DATASETS, S, B, CUDA, device, path) = Train_Params
     SubTrain_Params = (device, S, B) + Model_Params
-    ##(N, K, D, mcmc_size) = Model_Params
+    ##(N, K, DCharles Levine, mcmc_size) = Model_Params
     indices = torch.randperm(NUM_DATASETS)
     batch_indices = indices[0*B : (0+1)*B]
     obs = Data[batch_indices]
