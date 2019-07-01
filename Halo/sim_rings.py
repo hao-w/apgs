@@ -80,4 +80,4 @@ class Rings:
         np.save(path + '/state', STATE)
         np.save(path + '/mu', MU)
         np.save(path + '/radi', RADI)
-        np.save(path + '/angle', angle)
+        np.save(path + '/angle', ANGLE)
