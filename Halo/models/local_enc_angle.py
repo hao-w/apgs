@@ -19,11 +19,11 @@ class Enc_angle(nn.Module):
             nn.Tanh(),
             nn.Linear(num_hidden, 1))
 
-        self.prior_low = torch.zeros(1)
-        self.prior_high = torch.ones(1) * 2 * math.pi
+        self.prior_con1 = torch.ones(1)
+        self.prior_con0 = torch.ones(1)
         if CUDA:
-            self.prior_low = self.prior_low.cuda().to(device)
-            self.prior_high = self.prior_high.cuda().to(device)
+            self.prior_con1 = self.prior_con1.cuda().to(device)
+            self.prior_con0 = self.prior_con0.cuda().to(device)
     def forward(self, ob, state, mu):
         q = probtorch.Trace()
         p = probtorch.Trace()
@@ -32,16 +32,16 @@ class Enc_angle(nn.Module):
         q_angle_con1 = self.angle_log_con1(ob_mu).exp()
         q_angle_con0 = self.angle_log_con0(ob_mu).exp()
         beta_samples = Beta(q_angle_con1, q_angle_con0).sample()
-        angles = beta_samples * 2 * math.pi
+        angles = beta_samples
         q.beta(q_angle_con1,
                q_angle_con0,
                value=beta_samples,
                name='angles')
 
-        p.uniform(self.prior_low,
-                  self.prior_high,
-                  value=angles,
-                  name='angles')
+        p.beta(self.prior_con1,
+               self.prior_con0,
+               value=beta_samples,
+               name='angles')
 
 
         return q, p
