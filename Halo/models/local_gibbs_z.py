@@ -16,14 +16,15 @@ class Gibbs_z():
         if CUDA:
             self.prior_pi = self.prior_pi.cuda().to(device)
 
-    def forward(self, obs, obs_mu, obs_rad, noise_sigma, N, K, sample_size, batch_size):
-        obs_mu_expand = obs_mu.unsqueeze(-2).repeat(1, 1, 1, N, 1) # S * B * K * N * D
-        obs_expand = obs.unsqueeze(2).repeat(1, 1, K, 1, 1) #  S * B * K * N * D
-        distance = ((obs_expand - obs_mu_expand)**2).sum(-1).sqrt()
-        obs_dist = Normal(obs_rad.repeat(1, 1, 1, N),  noise_sigma.repeat(sample_size, batch_size, K, N))
-        log_distance = (obs_dist.log_prob(distance) - (2*math.pi*distance).log()).transpose(-1, -2) + self.prior_pi.log() # S * B * N * K
+    def forward(self, ob, angle, mu, radi, noise_sigma, K):
+        S, B, N, _ = ob.shape
+        mu_expand = mu.unsqueeze(-2).repeat(1, 1, 1, N, 1) # S * B * K * N * D
+        ob_expand = ob.unsqueeze(2).repeat(1, 1, K, 1, 1) #  S * B * K * N * D
+        angle_expand = angle.unsqueeze(2).repeat(1, 1, K, 1, 1) # S * B * K * N * 1
+        recon_mu = torch.cat((torch.cos(angle), torch.sin(angle)), -1) * radi + mu_expand
+        p_recon = Normal(recon_mu, noise_sigma).log_prob(ob_expand).permute(0, 1, 3, 4, 2)
 
-        q_pi = F.softmax(log_distance, -1)
+        q_pi = F.softmax(p_recon, -1)
         q = probtorch.Trace()
         p = probtorch.Trace()
         z = cat(q_pi).sample()

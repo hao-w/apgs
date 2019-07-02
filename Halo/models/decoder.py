@@ -1,36 +1,34 @@
- import torch
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.distributions.normal import Normal
 import probtorch
 import math
+from utils import *
 
 class Dec_x(nn.Module):
-    def __init__(self, D, num_hidden, CUDA, device):
+    def __init__(self, D, num_hidden, CUDA):
         super(self.__class__, self).__init__()
-        self.x_mu = nn.Sequential(
-            nn.Linear(1+1, num_hidden),
-            nn.Tanh(),
-            nn.Linear(num_hidden, D))
-        self.x_log_sigma  = nn.Sequential(
-            nn.Linear(1+1, num_hidden),
+        self.recon_mu = nn.Sequential(
+            nn.Linear(D+1, num_hidden),
             nn.Tanh(),
             nn.Linear(num_hidden, D))
 
-    def forward(self, obs, state, obs_mu, obs_rad):
+    def forward(self, ob, state, mu, angle, recon_sigma):
         p = probtorch.Trace()
-        S, B, N, D = obs.shape
-        labels = state.argmax(-1)
-        labels_mu = labels.unsqueeze(-1).repeat(1, 1, 1, D)
-        obs_mu_expand = torch.gather(obs_mu, 2, labels_mu)
-        distances = ((obs - obs_mu_expand) ** 2).sum(-1).sqrt().unsqueeze(-1) ## S * B * N * 1
-        vars = torch.cat((distances, obs_rad.repeat(S, B, N, 1)), -1)
-        x_mu = self.x_mu(vars)
-        x_sigma = self.x_log_sigma(vars).exp()
-        x_recon = Normal(x_mu, x_sigma).sample()
-        p.normal(x_mu,
-                 x_sigma,
-                 value=x_recon,
-                 name='x_recon')
+        # S, B, N, D = ob.shape
+        S, B, N, D = ob.shape
+        embedding = torch.cat((global_to_local(mu, state), angle), -1)
+        # embedding = torch.cat((mu, radi, angle), -1)
+        recon_mu = self.recon_mu(embedding)
+        # labels = state.argmax(-1)
+        # labels_mu = labels.unsqueeze(-1).repeat(1, 1, 1, D)
+        # obs_mu_expand = torch.gather(obs_mu, 2, labels_mu)
+        # distances = ((obs - obs_mu_expand) ** 2).sum(-1).sqrt().unsqueeze(-1) ## S * B * N * 1
+        # likelihood_mu = self.likelihood_mu(torch.cat((distances, obs_rad.repeat(S, B, N, 1)), -1))
+        p.normal(recon_mu,
+                 recon_sigma,
+                 value=ob,
+                 name='likelihood')
 
         return p

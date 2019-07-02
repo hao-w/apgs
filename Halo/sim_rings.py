@@ -18,7 +18,9 @@ class Rings:
         self.collapsed_noise = collapsed_noise
 
     def sim_one_ring(self):
-        angle_per_point = np.linspace(0, self.period * 2 * math.pi, self.num_points, endpoint=False)
+        
+        angle_per_point = np.linspace(0, 2 * math.pi, int(self.num_points / self.period), endpoint=True)
+        angle_per_point = np.tile(angle_per_point, self.period)
 
         if self.fixed_radi:
             radi_per_point = np.ones(self.num_points) * self.radi

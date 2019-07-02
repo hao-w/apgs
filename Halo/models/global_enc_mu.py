@@ -2,9 +2,11 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.distributions.normal import Normal
+from torch.distributions.gamma import Gamma
 from torch.distributions.one_hot_categorical import OneHotCategorical as cat
 import probtorch
 import math
+from utils import *
 
 class Enc_mu(nn.Module):
     def __init__(self, K, D, num_hidden, num_stats, CUDA, device, Reparameterized):
@@ -12,9 +14,13 @@ class Enc_mu(nn.Module):
         self.Reparameterized = Reparameterized
 
         self.neural_stats = nn.Sequential(
-            nn.Linear(K+D, num_hidden),
+            nn.Linear(K+D+1, num_hidden),
             nn.Tanh(),
             nn.Linear(num_hidden, num_stats))
+
+        # self.gammas = nn.Sequential(
+        #     nn.Linear(D+K, K),
+        #     nn.Softmax(-1))
 
         self.mean_mu = nn.Sequential(
             nn.Linear(num_stats+2*D, num_hidden),
@@ -27,7 +33,7 @@ class Enc_mu(nn.Module):
             nn.Linear(num_hidden, D))
 
         self.prior_mean_mu = torch.zeros((K, D))
-        self.prior_mean_sigma = torch.ones((K, D)) * 5.0
+        self.prior_mean_sigma = torch.ones((K, D)) * 4.0
 
         if CUDA:
             self.prior_mean_mu = self.prior_mean_mu.cuda().to(device)
@@ -36,26 +42,23 @@ class Enc_mu(nn.Module):
     def forward(self, obs, state, K, sample_size, batch_size):
         q = probtorch.Trace()
         p = probtorch.Trace()
+        D = obs.shape[-1]
+        ss = self.neural_stats(torch.cat((obs, state), -1))
+        gammas = self.gammas(torch.cat((obs, state), -1))
+        nss = ss_to_stats(ss, gammas) # S * B * K * STAT_DIM
 
-        neural_stats = self.neural_stats(torch.cat((obs, state), -1))
-        _, _, _, stat_size = neural_stats.shape
-        cluster_size = state.sum(-2)
-        cluster_size[cluster_size == 0.0] = 1.0 # S * B * K
-        neural_stats_expand = neural_stats.unsqueeze(-1).repeat(1, 1, 1, 1, K).transpose(-1, -2) ## S * B * N * K * STAT_SIZE
-        states_expand = state.unsqueeze(-1).repeat(1, 1, 1, 1, stat_size) ## S * B * N * K * STAT_SIZE
-        sum_stats = (states_expand * neural_stats_expand).sum(2) ## S * B * K * STAT_SIZE
-        mean_stats = sum_stats / cluster_size.unsqueeze(-1)
         mus = []
         sigmas = []
         for k in range(K):
-            stat_muk = torch.cat((self.prior_mean_mu[k].repeat(sample_size, batch_size, 1), self.prior_mean_sigma[k].repeat(sample_size, batch_size, 1), mean_stats[:,:,k,:]), -1)
-            mu_k = self.mean_mu(stat_muk)
-            sigma_k = self.mean_log_sigma(stat_muk).exp()
+            mu_k = self.mean_mu(torch.cat((nss[:,:,k,:], self.prior_mean_mu[k].repeat(sample_size, batch_size, 1), self.prior_mean_sigma[k].repeat(sample_size, batch_size, 1)), -1))
+            sigma_k = self.mean_log_sigma(torch.cat((nss[:,:,k,:], self.prior_mean_mu[k].repeat(sample_size, batch_size, 1), self.prior_mean_sigma[k].repeat(sample_size, batch_size, 1)), -1)).exp()
             mus.append(mu_k.unsqueeze(-2))
             sigmas.append(sigma_k.unsqueeze(-2))
 
+
         q_mean_mu = torch.cat(mus, -2)
         q_mean_sigma = torch.cat(sigmas, -2)
+
         if self.Reparameterized:
             q.normal(q_mean_mu,
                      q_mean_sigma,
