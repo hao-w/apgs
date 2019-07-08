@@ -17,8 +17,11 @@ class Dec_x(nn.Module):
     def forward(self, ob, state, mu, angle, recon_sigma):
         p = probtorch.Trace()
         # S, B, N, D = ob.shape
-        S, B, N, D = ob.shape
+        # S, B, N, D = ob.shape
         embedding = torch.cat((global_to_local(mu, state), angle), -1)
+        # embedding = torch.cat((mu, angle), -1)
+        # embedding = angle.unsqueeze(-1)
+        # ob_centered = ob - global_to_local(mu, state)
         recon_mu = self.recon_mu(embedding)
         p.normal(recon_mu,
                  recon_sigma,
