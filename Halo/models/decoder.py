@@ -7,17 +7,15 @@ import math
 from utils import *
 
 class Dec_x(nn.Module):
-    def __init__(self, D, num_hidden, CUDA):
+    def __init__(self, D, num_hidden):
         super(self.__class__, self).__init__()
         self.recon_mu = nn.Sequential(
             nn.Linear(D+1, num_hidden),
             nn.Tanh(),
             nn.Linear(num_hidden, D))
 
-    def forward(self, ob, state, mu, angle, recon_sigma):
+    def forward(self, ob, state, angle, mu, recon_sigma):
         p = probtorch.Trace()
-        # S, B, N, D = ob.shape
-        # S, B, N, D = ob.shape
         embedding = torch.cat((global_to_local(mu, state), angle), -1)
         # embedding = torch.cat((mu, angle), -1)
         # embedding = angle.unsqueeze(-1)

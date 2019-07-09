@@ -2,25 +2,18 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.distributions.normal import Normal
-from torch.distributions.gamma import Gamma
 from torch.distributions.one_hot_categorical import OneHotCategorical as cat
 import probtorch
 import math
 from utils import *
 
 class Enc_mu(nn.Module):
-    def __init__(self, K, D, num_hidden, num_stats, CUDA, device, Reparameterized):
+    def __init__(self, D, num_hidden, num_stats, CUDA, device):
         super(self.__class__, self).__init__()
-        self.Reparameterized = Reparameterized
-
         self.neural_stats = nn.Sequential(
-            nn.Linear(K+D+1, num_hidden),
+            nn.Linear(D+1, num_hidden),
             nn.Tanh(),
             nn.Linear(num_hidden, num_stats))
-
-        # self.gammas = nn.Sequential(
-        #     nn.Linear(D+K, K),
-        #     nn.Softmax(-1))
 
         self.mean_mu = nn.Sequential(
             nn.Linear(num_stats+2*D, num_hidden),
@@ -32,51 +25,38 @@ class Enc_mu(nn.Module):
             nn.Tanh(),
             nn.Linear(num_hidden, D))
 
-        self.prior_mean_mu = torch.zeros((K, D))
-        self.prior_mean_sigma = torch.ones((K, D)) * 4.0
+        self.prior_mu_mu = torch.zeros(D)
+        self.prior_mu_sigma = torch.ones(D) * 4.0
 
         if CUDA:
-            self.prior_mean_mu = self.prior_mean_mu.cuda().to(device)
-            self.prior_mean_sigma = self.prior_mean_sigma.cuda().to(device)
+            with torch.cuda.device(device):
+                self.prior_mu_mu = self.prior_mu_mu.cuda()
+                self.prior_mu_sigma = self.prior_mu_sigma.cuda()
 
-    def forward(self, obs, state, K, sample_size, batch_size):
+    def forward(self, ob, state, angle):
         q = probtorch.Trace()
         p = probtorch.Trace()
-        D = obs.shape[-1]
-        ss = self.neural_stats(torch.cat((obs, state), -1))
-        gammas = self.gammas(torch.cat((obs, state), -1))
-        nss = ss_to_stats(ss, gammas) # S * B * K * STAT_DIM
+        S, B, N, D = ob.shape
+        K = state.shape[-1]
+        ss = self.neural_stats(torch.cat((ob, angle), -1))
+        nss = ss_to_stats(ss, state) # S * B * K * STAT_DIM
+        nss_prior = torch.cat((nss, self.prior_mu_mu.repeat(S, B, K, 1), self.prior_mu_sigma.repeat(S, B, K, 1)), -1)
+        q_mu_mu= self.mean_mu(nss_prior)
+        q_mu_sigma = self.mean_log_sigma(nss_prior).exp()
 
-        mus = []
-        sigmas = []
-        for k in range(K):
-            mu_k = self.mean_mu(torch.cat((nss[:,:,k,:], self.prior_mean_mu[k].repeat(sample_size, batch_size, 1), self.prior_mean_sigma[k].repeat(sample_size, batch_size, 1)), -1))
-            sigma_k = self.mean_log_sigma(torch.cat((nss[:,:,k,:], self.prior_mean_mu[k].repeat(sample_size, batch_size, 1), self.prior_mean_sigma[k].repeat(sample_size, batch_size, 1)), -1)).exp()
-            mus.append(mu_k.unsqueeze(-2))
-            sigmas.append(sigma_k.unsqueeze(-2))
+        mu = Normal(q_mu_mu, q_mu_sigma).sample()
+        q.normal(q_mu_mu,
+                 q_mu_sigma,
+                 value=mu,
+                 name='means')
 
-
-        q_mean_mu = torch.cat(mus, -2)
-        q_mean_sigma = torch.cat(sigmas, -2)
-
-        if self.Reparameterized:
-            q.normal(q_mean_mu,
-                     q_mean_sigma,
-                     name='means')
-        else:
-            means = Normal(q_mean_mu, q_mean_sigma).sample()
-            q.normal(q_mean_mu,
-                     q_mean_sigma,
-                     value=means,
-                     name='means')
-
-        p.normal(self.prior_mean_mu,
-                 self.prior_mean_sigma,
+        p.normal(self.prior_mu_mu,
+                 self.prior_mu_sigma,
                  value=q['means'],
                  name='means')
         return q, p
 
-    def sample_prior(self, sample_size, batch_size):
-        p_mu = Normal(self.prior_mean_mu, self.prior_mean_sigma)
-        obs_mu = p_mu.sample((sample_size, batch_size,))
-        return obs_mu
+    def sample_prior(self, S, B, K):
+        p_mu = Normal(self.prior_mu_mu, self.prior_mu_sigma)
+        ob_mu = p_mu.sample((S, B, K,))
+        return ob_mu

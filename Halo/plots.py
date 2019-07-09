@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Ellipse
 import numpy as np
 import matplotlib.gridspec as gridspec
+import math
 
 def plot_cov_ellipse(cov, pos, nstd=2, ax=None, **kwargs):
     def eigsorted(cov):
@@ -50,3 +51,30 @@ def plot_samples(obs, q_mu, q_z, K, PATH):
         ax.set_ylim([-7, 7])
         ax.set_xlim([-7, 7])
     plt.savefig('../results/modes-' + PATH + '.svg')
+
+def plot_recon(recon, path, page_width, bound):
+    S, B, N, D = recon.shape
+    gs = gridspec.GridSpec(int(B / 5), 5)
+    gs.update(left=0.0 , bottom=0.0, right=1.0, top=1.0, wspace=0, hspace=0)
+    fig = plt.figure(figsize=(page_width,page_width*4/5))
+    for b in range(B):
+        ax = fig.add_subplot(gs[int(b / 5), int(b % 5)])
+        ax.scatter(recon[0, b, :, 0], recon[0, b, :, 1], s=5)
+        ax.set_xticks([])
+        ax.set_yticks([])
+        ax.set_ylim(-bound, bound)
+        ax.set_xlim(-bound, bound)
+    plt.savefig('../results/reconstruction-' + path + '.png')
+    
+def plot_angles(angle_infer, angle_true, page_width):
+    S, B, N, D = angle_true.shape
+    angle_infer = angle_infer.cpu().data.numpy()
+    angle_true = angle_true.cpu().data.numpy()
+    gs = gridspec.GridSpec(int(B / 5), 5)
+    gs.update(left=0.0 , bottom=0.0, right=1.0, top=1.0, wspace=0.2, hspace=0.2)
+    fig = plt.figure(figsize=(page_width,page_width*4/5))
+    for b in range(B):
+        ax = fig.add_subplot(gs[int(b / 5), int(b % 5)])
+        ax.scatter(angle_true[0, b, :, 0], angle_infer[0, b, :, 0], s=5)
+        ax.set_ylim(0, 2*math.pi)
+        ax.set_xlim(0, 2*math.pi)

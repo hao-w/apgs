@@ -1,90 +1,92 @@
 import torch
 import torch.nn.functional as F
-from utils import *
 from torch.distributions.normal import Normal
+from torch.distributions.beta import Beta
 from torch.distributions.one_hot_categorical import OneHotCategorical as cat
-from torch.distributions.gamma import Gamma
 import probtorch
-
-def Init_step_eta(models, obs, obs_rad, noise_sigma, N, K, D, sample_size, batch_size):
+import math
+def oneshot(oneshot_mu, gibbs_state, dec_x, ob, K):
     """
-    initialize eta, using oneshot encoder, and then update z using its (gibbs or neural gibbs) encoder
-    return the samples and log_weights
+    initialize mu by one-shot encoder
     """
+    q_mu, p_mu = oneshot_mu(ob, K)
+    log_p_os = p_mu['means'].log_prob.sum(-1).sum(-1) + p_mu['angles'].log_prob.sum(-1).sum(-1)
+    log_q_os = q_mu['means'].log_prob.sum(-1).sum(-1) + q_mu['angles'].log_prob.sum(-1).sum(-1)
+    mu = q_mu['means'].value
+    angle = q_mu['angles'].value * 2 * math.pi
+    ## z
+    q_state, p_state = gibbs_state.forward(dec_x, ob, angle, mu, K)
+    log_p_state = p_state['zs'].log_prob.sum(-1)
+    log_q_state = q_state['zs'].log_prob.sum(-1)
+    state = q_state['zs'].value ## S * B * N * K
+    log_recon = dec_x.forward(ob, state, angle, mu, idw_flag=False).sum(-1)
+    log_w = log_recon + log_p_state - log_q_state + log_p_os - log_q_os
+    w = F.softmax(log_w, 0).detach()
+    eubo = (w * log_w).sum(0).mean()  ## weights S * B
+    elbo = log_w.mean()
+    return state, angle, mu, w, eubo, elbo, q_mu, p_mu
 
-    (oneshot_eta, enc_eta, enc_z, dec_x) = models
-    q_eta, p_eta = oneshot_eta(obs, K, D, sample_size, batch_size)
-    log_p_eta = p_eta['means'].log_prob.sum(-1)
-    log_q_eta = q_eta['means'].log_prob.sum(-1)
-    obs_mu = q_eta['means'].value
-    q_z, p_z = enc_z.forward(obs, obs_mu, obs_rad, noise_sigma, N, K, sample_size, batch_size)
-    log_p_z = p_z['zs'].log_prob
-    log_q_z = q_z['zs'].log_prob
-    state = q_z['zs'].value ## S * B * N * K
-    p_x = dec_x(obs, state, obs_mu, obs_rad)
-    log_obs_n = p_x['x_recon'].log_prob.sum(-1)
-    # log_obs_n = True_Log_likelihood(obs, state, obs_mu, obs_rad, noise_sigma, K, D, cluster_flag=False)
-    log_weights = log_obs_n.sum(-1) + log_p_z.sum(-1) - log_q_z.sum(-1) + log_p_eta.sum(-1) - log_q_eta.sum(-1)
-    return obs_mu, state, log_weights
-
-def Incremental_eta(dec_x, q_eta, p_eta, obs, state, obs_rad, noise_sigma, K, D, obs_mu_prev):
+def Update_mu(enc_mu, dec_x, ob, state, angle, mu_old, K):
     """
     Given the current samples for local variable (state),
     sample new global variable (eta = mu ).
     """
-    log_p_eta = p_eta['means'].log_prob.sum(-1)
-    log_q_eta = q_eta['means'].log_prob.sum(-1)
-    obs_mu = q_eta['means'].value
-
-    labels = state.argmax(-1)
-    p_x = dec_x(obs, state, obs_mu, obs_rad)
-    log_obs_n = p_x['x_recon'].log_prob.sum(-1)
-    log_obs_k = torch.cat([((labels==k).float() * log_obs_n).sum(-1).unsqueeze(-1) for k in range(K)], -1) # S * B * K
-    log_w_forward = log_obs_k + log_p_eta - log_q_eta
+    q_mu, p_mu = enc_mu(ob, state, angle)
+    log_p_mu = p_mu['means'].log_prob.sum(-1)
+    log_q_mu = q_mu['means'].log_prob.sum(-1)
+    mu = q_mu['means'].value
+    log_recon = dec_x.forward(ob, state, angle, mu, idw_flag=True)
+    log_w_f = log_recon + log_p_mu - log_q_mu
     ## backward
-    log_p_eta_prev = Normal(p_eta['means'].dist.loc, p_eta['means'].dist.scale).log_prob(obs_mu_prev).sum(-1)
-    log_q_eta_prev = Normal(q_eta['means'].dist.loc, q_eta['means'].dist.scale).log_prob(obs_mu_prev).sum(-1)
-    p_x_prev = dec_x(obs, state, obs_mu_prev, obs_rad)
-    log_obs_n_prev = p_x_prev['x_recon'].log_prob.sum(-1)
-    log_obs_k_prev = torch.cat([((labels==k).float() * log_obs_n_prev).sum(-1).unsqueeze(-1) for k in range(K)], -1) # S * B * K
-    log_w_backward = log_obs_k_prev + log_p_eta_prev - log_q_eta_prev
-    return obs_mu, log_w_forward, log_w_backward
+    log_p_mu_old = Normal(p_mu['means'].dist.loc, p_mu['means'].dist.scale).log_prob(mu_old).sum(-1)
+    log_q_mu_old = Normal(q_mu['means'].dist.loc, q_mu['means'].dist.scale).log_prob(mu_old).sum(-1)
+    log_recon_old = dec_x.forward(ob, state, angle, mu_old, idw_flag=True)
+    log_w_b = log_recon_old + log_p_mu_old - log_q_mu_old
+    w, eubo, elbo = Grad_phi(log_w_f, log_w_b)
+    return mu, w, eubo, elbo, q_mu, p_mu
 
+def Update_angle(enc_angle, dec_x, ob, state, mu, angle_old):
+    betas = angle_old / (2*math.pi)
+    q_angle, p_angle = enc_angle(ob, state, mu)
+    log_q_angle = q_angle['angles'].log_prob.sum(-1)
+    log_p_angle = p_angle['angles'].log_prob.sum(-1)
+    angle = q_angle['angles'].value * 2 * math.pi
+    log_recon = dec_x.forward(ob, state, angle, mu, idw_flag=False)
+    log_w_f = log_recon + log_p_angle - log_q_angle
+    log_p_angle_old = Beta(p_angle['angles'].dist.concentration1, p_angle['angles'].dist.concentration0).log_prob(betas).sum(-1)
+    log_q_angle_old = Beta(q_angle['angles'].dist.concentration1, q_angle['angles'].dist.concentration0).log_prob(betas).sum(-1)
+    log_recon_old = dec_x.forward(ob, state, angle_old, mu, idw_flag=False)
+    log_w_b = log_recon_old + log_p_angle_old - log_q_angle_old
+    w, eubo, elbo = Grad_phi(log_w_f, log_w_b)
+    return angle, w, eubo, elbo, q_angle, p_angle
 
-def Incremental_z(dec_x, q_z, p_z, obs, obs_mu, obs_rad, noise_sigma, K, D, state_prev):
-    """
-    Given the current samples for global variable (eta = mu),
-    sample new local variable (state).
-    """
-    log_p_z = p_z['zs'].log_prob
-    log_q_z = q_z['zs'].log_prob
-    state = q_z['zs'].value
-    p_x = dec_x(obs, state, obs_mu, obs_rad)
-    log_obs_n = p_x['x_recon'].log_prob.sum(-1)
-    log_w_forward = log_obs_n + log_p_z - log_q_z
+def Update_state(gibbs_state, dec_x, ob, angle, mu, state_old):
+    K = state_old.shape[-1]
+    q_state, p_state = gibbs_state.forward(dec_x, ob, angle, mu, K)
+    log_p_state = p_state['zs'].log_prob
+    log_q_state = q_state['zs'].log_prob
+    state = q_state['zs'].value
+    log_recon = dec_x.forward(ob, state, angle, mu, idw_flag=False)
+    log_w_f = log_recon + log_p_state - log_q_state
     ## backward
-    log_p_z_prev = cat(probs=p_z['zs'].dist.probs).log_prob(state_prev)
-    log_q_z_prev = cat(probs=q_z['zs'].dist.probs).log_prob(state_prev)
-    p_x_prev = dec_x(obs, state_prev, obs_mu, obs_rad)
-    log_obs_n_prev = p_x_prev['x_recon'].log_prob.sum(-1)
-    log_w_backward = log_obs_n_prev + log_p_z_prev - log_q_z_prev
-    return state, log_w_forward, log_w_backward
+    log_p_state_old = cat(probs=p_state['zs'].dist.probs).log_prob(state_old)
+    log_q_state_old = cat(probs=q_state['zs'].dist.probs).log_prob(state_old)
+    log_recon_old = dec_x.forward(ob, state_old, angle, mu, idw_flag=False)
+    log_w_b = log_recon_old + log_p_state_old - log_q_state_old
+    w, eubo, elbo = Grad_phi(log_w_f, log_w_b)
+    return state, w, eubo, elbo, q_state, p_state
 
-
-def detailed_balances(log_w_f, log_w_b):
+def Grad_phi(log_w_f, log_w_b):
     """
     log_w_f : log \frac {p(x, z')} {q_\f (z' | z, x)}
     log_w_b : log \frac {p(x, z)} {q_\f (z | z', x)}
     """
-    ## symmetric KLs, i.e., Expectation w.r.t. q_\f
-    log_w_sym = log_w_f - log_w_b
-    w_sym = F.softmax(log_w_sym, 0).detach()
-    kl_f_b = - log_w_sym.sum(-1).mean()
-    kl_b_f = (w_sym * log_w_sym).sum(0).sum(-1).mean()
-    symkl_db = kl_f_b + kl_b_f
-    ## "asymmetric detailed balance"
-#     w_f = F.softmax(log_w_f, 0).detach()
-    eubo_p_qf = (w_sym * log_w_f).sum(0).sum(-1).mean()
-    elbo_p_qf = log_w_f.sum(-1).mean()
-    # symkl_p_qf = eubo_p_qf - elbo_p_qf
-    return symkl_db, eubo_p_qf, elbo_p_qf, w_sym
+    log_w = log_w_f - log_w_b
+    w = F.softmax(log_w, 0).detach()
+    # kl_f_b = - log_w.sum(-1).mean()
+    # kl_b_f = (w * log_w).sum(0).sum(-1).mean()
+    # symkl_db = kl_f_b + kl_b_f
+    eubo = (w * log_w_f).sum(0).sum(-1).mean()
+    elbo = log_w_f.sum(-1).mean()
+
+    return w, eubo, elbo
