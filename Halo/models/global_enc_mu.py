@@ -13,17 +13,23 @@ class Enc_mu(nn.Module):
         self.neural_stats = nn.Sequential(
             nn.Linear(D+1, num_hidden),
             nn.Tanh(),
-            nn.Linear(num_hidden, num_stats))
+            nn.Linear(num_hidden, int(0.5*num_hidden)),
+            nn.Tanh(),
+            nn.Linear(int(0.5*num_hidden), num_stats))
 
         self.mean_mu = nn.Sequential(
             nn.Linear(num_stats+2*D, num_hidden),
             nn.Tanh(),
-            nn.Linear(num_hidden, D))
+            nn.Linear(num_hidden, int(0.5*num_hidden)),
+            nn.Tanh(),
+            nn.Linear(int(0.5*num_hidden), D))
 
         self.mean_log_sigma = nn.Sequential(
             nn.Linear(num_stats+2*D, num_hidden),
             nn.Tanh(),
-            nn.Linear(num_hidden, D))
+            nn.Linear(num_hidden, int(0.5*num_hidden)),
+            nn.Tanh(),
+            nn.Linear(int(0.5*num_hidden), D))
 
         self.prior_mu_mu = torch.zeros(D)
         self.prior_mu_sigma = torch.ones(D) * 4.0
