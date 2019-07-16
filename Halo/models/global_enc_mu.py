@@ -11,7 +11,7 @@ class Enc_mu(nn.Module):
     def __init__(self, D, num_hidden, num_stats, CUDA, device):
         super(self.__class__, self).__init__()
         self.neural_stats = nn.Sequential(
-            nn.Linear(D+1, num_hidden),
+            nn.Linear(D, num_hidden),
             nn.Tanh(),
             nn.Linear(num_hidden, int(0.5*num_hidden)),
             nn.Tanh(),
@@ -39,12 +39,12 @@ class Enc_mu(nn.Module):
                 self.prior_mu_mu = self.prior_mu_mu.cuda()
                 self.prior_mu_sigma = self.prior_mu_sigma.cuda()
 
-    def forward(self, ob, state, angle):
+    def forward(self, ob, state):
         q = probtorch.Trace()
         p = probtorch.Trace()
         S, B, N, D = ob.shape
         K = state.shape[-1]
-        ss = self.neural_stats(torch.cat((ob, angle), -1))
+        ss = self.neural_stats(ob)
         nss = ss_to_stats(ss, state) # S * B * K * STAT_DIM
         nss_prior = torch.cat((nss, self.prior_mu_mu.repeat(S, B, K, 1), self.prior_mu_sigma.repeat(S, B, K, 1)), -1)
         q_mu_mu= self.mean_mu(nss_prior)
