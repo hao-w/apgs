@@ -15,11 +15,11 @@ class Enc_mu(nn.Module):
             nn.Tanh(),
             nn.Linear(num_hidden, num_stats))
 
-        self.gammas = nn.Sequential(
-            nn.Linear(D+1+K, num_hidden),
-            nn.Tanh(),
-            nn.Linear(num_hidden, K),
-            nn.Softmax(-1))
+        #self.gammas = nn.Sequential(
+            #nn.Linear(D+1+K, num_hidden),
+            #nn.Tanh(),
+            #nn.Linear(num_hidden, K),
+            #nn.Softmax(-1))
 
         self.mean_mu = nn.Sequential(
             nn.Linear(num_stats+2*D, num_hidden),
@@ -32,7 +32,7 @@ class Enc_mu(nn.Module):
             nn.Linear(num_hidden, D))
 
         self.prior_mu_mu = torch.zeros(D)
-        self.prior_mu_sigma = torch.ones(D) * 4.0
+        self.prior_mu_sigma = torch.ones(D) * 10.0
 
         if CUDA:
             with torch.cuda.device(device):
@@ -45,8 +45,8 @@ class Enc_mu(nn.Module):
         S, B, N, D = ob.shape
         K = state.shape[-1]
         ss = self.neural_stats(torch.cat((ob, angle, state), -1))
-        gammas = self.gammas(torch.cat((ob, angle, state), -1))
-        nss = ss_to_stats(ss, gammas) # S * B * K * STAT_DIM
+        #gammas = self.gammas(torch.cat((ob, angle, state), -1))
+        nss = ss_to_stats(ss, state) # S * B * K * STAT_DIM
         nss_prior = torch.cat((nss, self.prior_mu_mu.repeat(S, B, K, 1), self.prior_mu_sigma.repeat(S, B, K, 1)), -1)
         q_mu_mu= self.mean_mu(nss_prior)
         q_mu_sigma = self.mean_log_sigma(nss_prior).exp()

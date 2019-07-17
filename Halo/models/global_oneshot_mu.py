@@ -32,7 +32,7 @@ class Oneshot_mu(nn.Module):
             nn.Linear(num_hidden, D))
 
         self.prior_mu_mu = torch.zeros(D)
-        self.prior_mu_sigma = torch.ones(D) * 4.0
+        self.prior_mu_sigma = torch.ones(D) * 15.0
         if CUDA:
             with torch.cuda.device(device):
                 self.prior_mu_mu = self.prior_mu_mu.cuda()

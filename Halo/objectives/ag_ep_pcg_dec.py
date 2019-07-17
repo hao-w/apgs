@@ -17,7 +17,7 @@ def AG_pcg(models, ob, K, mcmc_size, device):
         elbos = torch.zeros(mcmc_size+1).cuda()
         esss = torch.zeros(mcmc_size+1).cuda()
         theta_losss = torch.zeros(mcmc_size+1).cuda()
-    state, angle, mu, w, eubo, elbo, theta_loss, _, _ = oneshot(oneshot_mu, oneshot_state, enc_angle, dec_x, ob, K)
+    state, angle, mu, w, eubo, elbo, theta_loss, _, _, _ = oneshot(oneshot_mu, oneshot_state, enc_angle, dec_x, ob, K)
     eubos[0] = eubo  ## weights S * B
     theta_losss[0] = theta_loss
     elbos[0] = elbo.detach()
@@ -30,10 +30,10 @@ def AG_pcg(models, ob, K, mcmc_size, device):
             state = resample(state, w_local, idw_flag=True)
             angle = resample(angle, w_local, idw_flag=True)
         ## update mu
-        mu, w_mu, eubo_mu, elbo_mu, theta_loss_mu, _, _  = Update_mu(enc_mu, dec_x, ob, state, angle, mu)
+        mu, w_mu, eubo_mu, elbo_mu, theta_loss_mu, _  = Update_mu(enc_mu, dec_x, ob, state, angle, mu)
         mu = resample(mu, w_mu, idw_flag=True)
         ## update z
-        state, angle, w_local, eubo_local, elbo_local, theta_loss_local, _, _, _, _ = Update_state_angle(oneshot_state, enc_angle, dec_x, ob, state, angle, mu)
+        state, angle, w_local, eubo_local, elbo_local, theta_loss_local, _, _, _ = Update_state_angle(oneshot_state, enc_angle, dec_x, ob, state, angle, mu)
         eubos[m+1] = eubo_mu + eubo_local
         elbos[m+1] = elbo_mu + elbo_local
         theta_losss[m+1] = theta_loss_mu + theta_loss_local

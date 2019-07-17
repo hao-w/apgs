@@ -33,7 +33,7 @@ def oneshot(oneshot_mu, oneshot_state, enc_angle, dec_x, ob, K):
     eubo = (w * log_w).sum(0).mean()  ## weights S * B
     theta_loss = (w * (- log_recon)).sum(0).mean()
     elbo = log_w.mean().detach()
-    return state, angle, mu, w, eubo, elbo, theta_loss, q_mu, q_state
+    return state, angle, mu, w, eubo, elbo, theta_loss, q_mu, q_state, p_recon
 
 def Update_mu(enc_mu, dec_x, ob, state_old, angle_old, mu_old):
     """
@@ -59,7 +59,7 @@ def Update_mu(enc_mu, dec_x, ob, state_old, angle_old, mu_old):
     log_recon_b = torch.cat([((state_old.argmax(-1)==k).float() * ll_b).sum(-1).unsqueeze(-1) for k in range(K)], -1) # S * B * K
     log_w_b = log_recon_b.detach() + log_p_b - log_q_b
     w, eubo, elbo, theta_loss = Grad_phi(log_w_f, log_w_b, log_recon_f)
-    return mu, w, eubo, elbo, theta_loss, q_mu, p_mu
+    return mu, w, eubo, elbo, theta_loss, q_mu
 
 def Update_state_angle(oneshot_state, enc_angle, dec_x, ob, state_old, angle_old, mu_old):
     K = mu_old.shape[-2]
@@ -81,7 +81,7 @@ def Update_state_angle(oneshot_state, enc_angle, dec_x, ob, state_old, angle_old
     log_recon_b = p_recon_b['likelihood'].log_prob.sum(-1)
     log_w_b = log_recon_b.detach() + log_p_b - log_q_b
     w, eubo, elbo, theta_loss = Grad_phi(log_w_f, log_w_b, log_recon_f)
-    return state, angle, w, eubo, elbo, theta_loss, q_state, p_state, q_angle, p_angle
+    return state, angle, w, eubo, elbo, theta_loss, q_state, q_angle, p_recon_f
 
 def Grad_phi(log_w_f, log_w_b, log_recon_f):
     """

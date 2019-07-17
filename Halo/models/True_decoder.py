@@ -23,4 +23,4 @@ class Dec_x():
         ll = Normal(recon_mu, self.recon_sigma).log_prob(ob).sum(-1)
         if idw_flag:
             ll = torch.cat([((labels==k).float() * ll).sum(-1).unsqueeze(-1) for k in range(K)], -1) # S * B * K
-        return ll
+        return ll, recon_mu
