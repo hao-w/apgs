@@ -147,8 +147,5 @@ class Rings:
             MU[n] = mu
             RADI[n] = radi
             ANGLE[n] = angle
-        np.save(path + '/ob', OB)
-        np.save(path + '/state', STATE)
-        np.save(path + '/mu', MU)
-        np.save(path + '/radi', RADI)
-        np.save(path + '/angle', ANGLE)
+        np.save(path + '/ob_%d' % (self.num_points * self.num_clusters), OB)
+

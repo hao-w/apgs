@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 from utils import resample
-from forward_backward_pcg_dec import *
+from forward_backward_dec import *
 import probtorch
 
 def AG_pcg(models, ob, K, mcmc_size, device):
@@ -38,5 +38,4 @@ def AG_pcg(models, ob, K, mcmc_size, device):
         elbos[m+1] = elbo_mu + elbo_local
         theta_losss[m+1] = theta_loss_mu + theta_loss_local
         esss[m+1] = ((1. / (w_mu**2).sum(0)).mean() + (1. / (w_local**2).sum(0)).mean()) / 2
-        # print(esss[m+1])
     return eubos.sum(), elbos.sum(), theta_losss.sum(), esss.mean()
