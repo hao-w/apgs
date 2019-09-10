@@ -16,10 +16,11 @@ class Enc_z(nn.Module):
         if CUDA:
             self.prior_pi = self.prior_pi.cuda().to(device)
 
-    def forward(self, obs, obs_tau, obs_mu, N, K, sample_size, batch_size):
+    def forward(self, obs, obs_tau, obs_mu, K, sample_size, batch_size):
         q = probtorch.Trace()
         p = probtorch.Trace()
         gamma_list = []
+        N = obs.shape[-2]
         for k in range(K):
             data_ck = torch.cat((obs, obs_mu[:, :, k, :].unsqueeze(-2).repeat(1,1,N,1), obs_tau[:, :, k, :].unsqueeze(-2).repeat(1,1,N,1)), -1) ## S * B * N * 3D
             gamma_list.append(self.pi_log_prob(data_ck))

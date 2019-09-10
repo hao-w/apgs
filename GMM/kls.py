@@ -12,7 +12,7 @@ def kl_train(models, obs, reused, EPS):
     q_eta, p_eta, q_nu = enc_eta(obs, state, K, D)
     obs_mu = q_eta['means'].value
     obs_tau = q_eta['precisions'].value
-    q_z, p_z = enc_z.forward(obs, obs_tau, obs_mu, N, K, S, B)
+    q_z, p_z = enc_z.forward(obs, obs_tau, obs_mu, K, S, B)
     ## KLs for mu and sigma based on Normal-Gamma prior
     q_alpha = q_eta['precisions'].dist.concentration
     q_beta = q_eta['precisions'].dist.rate
@@ -29,5 +29,5 @@ def kl_train(models, obs, reused, EPS):
     ## KLs for cluster assignments
     post_logits = Post_z(obs, obs_tau, obs_mu, pr_pi, N, K)
     kl_z_ex, kl_z_in = kls_cats(q_pi.log(), post_logits, EPS)
-    kl_step = {"kl_eta_ex" : kl_eta_ex.sum(-1).mean().item(),"kl_eta_in" : kl_eta_in.sum(-1).mean().item(),"kl_z_ex" : kl_z_ex.sum(-1).mean().item(),"kl_z_in" : kl_z_in.sum(-1).mean().item()}
+    kl_step = {"kl_eta_ex" : kl_eta_ex.mean(-1).mean().item(),"kl_eta_in" : kl_eta_in.mean(-1).mean().item(),"kl_z_ex" : kl_z_ex.mean(-1).mean().item(),"kl_z_in" : kl_z_in.mean(-1).mean().item()}
     return kl_step

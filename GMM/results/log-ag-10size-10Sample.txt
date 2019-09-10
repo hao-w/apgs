@@ -1,0 +1,16 @@
+loss: -1360.964,  ess: 3.123,  kl_eta_ex: 269.364,  kl_eta_in: 45.031,  kl_z_ex: 3.664,  kl_z_in: 0.574
+loss: -969.845,  ess: 3.485,  kl_eta_ex: 135.966,  kl_eta_in: 33.529,  kl_z_ex: 1.781,  kl_z_in: 0.409
+loss: -763.864,  ess: 3.741,  kl_eta_ex: 76.089,  kl_eta_in: 26.541,  kl_z_ex: 1.042,  kl_z_in: 0.318
+loss: -658.730,  ess: 3.964,  kl_eta_ex: 48.277,  kl_eta_in: 23.253,  kl_z_ex: 0.816,  kl_z_in: 0.272
+loss: -594.112,  ess: 4.181,  kl_eta_ex: 32.322,  kl_eta_in: 18.999,  kl_z_ex: 0.689,  kl_z_in: 0.227
+loss: -537.684,  ess: 4.438,  kl_eta_ex: 21.355,  kl_eta_in: 14.265,  kl_z_ex: 0.640,  kl_z_in: 0.187
+loss: -491.757,  ess: 4.768,  kl_eta_ex: 14.858,  kl_eta_in: 10.901,  kl_z_ex: 0.606,  kl_z_in: 0.144
+loss: -459.450,  ess: 5.084,  kl_eta_ex: 10.675,  kl_eta_in: 8.534,  kl_z_ex: 0.533,  kl_z_in: 0.108
+loss: -443.839,  ess: 5.376,  kl_eta_ex: 8.465,  kl_eta_in: 7.963,  kl_z_ex: 0.416,  kl_z_in: 0.079
+loss: -437.221,  ess: 5.559,  kl_eta_ex: 7.420,  kl_eta_in: 8.202,  kl_z_ex: 0.316,  kl_z_in: 0.063
+loss: -433.110,  ess: 5.703,  kl_eta_ex: 6.413,  kl_eta_in: 8.295,  kl_z_ex: 0.236,  kl_z_in: 0.052
+loss: -429.659,  ess: 5.816,  kl_eta_ex: 5.521,  kl_eta_in: 8.099,  kl_z_ex: 0.183,  kl_z_in: 0.045
+loss: -426.690,  ess: 5.908,  kl_eta_ex: 4.705,  kl_eta_in: 7.806,  kl_z_ex: 0.152,  kl_z_in: 0.040
+loss: -424.492,  ess: 5.982,  kl_eta_ex: 4.057,  kl_eta_in: 7.386,  kl_z_ex: 0.131,  kl_z_in: 0.037
+loss: -423.249,  ess: 6.040,  kl_eta_ex: 3.562,  kl_eta_in: 7.092,  kl_z_ex: 0.119,  kl_z_in: 0.036
+loss: -424.020,  ess: 6.039,  kl_eta_ex: 3.346,  kl_eta_in: 7.030,  kl_z_ex: 0.117,  kl_z_in: 0.036
