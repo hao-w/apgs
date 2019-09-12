@@ -29,3 +29,9 @@ def Init_models(K, D, num_hidden_local, CUDA, device, lr, RESTORE=False, PATH=No
     optimizer =  torch.optim.Adam(list(os_eta.parameters())+list(f_z.parameters())+list(f_eta.parameters()),lr=lr, betas=(0.9, 0.99))
     # optimizer =  torch.optim.Adam(list(os_eta.parameters())+list(f_z.parameters())+list(f_eta.parameters())+list(b_z.parameters())+list(b_eta.parameters()),lr=lr, betas=(0.9, 0.99))
     return (os_eta, f_z, f_eta), optimizer
+
+def Save_models(models, path):
+    (os_eta, f_z, f_eta) = models
+    torch.save(os_eta.state_dict(), "../weights/os-eta-%s" % path)
+    torch.save(f_z.state_dict(), "../weights/f-z-%s" % path)
+    torch.save(f_eta.state_dict(), "../weights/f-eta-%s" % path)
