@@ -17,7 +17,7 @@ def AG_pcg(models, ob, K, mcmc_size, device):
         elbos = torch.zeros(mcmc_size+1).cuda()
         esss = torch.zeros(mcmc_size+1).cuda()
         theta_losss = torch.zeros(mcmc_size+1).cuda()
-    state, angle, mu, w, eubo, elbo, theta_loss, _, _, _ = oneshot(oneshot_mu, oneshot_state, enc_angle, dec_x, ob, K)
+    state, angle, mu, w, eubo, elbo, theta_loss, _, _, _ = Oneshot(oneshot_mu, oneshot_state, enc_angle, dec_x, ob, K)
     eubos[0] = eubo  ## weights S * B
     theta_losss[0] = theta_loss
     elbos[0] = elbo.detach()

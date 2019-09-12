@@ -6,10 +6,9 @@ from torch.distributions.gamma import Gamma
 from normal_gamma import *
 
 class Oneshot_eta(nn.Module):
-    def __init__(self, K, D, CUDA, device, Reparameterized):
+    def __init__(self, K, D, CUDA, device):
         super(self.__class__, self).__init__()
 
-        self.Reparameterized = Reparameterized
         self.gamma = nn.Sequential(
             nn.Linear(D, K),
             nn.Softmax(-1))
@@ -27,31 +26,25 @@ class Oneshot_eta(nn.Module):
             self.prior_alpha = self.prior_alpha.cuda().to(device)
             self.prior_beta = self.prior_beta.cuda().to(device)
 
-    def forward(self, obs, K, D):
+    def forward(self, ob):
         q = probtorch.Trace()
         p = probtorch.Trace()
-        gammas = self.gamma(obs) # S * B * N * K --> S * B * N * K
-        xs = self.ob(obs)  # S * B * N * D --> S * B * N * D
+        gammas = self.gamma(ob) # S * B * N * K --> S * B * N * K
+        xs = self.ob(ob)  # S * B * N * D --> S * B * N * D
         q_alpha, q_beta, q_mu, q_nu = Post_eta(xs, gammas,
-                                                 self.prior_alpha, self.prior_beta, self.prior_mu, self.prior_nu, K, D)
-        if self.Reparameterized:
-            q.gamma(q_alpha,
-                    q_beta,
-                    name='precisions')
-            q.normal(q_mu,
-                     1. / (q_nu * q['precisions'].value).sqrt(),
-                     name='means')
-        else:
-            precisions = Gamma(q_alpha, q_beta).sample()
-            q.gamma(q_alpha,
-                    q_beta,
-                    value=precisions,
-                    name='precisions')
-            means = Normal(q_mu, 1. / (q_nu * q['precisions'].value).sqrt()).sample()
-            q.normal(q_mu,
-                     1. / (q_nu * q['precisions'].value).sqrt(),
-                     value=means,
-                     name='means')
+                                                 self.prior_alpha, self.prior_beta, self.prior_mu, self.prior_nu)
+
+        ## sample in non-reparameterized way
+        precisions = Gamma(q_alpha, q_beta).sample()
+        q.gamma(q_alpha,
+                q_beta,
+                value=precisions,
+                name='precisions')
+        means = Normal(q_mu, 1. / (q_nu * q['precisions'].value).sqrt()).sample()
+        q.normal(q_mu,
+                 1. / (q_nu * q['precisions'].value).sqrt(),
+                 value=means,
+                 name='means')
         ## prior distributions
         p.gamma(self.prior_alpha,
                 self.prior_beta,

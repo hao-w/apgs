@@ -21,5 +21,5 @@ def Test(models, objective, data, Model_Params, Test_Params):
     obs = shuffler(obs).repeat(S, 1, 1, 1)
     if CUDA:
             obs =obs.cuda().to(device)
-    DBs_eta, DBs_z, ELBOs, Ratios = objective(models, obs, SubTest_Params)
-    return DBs_eta, DBs_z, ELBOs, Ratios
+    DBs_eta, DBs_z, ELBOs, Ratios, LLs = objective(models, obs, SubTest_Params)
+    return DBs_eta, DBs_z, ELBOs, Ratios, LLs

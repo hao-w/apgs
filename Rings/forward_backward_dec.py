@@ -5,7 +5,7 @@ from torch.distributions.beta import Beta
 from torch.distributions.one_hot_categorical import OneHotCategorical as cat
 import probtorch
 import math
-def oneshot(oneshot_mu, oneshot_state, enc_angle, dec_x, ob, K):
+def Oneshot(oneshot_mu, oneshot_state, enc_angle, dec_x, ob, K):
     """
     initialize mu by one-shot encoder
     """

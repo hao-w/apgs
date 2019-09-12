@@ -15,40 +15,47 @@ def weights_init(m):
     if classname.find('Linear') != -1:
         m.weight.data.normal_(0.0, 1e-3)
 
-def resample_eta(obs_mu, obs_sigma, weights, idw_flag=True):
-    S, B, K, D = obs_mu.shape
-    if idw_flag: ## individual importance weight S * B * K
-        ancesters = Categorical(weights.permute(1, 2, 0)).sample((S, )).unsqueeze(-1).repeat(1, 1, 1, D)
-        obs_mu_r = torch.gather(obs_mu, 0, ancesters)
-        obs_sigma_r = torch.gather(obs_sigma, 0, ancesters)
-    else: ## joint importance weight S * B
-        ancesters = Categorical(weights.transpose(0,1)).sample((S, )).unsqueeze(-1).unsqueeze(-1).repeat(1, 1, K, D)
-        obs_mu_r = torch.gather(obs_mu, 0, ancesters)
-        obs_sigma_r = torch.gather(obs_sigma, 0, ancesters)
-    return obs_mu_r, obs_sigma_r
+def Resample(var, weights, idw_flag=True):
+    dim1, _, dim3, dim4 = var.shape
+    if idw_flag:
+        ancesters = Categorical(weights.permute(1, 2, 0)).sample((dim1, )).unsqueeze(-1).repeat(1, 1, 1, dim4)
+    else:
+        ancesters = Categorical(weights.transpose(0, 1)).sample((dim1, )).unsqueeze(-1).unsqueeze(-1).repeat(1, 1, dim3, dim4) ## S * B * N * K
+    return torch.gather(var, 0, ancesters)
+# def resample_eta(obs_mu, obs_sigma, weights, idw_flag=True):
+#     S, B, K, D = obs_mu.shape
+#     if idw_flag: ## individual importance weight S * B * K
+#         ancesters = Categorical(weights.permute(1, 2, 0)).sample((S, )).unsqueeze(-1).repeat(1, 1, 1, D)
+#         obs_mu_r = torch.gather(obs_mu, 0, ancesters)
+#         obs_sigma_r = torch.gather(obs_sigma, 0, ancesters)
+#     else: ## joint importance weight S * B
+#         ancesters = Categorical(weights.transpose(0,1)).sample((S, )).unsqueeze(-1).unsqueeze(-1).repeat(1, 1, K, D)
+#         obs_mu_r = torch.gather(obs_mu, 0, ancesters)
+#         obs_sigma_r = torch.gather(obs_sigma, 0, ancesters)
+#     return obs_mu_r, obs_sigma_r
+#
+#
+# def resample_state(state, weights, idw_flag=True):
+#     S, B, N, K = state.shape
+#     if idw_flag: ## individual importance weight S * B * K
+#         ancesters = Categorical(weights.permute(1, 2, 0)).sample((S, )).unsqueeze(-1).repeat(1, 1, 1, K) ## S * B * N * K
+#         state_r = torch.gather(state, 0, ancesters)
+#     else: ## joint importance weight S * B
+#         ancesters = Categorical(weights.transpose(0,1)).sample((S, )).unsqueeze(-1).unsqueeze(-1).repeat(1, 1, N, K) ## S * B * N * K
+#         state_r = torch.gather(state, 0, ancesters)
+#     return state_r
 
-
-def resample_state(state, weights, idw_flag=True):
-    S, B, N, K = state.shape
-    if idw_flag: ## individual importance weight S * B * K
-        ancesters = Categorical(weights.permute(1, 2, 0)).sample((S, )).unsqueeze(-1).repeat(1, 1, 1, K) ## S * B * N * K
-        state_r = torch.gather(state, 0, ancesters)
-    else: ## joint importance weight S * B
-        ancesters = Categorical(weights.transpose(0,1)).sample((S, )).unsqueeze(-1).unsqueeze(-1).repeat(1, 1, N, K) ## S * B * N * K
-        state_r = torch.gather(state, 0, ancesters)
-    return state_r
-
-def Log_likelihood(obs, state, obs_tau, obs_mu, K, D, cluster_flag=False):
+def Log_likelihood(ob, state, ob_tau, ob_mu, cluster_flag=False):
     """
     cluster_flag = False : return S * B * N
     cluster_flag = True, return S * B * K
     """
-    obs_sigma = 1. / obs_tau.sqrt()
+    ob_sigma = 1. / ob_tau.sqrt()
     labels = state.argmax(-1)
-    labels_flat = labels.unsqueeze(-1).repeat(1, 1, 1, D)
-    obs_mu_expand = torch.gather(obs_mu, 2, labels_flat)
-    obs_sigma_expand = torch.gather(obs_sigma, 2, labels_flat)
-    log_obs = Normal(obs_mu_expand, obs_sigma_expand).log_prob(obs).sum(-1) # S * B * N
+    labels_flat = labels.unsqueeze(-1).repeat(1, 1, 1, ob.shape[-1])
+    ob_mu_expand = torch.gather(ob_mu, 2, labels_flat)
+    ob_sigma_expand = torch.gather(ob_sigma, 2, labels_flat)
+    log_ob = Normal(ob_mu_expand, ob_sigma_expand).log_prob(ob).sum(-1) # S * B * N
     if cluster_flag:
-        log_obs = torch.cat([((labels==k).float() * log_obs).sum(-1).unsqueeze(-1) for k in range(K)], -1) # S * B * K
-    return log_obs
+        log_ob = torch.cat([((labels==k).float() * log_ob).sum(-1).unsqueeze(-1) for k in range(state.shape[-1])], -1) # S * B * K
+    return log_ob

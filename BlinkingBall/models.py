@@ -26,8 +26,3 @@ class Enc_W(nn.Module):
     def forward(self, Hr_u):
         W_u = self.linear(Hr_u)
         return W_u
-
-
-
-
-
