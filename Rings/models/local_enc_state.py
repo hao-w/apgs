@@ -20,10 +20,11 @@ class Enc_state(nn.Module):
         if CUDA:
             self.prior_pi = self.prior_pi.cuda().to(device)
 
-    def forward(self, ob, angle, mu, K):
+    def forward(self, ob, angle, mu):
         q = probtorch.Trace()
         p = probtorch.Trace()
-        S, B, N, _ = ob.shape
+        N = ob.shape[-2]
+        K = mu.shape[-2]
         gamma_list = []
         for k in range(K):
             data_ck = torch.cat((ob, angle, mu[:, :, k, :].unsqueeze(-2).repeat(1,1,N,1)), -1)

@@ -15,7 +15,7 @@ def weights_init(m):
     if classname.find('Linear') != -1:
         m.weight.data.normal_(0.0, 1e-3)
 
-def resample(var, weights, idw_flag=True):
+def Resample(var, weights, idw_flag=True):
     dim1, _, dim3, dim4 = var.shape
     if idw_flag:
         ancesters = Categorical(weights.permute(1, 2, 0)).sample((dim1, )).unsqueeze(-1).repeat(1, 1, 1, dim4)
