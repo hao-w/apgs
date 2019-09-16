@@ -32,3 +32,26 @@ def APG(models, optimizer, ob, mcmc_steps, K):
         metrics['theta_loss'].append((theta_loss_mu + theta_loss_z).unsqueeze(0))
         metrics['ess'].append((ess_mu + ess_z).unsqueeze(0).detach() / 2)
     return metrics
+
+def APG_test(models, ob, mcmc_steps, K):
+    """
+    APG objective used at test time
+    NOTE: need to implement an interface
+    which returns different variables needed during training and testing
+    """
+    (os_mu, f_state, f_angle, f_mu, b_state, b_angle, b_mu, dec_x) = models
+    metrics = {'samples' : []}
+    E_mu, E_z, ess_os, w_os, mu, state, angle = Init_mu(os_mu, f_state, f_angle, dec_x, ob, K, training=False)
+    metrics['samples'].append((E_mu, E_z))
+    for m in range(mcmc_steps):
+        if m == 0:
+            state = Resample(state, w_os, idw_flag=False) ## resample state
+            angle = Resample(angle, w_os, idw_flag=False)
+        else:
+            state = Resample(state, w_z, idw_flag=True)
+            angle = Resample(angle, w_z, idw_flag=True)
+        E_mu, ess_mu, w_mu, mu = Update_mu(f_mu, b_mu, dec_x, ob, state, angle, mu, K, training=False)
+        mu = Resample(mu, w_mu, idw_flag=True)
+        E_z, ess_z, w_z, state, angle = Update_state_angle(f_state, f_angle, b_state, b_angle, dec_x, ob, state, angle, mu, K, training=False)
+        metrics['samples'].append((E_mu, E_z))
+    return metrics
