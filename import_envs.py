@@ -4,6 +4,7 @@ sys.path.append("../")
 sys.path.append("../models/")
 sys.path.append("../objectives/")
 sys.path.append('/home/hao/Research/probtorch/')
+import torch
 import probtorch
 # from plots import *
 # from plots_mc import *

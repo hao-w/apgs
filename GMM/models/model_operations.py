@@ -26,12 +26,15 @@ def Init_models(K, D, num_hidden_local, CUDA, device, lr, RESTORE=False, PATH=No
         f_eta.load_state_dict(torch.load("../weights/f-eta-%s" % PATH))
         b_z.load_state_dict(torch.load("../weights/b-z-%s" % PATH))
         b_eta.load_state_dict(torch.load("../weights/b-eta-%s" % PATH))
-    optimizer =  torch.optim.Adam(list(os_eta.parameters())+list(f_z.parameters())+list(f_eta.parameters()),lr=lr, betas=(0.9, 0.99))
-    # optimizer =  torch.optim.Adam(list(os_eta.parameters())+list(f_z.parameters())+list(f_eta.parameters())+list(b_z.parameters())+list(b_eta.parameters()),lr=lr, betas=(0.9, 0.99))
-    return (os_eta, f_z, f_eta), optimizer
+    # optimizer =  torch.optim.Adam(list(os_eta.parameters())+list(f_z.parameters())+list(f_eta.parameters()),lr=lr, betas=(0.9, 0.99))
+    optimizer =  torch.optim.Adam(list(os_eta.parameters())+list(f_z.parameters())+list(f_eta.parameters())+list(b_z.parameters())+list(b_eta.parameters()),lr=lr, betas=(0.9, 0.99))
+    return (os_eta, f_z, f_eta, b_z, b_eta), optimizer
 
 def Save_models(models, path):
-    (os_eta, f_z, f_eta) = models
+    (os_eta, f_z, f_eta, b_z, b_eta) = models
     torch.save(os_eta.state_dict(), "../weights/os-eta-%s" % path)
     torch.save(f_z.state_dict(), "../weights/f-z-%s" % path)
     torch.save(f_eta.state_dict(), "../weights/f-eta-%s" % path)
+    
+    torch.save(b_z.state_dict(), "../weights/b-z-%s" % path)
+    torch.save(b_eta.state_dict(), "../weights/b-eta-%s" % path)

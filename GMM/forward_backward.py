@@ -9,8 +9,7 @@ import probtorch
 
 def Init_eta(os_eta, f_z, ob):
     """
-    initialize eta, using oneshot encoder, and then update z using its (gibbs or neural gibbs) encoder
-    return the samples and log_weights
+    One-shot predicts eta and z, like a normal VAE
     """
     q_eta, p_eta, q_nu = os_eta(ob)
     log_p_eta = p_eta['means'].log_prob.sum(-1) + p_eta['precisions'].log_prob.sum(-1)
@@ -20,76 +19,62 @@ def Init_eta(os_eta, f_z, ob):
     q_z, p_z = f_z.forward(ob, ob_tau, ob_mu)
     log_p_z = p_z['zs'].log_prob
     log_q_z = q_z['zs'].log_prob
-    state = q_z['zs'].value ## S * B * N * K
-    log_obs_n = Log_likelihood(ob, state, ob_tau, ob_mu, cluster_flag=False)
+    z = q_z['zs'].value ## S * B * N * K
+    log_obs_n = Log_likelihood(ob, z, ob_tau, ob_mu, cluster_flag=False)
     log_w = log_obs_n.sum(-1) + log_p_z.sum(-1) - log_q_z.sum(-1) + log_p_eta.sum(-1) - log_q_eta.sum(-1)
     w = F.softmax(log_w, 0).detach()
     loss = (w * log_w).sum(0).mean()
     ess = (1. / (w**2).sum(0)).mean().unsqueeze(0)
-    return loss, ess, w, ob_tau, ob_mu, state
+    return loss, ess, w, ob_tau, ob_mu, z
 
-def Update_eta(f_eta, ob, state, ob_tau_old, ob_mu_old):
+def Update_eta(f_eta, b_eta, ob, state, ob_tau_old, ob_mu_old):
     """
     Given the current samples for local variable (state),
-    sample new global variable (eta = mu + tau).
+    update global variable (eta = mu + tau).
     """
-    q_eta, p_eta, q_nu = f_eta(ob, state)
-    log_p_eta = p_eta['means'].log_prob.sum(-1) + p_eta['precisions'].log_prob.sum(-1)
-    log_q_eta = q_eta['means'].log_prob.sum(-1) + q_eta['precisions'].log_prob.sum(-1)
-    ob_mu = q_eta['means'].value
-    ob_tau = q_eta['precisions'].value
-    log_obs = Log_likelihood(ob, state, ob_tau, ob_mu, cluster_flag=True)
-    log_f_w = log_obs + log_p_eta - log_q_eta
-    ## backward
-    log_p_eta_old = Normal(p_eta['means'].dist.loc, p_eta['means'].dist.scale).log_prob(ob_mu_old).sum(-1) + Gamma(p_eta['precisions'].dist.concentration, p_eta['precisions'].dist.rate).log_prob(ob_tau_old).sum(-1)
-    log_q_eta_old = Normal(q_eta['means'].dist.loc, q_eta['means'].dist.scale).log_prob(ob_mu_old).sum(-1) + Gamma(q_eta['precisions'].dist.concentration, q_eta['precisions'].dist.rate).log_prob(ob_tau_old).sum(-1)
-    log_obs_old = Log_likelihood(ob, state, ob_tau_old, ob_mu_old, cluster_flag=True)
-    log_b_w = log_obs_old + log_p_eta_old - log_q_eta_old
-    loss, _, w = Compose_IW(log_f_w, log_b_w)
+    q_f_eta, p_f_eta, q_f_nu = f_eta(ob, state) ## forward kernel
+    log_p_f_eta = p_f_eta['means'].log_prob.sum(-1) + p_f_eta['precisions'].log_prob.sum(-1)
+    log_q_f_eta = q_f_eta['means'].log_prob.sum(-1) + q_f_eta['precisions'].log_prob.sum(-1)
+    ob_mu = q_f_eta['means'].value
+    ob_tau = q_f_eta['precisions'].value
+    log_f_obs = Log_likelihood(ob, state, ob_tau, ob_mu, cluster_flag=True)
+    log_f_w = log_f_obs + log_p_f_eta - log_q_f_eta
+    q_b_eta, p_b_eta, q_b_nu = b_eta(ob, state, sampled=False, tau_old=ob_tau_old, mu_old=ob_mu_old) ## backward kernel
+    log_p_b_eta = p_b_eta['means'].log_prob.sum(-1) + p_b_eta['precisions'].log_prob.sum(-1)
+    log_q_b_eta = q_b_eta['means'].log_prob.sum(-1) + q_b_eta['precisions'].log_prob.sum(-1)
+    log_b_obs = Log_likelihood(ob, state, ob_tau_old, ob_mu_old, cluster_flag=True)
+    log_b_w = log_b_obs + log_p_b_eta - log_q_b_eta
+    loss, _, w = Compose_IW(log_f_w, log_q_f_eta, log_b_w, log_q_b_eta)
     ess = (1. / (w**2).sum(0)).mean()
     return loss, ess, w, ob_tau, ob_mu
 
-def Update_z(f_z, ob, ob_tau, ob_mu, state_old):
+def Update_z(f_z, b_z, ob, ob_tau, ob_mu, z_old):
     """
-    Given the current samples for global variable (eta = mu + tau),
-    sample new local variable (state).
+    Given the current samples of global variable (eta = mu + tau),
+    update local variable (state).
     """
-    q_z, p_z = f_z.forward(ob, ob_tau, ob_mu)
-    log_p_z = p_z['zs'].log_prob
-    log_q_z = q_z['zs'].log_prob
-    state = q_z['zs'].value
-    log_obs = Log_likelihood(ob, state, ob_tau, ob_mu, cluster_flag=False)
-    log_f_w = log_obs + log_p_z - log_q_z
-    ## backward
-    log_p_z_old = cat(probs=p_z['zs'].dist.probs).log_prob(state_old)
-    log_q_z_old = cat(probs=q_z['zs'].dist.probs).log_prob(state_old)
-    log_obs_old = Log_likelihood(ob, state_old, ob_tau, ob_mu, cluster_flag=False)
-    log_b_w = log_obs_old + log_p_z_old - log_q_z_old
-    loss, _, w = Compose_IW(log_f_w, log_b_w)
+    q_f_z, p_f_z = f_z.forward(ob, ob_tau, ob_mu)
+    log_p_f_z = p_f_z['zs'].log_prob
+    log_q_f_z = q_f_z['zs'].log_prob
+    z = q_f_z['zs'].value
+    log_f_obs = Log_likelihood(ob, z, ob_tau, ob_mu, cluster_flag=False)
+    log_f_w = log_f_obs + log_p_f_z - log_q_f_z
+    q_b_z, p_b_z = b_z.forward(ob, ob_tau, ob_mu, sampled=False, z_old=z_old) ## backward
+    log_p_b_z = p_b_z['zs'].log_prob
+    log_q_b_z = q_b_z['zs'].log_prob
+    log_b_obs = Log_likelihood(ob, z_old, ob_tau, ob_mu, cluster_flag=False)
+    log_b_w = log_b_obs + log_p_b_z - log_q_b_z
+    loss, _, w = Compose_IW(log_f_w, log_q_f_z, log_b_w, log_q_b_z)
     ess = (1. / (w**2).sum(0)).mean()
-    return loss, ess, w, state
+    return loss, ess, w, z
 
-# def Incremental_z_joint(q_z, p_z, obs, obs_tau, obs_mu, K, D, state_prev):
-#     """
-#     Given the current samples for global variable (eta = mu + tau),
-#     sample new local variable (state).
-#     """
-#     log_p_z = p_z['zs'].log_prob
-#     log_q_z = q_z['zs'].log_prob
-#     state = q_z['zs'].value
-#     log_obs = Log_likelihood(obs, state, obs_tau, obs_mu, K, D, cluster_flag=False)
-#     log_w_forward = log_obs + log_p_z - log_q_z
-#     ## backward
-#     log_p_z_prev = cat(probs=p_z['zs'].dist.probs).log_prob(state_prev)
-#     log_q_z_prev = cat(probs=q_z['zs'].dist.probs).log_prob(state_prev)
-#     log_obs_prev = Log_likelihood(obs, state_prev, obs_tau, obs_mu, K, D, cluster_flag=False)
-#     log_w_backward = log_obs_prev.sum(-1) + log_p_z_prev.sum(-1) - log_q_z_prev.sum(-1)
-#     return state, log_w_forward, log_w_backward
-
-def Compose_IW(log_f_w, log_b_w):
+def Compose_IW(log_f_w, log_q_f, log_b_w, log_q_b):
     """
     log_f_w : log \frac {p(x, z')} {q_\f (z' | z, x)}
     log_b_w : log \frac {p(x, z)} {q_\f (z | z', x)}
+    
+    self-normalized importance weights w := softmax(log_f_w = log_b_w).detach()
+    loss := w * (-log_q_f) + (- log_q_b)
     """
     ## symmetric KLs, i.e., Expectation w.r.t. q_\f
     log_w = log_f_w - log_b_w
@@ -99,6 +84,6 @@ def Compose_IW(log_f_w, log_b_w):
     # symkl_db = kl_f_b + kl_b_f
     ## "asymmetric detailed balance"
     # w_f = F.softmax(log_w_f, 0).detach()
-    loss = (w * log_f_w).sum(0).sum(-1).mean()
+    loss = (w * ( - log_q_f)).sum(0).sum(-1).mean() - log_q_b.sum(-1).mean()
 
     return loss, log_w, w

@@ -16,7 +16,7 @@ class Enc_z(nn.Module):
         if CUDA:
             self.prior_pi = self.prior_pi.cuda().to(device)
 
-    def forward(self, ob, ob_tau, ob_mu):
+    def forward(self, ob, ob_tau, ob_mu, sampled=True, z_old=None):
         q = probtorch.Trace()
         p = probtorch.Trace()
         gamma_list = []
@@ -26,9 +26,13 @@ class Enc_z(nn.Module):
             data_ck = torch.cat((ob, ob_mu[:, :, k, :].unsqueeze(-2).repeat(1,1,N,1), ob_tau[:, :, k, :].unsqueeze(-2).repeat(1,1,N,1)), -1) ## S * B * N * 3D
             gamma_list.append(self.pi_log_prob(data_ck))
         q_probs = F.softmax(torch.cat(gamma_list, -1), -1)
-        z = cat(q_probs).sample()
-        _ = q.variable(cat, probs=q_probs, value=z, name='zs')
-        _ = p.variable(cat, probs=self.prior_pi, value=z, name='zs')
+        if sampled == True:
+            z = cat(q_probs).sample()
+            _ = q.variable(cat, probs=q_probs, value=z, name='zs')
+            _ = p.variable(cat, probs=self.prior_pi, value=z, name='zs')
+        else:
+            _ = q.variable(cat, probs=q_probs, value=z_old, name='zs')
+            _ = p.variable(cat, probs=self.prior_pi, value=z_old, name='zs')
         return q, p
 
     def sample_prior(self, N, sample_size, batch_size):

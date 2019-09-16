@@ -1,6 +1,7 @@
 import torch
 import time
 from utils import *
+import gc
 
 def train(models, objective, optimizer, data, mcmc_steps, Train_Params):
     """
@@ -10,6 +11,7 @@ def train(models, objective, optimizer, data, mcmc_steps, Train_Params):
     GROUP_SIZE = len(data)
     NUM_DATASETS = data[0].shape[0]
     NUM_BATCHES = int((NUM_DATASETS / B))
+    annealed_coefficient = (torch.arange(mcmc_steps+1) + 1).float() / (mcmc_steps+1)
     for epoch in range(NUM_EPOCHS):
         Metrics = dict()
         time_start = time.time()
@@ -26,23 +28,35 @@ def train(models, objective, optimizer, data, mcmc_steps, Train_Params):
                 if CUDA:
                     with torch.cuda.device(device):
                         ob = ob.cuda()
-                metrics = objective(models, ob, mcmc_steps, K)
+                        annealed_coefficient = annealed_coefficient.cuda()
+                metrics = objective(models, optimizer, ob, mcmc_steps, K)
                 phi_loss = torch.cat(metrics['phi_loss'], 0).sum()
-                theta_loss = torch.cat(metrics['theta_loss'], 0).sum()
+                theta_loss = (torch.cat(metrics['theta_loss'], 0) * annealed_coefficient).sum()
+                # for obj in gc.get_objects():
+                #     try:
+                #         p1 = torch.is_tensor(obj) and obj.is_cuda()
+                #         p2 = hasattr(obj, 'data') and torch.is_tensor(obj.data) and obj.data.is_cuda()
+                #         if p1 or p2:
+                #             print('Garbage Detected!')
+                #
+                #             print(type(obj), obj.size())
+                #     except:
+                #         pass
                 phi_loss.backward(retain_graph=True)
                 theta_loss.backward()
                 optimizer.step()
+                optimizer.zero_grad()
                 for key in metrics.keys():
                     if key in Metrics:
-                        Metrics[key] += metrics[key][-1].item()
+                        Metrics[key] += metrics[key][-1].detach().item()
                     else:
-                        Metrics[key] = metrics[key][-1].item()
+                        Metrics[key] = metrics[key][-1].detach().item()
 
         metrics_print = ",  ".join(['%s: %.3f' % (k, v/(GROUP_SIZE*NUM_BATCHES)) for k, v in Metrics.items()])
         flog = open('../results/log-' + path + '.txt', 'a+')
-        print(metrics_print, file=flog)
-        flog.close()
         time_end = time.time()
+        print("(%ds) " % (time_end - time_start) + metrics_print, file=flog)
+        flog.close()
         print("Completed  in (%ds),  " % (time_end - time_start) + metrics_print)
 
 # def train(models, optimizer, OB, num_epochs, mcmc_size, S, B, K, CUDA, device, PATH):

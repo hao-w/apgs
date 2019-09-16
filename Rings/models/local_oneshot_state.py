@@ -18,17 +18,17 @@ class Oneshot_state(nn.Module):
         if CUDA:
             self.prior_pi = self.prior_pi.cuda().to(device)
 
-    def forward(self, ob, mu, K):
+    def forward(self, ob, mu, K, sampled=True, state_old=None):
         q = probtorch.Trace()
         p = probtorch.Trace()
         N = ob.shape[-2]
         ob_mu = torch.cat((ob.unsqueeze(2).repeat(1, 1, K, 1, 1), mu.unsqueeze(-2).repeat(1, 1, 1, N, 1)), -1)
         q_probs = F.softmax(self.pi_log_prob(ob_mu).squeeze(-1).transpose(-1, -2), -1)
-        # for k in range(K):
-        #     data_ck = torch.cat((ob, mu[:, :, k, :].unsqueeze(-2).repeat(1,1,N,1)), -1)
-        #     gamma_list.append(self.pi_log_prob(data_ck))
-        # q_probs = F.softmax(torch.cat(gamma_list, -1), -1) # S * B * N * K
-        z = cat(q_probs).sample()
-        _ = q.variable(cat, probs=q_probs, value=z, name='zs')
-        _ = p.variable(cat, probs=self.prior_pi, value=z, name='zs')
+        if sampled == True:
+            state = cat(q_probs).sample()
+            _ = q.variable(cat, probs=q_probs, value=state, name='states')
+            _ = p.variable(cat, probs=self.prior_pi, value=state, name='states')
+        else:
+            _ = q.variable(cat, probs=q_probs, value=state_old, name='states')
+            _ = p.variable(cat, probs=self.prior_pi, value=state_old, name='states')
         return q, p
