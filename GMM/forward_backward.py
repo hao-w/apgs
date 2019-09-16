@@ -7,7 +7,7 @@ from torch.distributions.one_hot_categorical import OneHotCategorical as cat
 from torch.distributions.gamma import Gamma
 import probtorch
 
-def Init_eta(os_eta, f_z, ob):
+def Init_eta(os_eta, f_z, ob, training=True):
     """
     One-shot predicts eta and z, like a normal VAE
     """
@@ -23,11 +23,17 @@ def Init_eta(os_eta, f_z, ob):
     log_obs_n = Log_likelihood(ob, z, ob_tau, ob_mu, cluster_flag=False)
     log_w = log_obs_n.sum(-1) + log_p_z.sum(-1) - log_q_z.sum(-1) + log_p_eta.sum(-1) - log_q_eta.sum(-1)
     w = F.softmax(log_w, 0).detach()
-    loss = (w * log_w).sum(0).mean()
-    ess = (1. / (w**2).sum(0)).mean().unsqueeze(0)
-    return loss, ess, w, ob_tau, ob_mu, z
+    if training :
+        loss = (w * log_w).sum(0).mean()
+        ess = (1. / (w**2).sum(0)).mean().unsqueeze(0)
+        return loss, ess, w, ob_tau, ob_mu, z
+    else:
+        E_z = q_z['zs'].dist.probs.mean(0)[0].cpu().data.numpy()
+        E_mu = q_eta['means'].dist.loc.mean(0)[0].cpu().data.numpy()
+        E_tau = (q_eta['precisions'].dist.concentration / q_eta['precisions'].dist.rate).mean(0)[0].cpu().data.numpy()
+        return E_tau, E_mu, E_z, w, ob_tau, ob_mu, z
 
-def Update_eta(f_eta, b_eta, ob, state, ob_tau_old, ob_mu_old):
+def Update_eta(f_eta, b_eta, ob, state, ob_tau_old, ob_mu_old, training=True):
     """
     Given the current samples for local variable (state),
     update global variable (eta = mu + tau).
@@ -44,11 +50,17 @@ def Update_eta(f_eta, b_eta, ob, state, ob_tau_old, ob_mu_old):
     log_q_b_eta = q_b_eta['means'].log_prob.sum(-1) + q_b_eta['precisions'].log_prob.sum(-1)
     log_b_obs = Log_likelihood(ob, state, ob_tau_old, ob_mu_old, cluster_flag=True)
     log_b_w = log_b_obs + log_p_b_eta - log_q_b_eta
-    loss, _, w = Compose_IW(log_f_w, log_q_f_eta, log_b_w, log_q_b_eta)
-    ess = (1. / (w**2).sum(0)).mean()
-    return loss, ess, w, ob_tau, ob_mu
+    if training:
+        loss, _, w = Compose_IW(log_f_w, log_q_f_eta, log_b_w, log_q_b_eta)
+        ess = (1. / (w**2).sum(0)).mean()
+        return loss, ess, w, ob_tau, ob_mu
+    else:
+        _, _, w = Compose_IW(log_f_w, log_q_f_eta, log_b_w, log_q_b_eta)
+        E_mu = q_f_eta['means'].dist.loc.mean(0)[0].cpu().data.numpy()
+        E_tau = (q_f_eta['precisions'].dist.concentration / q_f_eta['precisions'].dist.rate).mean(0)[0].cpu().data.numpy()
+        return E_tau, E_mu, w, ob_tau, ob_mu
 
-def Update_z(f_z, b_z, ob, ob_tau, ob_mu, z_old):
+def Update_z(f_z, b_z, ob, ob_tau, ob_mu, z_old, training=True):
     """
     Given the current samples of global variable (eta = mu + tau),
     update local variable (state).
@@ -64,26 +76,24 @@ def Update_z(f_z, b_z, ob, ob_tau, ob_mu, z_old):
     log_q_b_z = q_b_z['zs'].log_prob
     log_b_obs = Log_likelihood(ob, z_old, ob_tau, ob_mu, cluster_flag=False)
     log_b_w = log_b_obs + log_p_b_z - log_q_b_z
-    loss, _, w = Compose_IW(log_f_w, log_q_f_z, log_b_w, log_q_b_z)
-    ess = (1. / (w**2).sum(0)).mean()
-    return loss, ess, w, z
+    if training:
+        loss, _, w = Compose_IW(log_f_w, log_q_f_z, log_b_w, log_q_b_z)
+        ess = (1. / (w**2).sum(0)).mean()
+        return loss, ess, w, z
+    else:
+        _, _, w = Compose_IW(log_f_w, log_q_f_z, log_b_w, log_q_b_z)
+        E_z = q_f_z['zs'].dist.probs.mean(0)[0].cpu().data.numpy()
+        return E_z, w, z
 
-def Compose_IW(log_f_w, log_q_f, log_b_w, log_q_b):
+def Compose_IW(log_f_w, log_q_f, log_b_w, log_q_b, training=True):
     """
     log_f_w : log \frac {p(x, z')} {q_\f (z' | z, x)}
     log_b_w : log \frac {p(x, z)} {q_\f (z | z', x)}
-    
+
     self-normalized importance weights w := softmax(log_f_w = log_b_w).detach()
     loss := w * (-log_q_f) + (- log_q_b)
     """
-    ## symmetric KLs, i.e., Expectation w.r.t. q_\f
     log_w = log_f_w - log_b_w
     w = F.softmax(log_w, 0).detach()
-    # kl_f_b = - log_w_sym.sum(-1).mean()
-    # kl_b_f = (w_sym * log_w_sym).sum(0).sum(-1).mean()
-    # symkl_db = kl_f_b + kl_b_f
-    ## "asymmetric detailed balance"
-    # w_f = F.softmax(log_w_f, 0).detach()
     loss = (w * ( - log_q_f)).sum(0).sum(-1).mean() - log_q_b.sum(-1).mean()
-
     return loss, log_w, w

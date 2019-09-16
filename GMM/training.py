@@ -2,7 +2,6 @@ import torch
 import time
 from utils import *
 from normal_gamma import *
-from forward_backward import *
 from kls import *
 
 def train(models, objective, optimizer, data, mcmc_steps, Train_Params):
@@ -59,7 +58,39 @@ def train(models, objective, optimizer, data, mcmc_steps, Train_Params):
         flog.close()
         print("Completed  in (%ds),  " % (time_end - time_start) + metrics_print)
 
-
+# def Test(models, objective, data, mcmc_steps, Test_Params):
+#     """
+#     Test function
+#     """
+#     (K, D, S, CUDA, device, path) = Test_Params
+#     data = data.repeat(S, 1, 1, 1)
+#     EPS = torch.FloatTensor([1e-15]).log() ## EPS for KL between categorial distributions
+#     if CUDA:
+#         with torch.cuda.device(device):
+#             data = data.cuda()
+#             EPS = EPS.cuda() ## EPS for KL between categorial distributions
+#     # Metrics = dict()
+#     time_start = time.time()
+#             metrics = objective(models, ob, mcmc_steps)
+#             # for key in metrics.keys():
+#             #     if key in Metrics:
+#             #         Metrics[key] += metrics[key][-1].detach().item()
+#             #     else:
+#             #         Metrics[key] = metrics[key][-1].detach().item()
+#             # ## compute KL
+#             # kl_step = kl_train(models, ob, reused, EPS)
+#             # for key in kl_step.keys():
+#             #     if key in Metrics:
+#             #         Metrics[key] += kl_step[key]
+#             #     else:
+#             #         Metrics[key] = kl_step[key]
+#     time_end = time.time()
+#     metrics_print = ",  ".join(['%s: %.3f' % (k, v/(GROUP_SIZE*NUM_BATCHES)) for k, v in Metrics.items()])
+#     flog = open('../results/log-' + path + '.txt', 'a+')
+#     print("(%ds) " % (time_end - time_start) + metrics_print, file=flog)
+#     flog.close()
+#     print("Completed  in (%ds),  " % (time_end - time_start) + metrics_print)
+#     return ...
 
 # def train(models, objective, optimizer, data, Model_Params, Train_Params):
 #     """
