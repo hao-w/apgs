@@ -18,11 +18,10 @@ class Oneshot_state(nn.Module):
         if CUDA:
             self.prior_pi = self.prior_pi.cuda().to(device)
 
-    def forward(self, ob, mu):
+    def forward(self, ob, mu, K):
         q = probtorch.Trace()
         p = probtorch.Trace()
         N = ob.shape[-2]
-        K = mu.shape[-2]
         ob_mu = torch.cat((ob.unsqueeze(2).repeat(1, 1, K, 1, 1), mu.unsqueeze(-2).repeat(1, 1, 1, N, 1)), -1)
         q_probs = F.softmax(self.pi_log_prob(ob_mu).squeeze(-1).transpose(-1, -2), -1)
         # for k in range(K):

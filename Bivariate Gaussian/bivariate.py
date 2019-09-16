@@ -95,11 +95,11 @@ class Bi_Gaussian():
         esss.append((1. / (w_x2** 2).sum(0)).mean().unsqueeze(0))
         for m in range(mcmc_steps):
             x2 = resample(x2, w_x2) ## resample x2
-            x1_old = x1
-            loss_x1, ess_x1, x1, log_w_x1, w_x1 = self.fb(q_x1, x2, 'x2', x1_old, sampled=sampled, obj=obj) ## update x1
+            # x1_old = x1
+            loss_x1, ess_x1, x1, log_w_x1, w_x1 = self.fb(q_x1, x2, 'x2', x1, sampled=sampled, obj=obj) ## update x1
             x1 = resample(x1, w_x1) ## resample x1
-            x2_old = x2
-            loss_x2, ess_x2, x2, log_w_x2, w_x2 = self.fb(q_x2, x1, 'x1', x2_old, sampled=sampled, obj=obj) ## update x2
+            # x2_old = x2
+            loss_x2, ess_x2, x2, log_w_x2, w_x2 = self.fb(q_x2, x1, 'x1', x2, sampled=sampled, obj=obj) ## update x2
             losss.append(loss_x1+loss_x2)
             esss.append((ess_x1 + ess_x2) / 2)
         return torch.cat(losss, 0).sum(), torch.cat(esss, 0).mean()

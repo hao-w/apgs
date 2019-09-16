@@ -15,7 +15,7 @@ def Init_mu(os_mu, f_state, f_angle, dec_x, ob, K):
     log_q_mu = q_mu['means'].log_prob.sum(-1).sum(-1)
     mu = q_mu['means'].value
     ## z
-    q_state, p_state = f_state.forward(ob, mu)
+    q_state, p_state = f_state.forward(ob, mu, K)
     log_p_state = p_state['zs'].log_prob.sum(-1)
     log_q_state = q_state['zs'].log_prob.sum(-1)
     state = q_state['zs'].value ## S * B * N * K
@@ -26,12 +26,12 @@ def Init_mu(os_mu, f_state, f_angle, dec_x, ob, K):
     angle = q_angle['angles'].value * 2 * math.pi
     ## decoder
     p_recon = dec_x.forward(ob, state, angle, mu)
-    log_recon = p_recon['likelihood'].log_prob.sum(-1).sum(-1)
+    log_p_x = p_recon['likelihood'].log_prob.sum(-1).sum(-1)
 
-    log_w = log_recon.detach() + log_p_mu + log_p_state + log_p_angle - log_q_mu - log_q_state - log_q_angle
+    log_w = log_p_x.detach() + log_p_mu + log_p_state + log_p_angle - log_q_mu - log_q_state - log_q_angle
     w = F.softmax(log_w, 0).detach()
     phi_loss = (w * log_w).sum(0).mean()  ## weights S * B
-    theta_loss = (w * (- log_recon)).sum(0).mean()
+    theta_loss = (w * (- log_p_x)).sum(0).mean()
     ess = (1. / (w ** 2).sum(0)).mean()
     return phi_loss, theta_loss, ess, w, mu, state, angle
 
@@ -45,9 +45,9 @@ def Update_mu(f_mu, dec_x, ob, state, angle, mu_old, K):
     log_p_f = p_mu['means'].log_prob.sum(-1)
     log_q_f = q_mu['means'].log_prob.sum(-1)
     p_recon_f = dec_x.forward(ob, state, angle, mu)
-    log_p_x_naive = p_recon_f['likelihood'].log_prob.sum(-1)
-    log_p_x = torch.cat([((state.argmax(-1)==k).float() * log_p_x_naive).sum(-1).unsqueeze(-1) for k in range(K)], -1) # S * B * K
-    log_f_w = log_p_x.detach() + log_p_f - log_q_f
+    log_p_x_f_naive = p_recon_f['likelihood'].log_prob.sum(-1)
+    log_p_x_f = torch.cat([((state.argmax(-1)==k).float() * log_p_x_f_naive).sum(-1).unsqueeze(-1) for k in range(K)], -1) # S * B * K
+    log_f_w = log_p_x_f.detach() + log_p_f - log_q_f
     ## backward
     log_p_b = Normal(p_mu['means'].dist.loc, p_mu['means'].dist.scale).log_prob(mu_old).sum(-1)
     log_q_b = Normal(q_mu['means'].dist.loc, q_mu['means'].dist.scale).log_prob(mu_old).sum(-1)
@@ -55,12 +55,12 @@ def Update_mu(f_mu, dec_x, ob, state, angle, mu_old, K):
     log_p_x_b_naive = p_recon_b['likelihood'].log_prob.sum(-1)
     log_p_x_b = torch.cat([((state.argmax(-1)==k).float() * log_p_x_b_naive).sum(-1).unsqueeze(-1) for k in range(K)], -1) # S * B * K
     log_b_w = log_p_x_b.detach() + log_p_b - log_q_b
-    phi_loss, theta_loss, w = Compose_IW(log_f_w, log_b_w, log_p_x)
+    phi_loss, theta_loss, w = Compose_IW(log_f_w, log_b_w, log_p_x_f)
     ess = (1. / (w**2).sum(0)).mean()
     return phi_loss, theta_loss, ess, w, mu
 
 def Update_state_angle(f_state, f_angle, dec_x, ob, state_old, angle_old, mu, K):
-    q_state, p_state = f_state.forward(ob, mu)
+    q_state, p_state = f_state.forward(ob, mu, K)
     state = q_state['zs'].value ## S * B * N * K
     q_angle, p_angle = f_angle(ob, state, mu)
     log_q_f = q_state['zs'].log_prob + q_angle['angles'].log_prob.sum(-1)
