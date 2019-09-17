@@ -114,7 +114,7 @@ class Viz_MC:
             ax1 = fig.add_subplot(gs[0, col_ind])
             ax2 = fig.add_subplot(gs[1, col_ind])
             ax1.plot(elbo_lists[col_ind].data.numpy(), c=self.colors[0])
-            ax2.plot(ess_lists[col_ind].data.numpy() / sample_size, c=self.colors[-1])
+            ax2.plot(ess_lists[col_ind].data.numpy(), c=self.colors[-1])
             ax1.set_title('Dataset %d' % (col_ind+1), fontsize=self.title_fontsize)
             if col_ind == 0:
                 ax1.set_ylabel('ELBO', fontsize=self.title_fontsize)

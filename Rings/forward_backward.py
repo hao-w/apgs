@@ -39,7 +39,8 @@ def Init_mu(os_mu, f_state, f_angle, dec_x, ob, K, training=True):
     else:
         E_mu = q_mu['means'].dist.loc.mean(0)[0].cpu().data.numpy()
         E_z = q_state['states'].dist.probs.mean(0)[0].cpu().data.numpy()
-        return  E_mu, E_z, ess, w, mu, state, angle
+        E_recon =  p_recon['likelihood'].dist.loc.mean(0)[0].cpu().data.numpy()
+        return  E_recon, E_mu, E_z, ess, w, mu, state, angle
 
 
 def Update_mu(f_mu, b_mu, dec_x, ob, state, angle, mu_old, K, training=True):
@@ -98,7 +99,8 @@ def Update_state_angle(f_state, f_angle, b_state, b_angle, dec_x, ob, state_old,
         return phi_loss, theta_loss, ess, w, state, angle
     else:
         E_z = q_f_state['states'].dist.probs.mean(0)[0].cpu().data.numpy()
-        return E_z, ess, w, state, angle
+        E_recon =  p_recon_f['likelihood'].dist.loc.mean(0)[0].cpu().data.numpy()
+        return E_recon, E_z, ess, w, state, angle
 
 def Compose_IW(log_f_w, log_q_f, log_b_w, log_q_b, log_p_x):
     """
