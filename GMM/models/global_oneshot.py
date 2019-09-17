@@ -26,7 +26,7 @@ class Oneshot_eta(nn.Module):
             self.prior_alpha = self.prior_alpha.cuda().to(device)
             self.prior_beta = self.prior_beta.cuda().to(device)
 
-    def forward(self, ob):
+    def forward(self, ob, sampled=True, tau_old=None, mu_old=None):
         q = probtorch.Trace()
         p = probtorch.Trace()
         gammas = self.gamma(ob) # S * B * N * K --> S * B * N * K
@@ -34,24 +34,44 @@ class Oneshot_eta(nn.Module):
         q_alpha, q_beta, q_mu, q_nu = Post_eta(xs, gammas,
                                                  self.prior_alpha, self.prior_beta, self.prior_mu, self.prior_nu)
 
-        ## sample in non-reparameterized way
-        precisions = Gamma(q_alpha, q_beta).sample()
-        q.gamma(q_alpha,
-                q_beta,
-                value=precisions,
-                name='precisions')
-        means = Normal(q_mu, 1. / (q_nu * q['precisions'].value).sqrt()).sample()
-        q.normal(q_mu,
-                 1. / (q_nu * q['precisions'].value).sqrt(),
-                 value=means,
-                 name='means')
-        ## prior distributions
-        p.gamma(self.prior_alpha,
-                self.prior_beta,
-                value=q['precisions'],
-                name='precisions')
-        p.normal(self.prior_mu,
-                 1. / (self.prior_nu * p['precisions'].value).sqrt(),
-                 value=q['means'],
-                 name='means')
+        if sampled:
+            ## sample in non-reparameterized way
+            precisions = Gamma(q_alpha, q_beta).sample()
+            q.gamma(q_alpha,
+                    q_beta,
+                    value=precisions,
+                    name='precisions')
+            means = Normal(q_mu, 1. / (q_nu * q['precisions'].value).sqrt()).sample()
+            q.normal(q_mu,
+                     1. / (q_nu * q['precisions'].value).sqrt(),
+                     value=means,
+                     name='means')
+            ## prior distributions
+            p.gamma(self.prior_alpha,
+                    self.prior_beta,
+                    value=q['precisions'],
+                    name='precisions')
+            p.normal(self.prior_mu,
+                     1. / (self.prior_nu * p['precisions'].value).sqrt(),
+                     value=q['means'],
+                     name='means')
+        else:
+            q.gamma(q_alpha,
+                    q_beta,
+                    value=tau_old,
+                    name='precisions')
+            q.normal(q_mu,
+                     1. / (q_nu * q['precisions'].value).sqrt(),
+                     value=mu_old,
+                     name='means')
+            ## prior distributions
+            p.gamma(self.prior_alpha,
+                    self.prior_beta,
+                    value=q['precisions'],
+                    name='precisions')
+            p.normal(self.prior_mu,
+                     1. / (self.prior_nu * p['precisions'].value).sqrt(),
+                     value=q['means'],
+                     name='means')
+
         return q, p, q_nu

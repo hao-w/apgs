@@ -5,14 +5,12 @@ from normal_gamma import *
 from kls import *
 
 class Eval:
-    def __init__(self, models, K, D, sample_size, batch_size, mcmc_steps, CUDA, device):
+    def __init__(self, models, K, D, batch_size, CUDA, device):
         super().__init__()
         self.models = models
-        self.S = sample_size
         self.B = batch_size
         self.K = K
         self.D = D
-        self.mcmc_steps = mcmc_steps
         self.CUDA = CUDA
         self.device = device
     """
@@ -28,23 +26,25 @@ class Eval:
         """
         OB = []
         for i in range(self.B):
-            num_datasets = Data[i].shape[0]
+            num_datasets = Data[i+2].shape[0]
             indices = torch.arange(num_datasets)
             ob_g = Data[i*2+1][indices[data_ptr]]
             OB.append(ob_g)
         return OB
 
-    def Test_uniform(self, objective, Data, data_ptr):
-        Metrics = {'samples' : [], 'data' : []}
+    def Test_uniform(self, objective, Data, data_ptr, mcmc_steps, sample_size):
+        Metrics = {'samples' : [], 'data' : [], 'elbos' : [], 'ess' : []}
         batch = self.Sample_data_uniform(Data, data_ptr)
         for data in batch:
             Metrics['data'].append(data)
-            data = data.repeat(self.S, 1, 1, 1)
-            EPS = torch.FloatTensor([1e-15]).log() ## EPS for KL between categorial distributions
+            data = data.repeat(sample_size, 1, 1, 1)
+            log_S = torch.FloatTensor([sample_size]).log()
             if self.CUDA:
                 with torch.cuda.device(self.device):
                     data = data.cuda()
-                    EPS = EPS.cuda() ## EPS for KL between categorial distributions
-            metrics = objective(self.models, data, self.mcmc_steps)
+                    log_S = log_S.cuda() ## EPS for KL between categorial distributions
+            metrics = objective(self.models, data, mcmc_steps, log_S)
             Metrics['samples'].append(metrics['samples'])
+            Metrics['elbos'].append(torch.cat(metrics['elbos'], 0))
+            Metrics['ess'].append(torch.cat(metrics['ess'], 0))
         return Metrics
