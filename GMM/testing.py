@@ -33,7 +33,7 @@ class Eval:
         return OB
 
     def Test_uniform(self, objective, Data, data_ptr, mcmc_steps, sample_size):
-        Metrics = {'samples' : [], 'data' : [], 'elbos' : [], 'ess' : []}
+        Metrics = {'samples' : [], 'data' : [], 'log_joint' : [], 'elbos' : [], 'ess' : []}
         batch = self.Sample_data_uniform(Data, data_ptr)
         for data in batch:
             Metrics['data'].append(data)
@@ -47,4 +47,5 @@ class Eval:
             Metrics['samples'].append(metrics['samples'])
             Metrics['elbos'].append(torch.cat(metrics['elbos'], 0))
             Metrics['ess'].append(torch.cat(metrics['ess'], 0))
+            Metrics['log_joint'].append(torch.cat(metrics['log_joint'], 0))
         return Metrics

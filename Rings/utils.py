@@ -16,9 +16,12 @@ def weights_init(m):
         m.weight.data.normal_(0.0, 1e-3)
 
 def Resample(var, weights, idw_flag=True):
-    dim1, _, dim3, dim4 = var.shape
+    dim1, dim2, dim3, dim4 = var.shape
     if idw_flag:
-        ancesters = Categorical(weights.permute(1, 2, 0)).sample((dim1, )).unsqueeze(-1).repeat(1, 1, 1, dim4)
+        if dim2 == 1:
+            ancesters = Categorical(weights.permute(1, 2, 0).squeeze(0)).sample((dim1, )).unsqueeze(1).unsqueeze(-1).repeat(1, 1, 1, dim4)
+        else:
+            ancesters = Categorical(weights.permute(1, 2, 0)).sample((dim1, )).unsqueeze(-1).repeat(1, 1, 1, dim4)
     else:
         ancesters = Categorical(weights.transpose(0, 1)).sample((dim1, )).unsqueeze(-1).unsqueeze(-1).repeat(1, 1, dim3, dim4) ## S * B * N * K
     return torch.gather(var, 0, ancesters)

@@ -4,7 +4,7 @@ from matplotlib.patches import Ellipse
 import numpy as np
 import matplotlib.gridspec as gridspec
 import math
-from utils import shuffler, resample
+from utils import shuffler, Resample
 
 def plot_cov_ellipse(cov, pos, nstd=2, ax=None, **kwargs):
     def eigsorted(cov):

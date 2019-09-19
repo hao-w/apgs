@@ -37,13 +37,13 @@ class Viz_MC:
         ax.set_xticks([])
         ax.set_yticks([])
 
-    def Plot_chains(self, data_list, sample_lists, recon_lists):
+    def Plot_chains(self, data_list, sample_lists, recon_lists, filename):
         ## initialize figure object
         num_rows = len(data_list)
         num_steps = len(sample_lists[0])
         num_cols = 3 + int((num_steps - 1)/ self.viz_interval)
         gs = gridspec.GridSpec(num_rows, num_cols)
-        gs.update(left=0.0 , bottom=0.0, right=1.0, top=1.0, wspace=0, hspace=0)
+        gs.update(left=0.05 , bottom=0.05, right=0.95, top=0.95, wspace=0, hspace=0)
         fig = plt.figure(figsize=(self.fs, self.fs * num_rows / num_cols))
         plt.rc('axes',edgecolor='#eeeeee')
         for row_ind, sample_list in enumerate(sample_lists):
@@ -68,18 +68,28 @@ class Viz_MC:
             self.Plot_onestep(ax, recon_list[-1])
             if row_ind == 0:
                 ax.set_title('Reconstruction', fontsize=self.title_fontsize)
+        plt.savefig(filename +'.svg', dpi=300)
+        plt.savefig(filename + '.pdf')
 
-    def Plot_metrics(self, elbo_lists, ess_lists, sample_size):
+    def Plot_metrics(self, log_joint_lists, elbo_lists, ess_lists, sample_size, filename):
         num_cols = len(elbo_lists)
-        gs = gridspec.GridSpec(2, num_cols)
-        gs.update(left=0.0 , bottom=0.0, right=1.0, top=1.0, wspace=0.2, hspace=0.15)
+        gs = gridspec.GridSpec(3, num_cols)
+        gs.update(left=0.05 , bottom=0.05, right=0.95, top=0.95, wspace=0.2, hspace=0.15)
         fig = plt.figure(figsize=(self.fs, self.fs * 2 / num_cols))
         for col_ind in range(num_cols):
             ax1 = fig.add_subplot(gs[0, col_ind])
             ax2 = fig.add_subplot(gs[1, col_ind])
-            ax1.plot(elbo_lists[col_ind].data.numpy(), c=self.colors[0])
-            ax2.plot(ess_lists[col_ind].data.numpy(), c=self.colors[-1])
+            ax3 = fig.add_subplot(gs[2, col_ind])
+            ax1.plot(log_joint_lists[col_ind].data.numpy(), c=self.colors[1], marker='o')
+            ax2.plot(elbo_lists[col_ind].data.numpy(), c=self.colors[0], marker='o')
+            ax3.plot(ess_lists[col_ind].data.numpy(), c=self.colors[-1], marker='o')
+            ax3.set_ylim([0, sample_size])
             ax1.set_title('Dataset %d' % (col_ind+1), fontsize=self.title_fontsize)
             if col_ind == 0:
-                ax1.set_ylabel('ELBO', fontsize=self.title_fontsize)
-                ax2.set_ylabel('ESS (L = %d)' % sample_size, fontsize=self.title_fontsize)
+                ax1.set_ylabel('log p(z, x)', fontsize=self.title_fontsize)
+                ax2.set_ylabel('ELBO', fontsize=self.title_fontsize)
+                ax3.set_ylabel('ESS (L = %d)' % sample_size, fontsize=self.title_fontsize)
+
+
+        plt.savefig(filename + '.svg', dpi=300)
+        plt.savefig(filename + '.pdf')

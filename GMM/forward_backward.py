@@ -30,10 +30,11 @@ def Init_eta(os_eta, f_z, ob, training=True):
         return loss, ess, w, ob_tau, ob_mu, z
     else:
         elbo = log_w.mean().cpu()
+        log_joint = (log_obs_n.sum(-1) + log_p_z.sum(-1) + log_p_eta.sum(-1)).mean().cpu()
         E_z = q_z['zs'].dist.probs.mean(0)[0].cpu().data.numpy()
         E_mu = q_eta['means'].dist.loc.mean(0)[0].cpu().data.numpy()
         E_tau = (q_eta['precisions'].dist.concentration / q_eta['precisions'].dist.rate).mean(0)[0].cpu().data.numpy()
-        return E_tau, E_mu, E_z, elbo, ess, w, ob_tau, ob_mu, z
+        return E_tau, E_mu, E_z, log_joint, elbo, ess, w, ob_tau, ob_mu, z
 
 def Update_eta(f_eta, b_eta, ob, state, ob_tau_old, ob_mu_old, training=True):
     """
@@ -80,7 +81,7 @@ def Update_z(f_z, b_z, ob, ob_tau, ob_mu, z_old, training=True):
     log_b_obs = Log_likelihood(ob, z_old, ob_tau, ob_mu, cluster_flag=False)
     log_b_w = log_b_obs + log_p_b_z - log_q_b_z
     if training:
-        loss, _, w = Compose_IW(log_f_w, log_q_f_z, log_b_w, log_q_b_z)
+        loss, w = Compose_IW(log_f_w, log_q_f_z, log_b_w, log_q_b_z)
         ess = (1. / (w**2).sum(0)).mean().cpu()
         return loss, ess, w, z
     else:
@@ -129,7 +130,8 @@ def Update_z(f_z, b_z, ob, ob_tau, ob_mu, z_old, training=True):
 #     # print(sum_log_Ex.shape)
 #     return sum_log_Ex.sum().cpu()
 
-def BP(M, os_eta, f_z, f_eta, b_z, b_eta, ob, ob_tau, ob_mu, z, log_S):
+def BP(M, models, ob, ob_tau, ob_mu, z, log_S):
+    (os_eta, f_z, f_eta, b_z, b_eta) = models
     ob_tau_old = ob_tau
     ob_mu_old = ob_mu
     z_old = z
@@ -160,11 +162,11 @@ def BP(M, os_eta, f_z, f_eta, b_z, b_eta, ob, ob_tau, ob_mu, z, log_S):
     q_os_z, _ = f_z.forward(ob, ob_tau_old, ob_mu_old, sampled=False, z_old=z_old)
     log_q_os_z = q_os_z['zs'].log_prob.detach().sum(-1) # S * B
     sum_log_Ex.append((log_q_os_eta + log_q_os_z).unsqueeze(0))
-    log_Ex_os = logsumexp(torch.cat(sum_log_Ex, 0).sum(0), dim=0).mean() - log_S
+    log_Ex = logsumexp(torch.cat(sum_log_Ex, 0).sum(0), dim=0).mean() - log_S
 
     # print("back steps %d" % M)
     # print(sum_log_Ex.shape)
-    return log_Ex_os.cpu()
+    return log_Ex.cpu()
 
 def Compose_IW(log_f_w, log_q_f, log_b_w, log_q_b):
     """
