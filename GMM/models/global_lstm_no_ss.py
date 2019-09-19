@@ -4,22 +4,12 @@ import torch.nn as nn
 from collections.abc import Iterable
 from normal_gamma import *
 import probtorch
-#
-# def initialize(K, D, B, S, HG, HL, L, CUDA, device, LR):
-#     enc_eta = LSTM_eta(K, D, B, S, HG, L, CUDA, device)
-#     enc_z = Enc_z(K, D, HL, CUDA, device)
-#     if CUDA:
-#         enc_eta.cuda().to(device)
-#         enc_z.cuda().to(device)
-#     optimizer =  torch.optim.Adam(list(enc_z.parameters())+list(enc_eta.parameters()),lr=LR, betas=(0.9, 0.99))
-#     return enc_eta, enc_z, optimizer
 
 class LSTM_eta(nn.Module):
 
-    def __init__(self, K, D, B, S, H, L, CUDA, device, Reparameterized):
+    def __init__(self, K, D, B, S, H, L, CUDA, device):
         super(self.__class__, self).__init__()
 
-        self.Reparameterized = Reparameterized
 
         self.lstm = nn.LSTM(D, H, L)
         if CUDA:
@@ -51,7 +41,7 @@ class LSTM_eta(nn.Module):
             self.prior_alpha = self.prior_alpha.cuda().to(device)
             self.prior_beta = self.prior_beta.cuda().to(device)
 
-    def forward(self, obs, K, D, batch_first=True):
+    def forward(self, obs, K, batch_first=True):
         q = probtorch.Trace()
         p = probtorch.Trace()
         S, B, T, D = obs.shape
@@ -59,31 +49,24 @@ class LSTM_eta(nn.Module):
         out_seqs, _ = self.lstm(in_seqs, self.hidden)
         out_seqs = out_seqs.transpose(0, 1).reshape(S, B, T, -1)
         out_last = out_seqs[:, :, T-1, :] #S, B, H
-        asd
+        
         # Computing sufficient stats
         q_alpha = torch.exp(self.log_q_alpha(out_last)).reshape(S, B, K, D) # S, B, K*D
         q_beta = torch.exp(self.log_q_beta(out_last)).reshape(S, B, K, D)
         q_mu = self.q_mu(out_last).reshape(S, B, K, D)
         q_nu = torch.exp(self.log_q_nu(out_last)).reshape(S, B, K, D)
 
-        if self.Reparameterized:
-            q.gamma(q_alpha,
-                    q_beta,
-                    name='precisions')
-            q.normal(q_mu,
-                     1. / (q_nu * q['precisions'].value).sqrt(),
-                     name='means')
-        else:
-            precisions = Gamma(q_alpha, q_beta).sample()
-            q.gamma(q_alpha,
-                    q_beta,
-                    value=precisions,
-                    name='precisions')
-            means = Normal(q_mu, 1. / (q_nu * q['precisions'].value).sqrt()).sample()
-            q.normal(q_mu,
-                     1. / (q_nu * q['precisions'].value).sqrt(),
-                     value=means,
-                     name='means')
+
+        precisions = Gamma(q_alpha, q_beta).sample()
+        q.gamma(q_alpha,
+                q_beta,
+                value=precisions,
+                name='precisions')
+        means = Normal(q_mu, 1. / (q_nu * q['precisions'].value).sqrt()).sample()
+        q.normal(q_mu,
+                 1. / (q_nu * q['precisions'].value).sqrt(),
+                 value=means,
+                 name='means')
         ## prior distributions
         p.gamma(self.prior_alpha,
                 self.prior_beta,
