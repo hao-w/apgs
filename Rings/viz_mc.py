@@ -41,7 +41,7 @@ class Viz_MC:
         ## initialize figure object
         num_rows = len(data_list)
         num_steps = len(sample_lists[0])
-        num_cols = 3 + int((num_steps - 1)/ self.viz_interval)
+        num_cols = 2 + int((num_steps - 1)/ self.viz_interval)
         gs = gridspec.GridSpec(num_rows, num_cols)
         gs.update(left=0.05 , bottom=0.05, right=0.95, top=0.95, wspace=0, hspace=0)
         fig = plt.figure(figsize=(self.fs, self.fs * num_rows / num_cols))
@@ -60,14 +60,14 @@ class Viz_MC:
                 self.Plot_onestep(ax, recon_list[i], latents=sample_list[i]) ## visualize raw dataset in the 1st column
                 if row_ind == 0:
                     if i == 0:
-                        ax.set_title('One-shot', fontsize=self.title_fontsize)
+                        ax.set_title('VAE', fontsize=self.title_fontsize)
                     else:
                         ax.set_title('Step %d' % i, fontsize=self.title_fontsize)
                 col_ind += 1
-            ax = fig.add_subplot(gs[row_ind, col_ind])
-            self.Plot_onestep(ax, recon_list[-1])
-            if row_ind == 0:
-                ax.set_title('Reconstruction', fontsize=self.title_fontsize)
+            # ax = fig.add_subplot(gs[row_ind, col_ind])
+            # self.Plot_onestep(ax, recon_list[-1])
+            # if row_ind == 0:
+            #     ax.set_title('Reconstruction', fontsize=self.title_fontsize)
         plt.savefig(filename +'.svg', dpi=300)
         plt.savefig(filename + '.pdf')
 

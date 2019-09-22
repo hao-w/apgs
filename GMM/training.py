@@ -31,11 +31,13 @@ def train(models, objective, optimizer, data, mcmc_steps, Train_Params):
                 ob = data_g[batch_indices]
                 ob = shuffler(ob).repeat(S, 1, 1, 1)
                 if CUDA:
-                    ob = ob.cuda().to(device)
-                    annealed_coefficient = annealed_coefficient.cuda()
+                    with torch.cuda.device(device):
+                        ob = ob.cuda()
+                        annealed_coefficient = annealed_coefficient.cuda()
 
                 metrics, reused = objective(models, ob, mcmc_steps)
                 loss = (torch.cat(metrics['loss'], 0) * annealed_coefficient).sum()
+                # loss = torch.cat(metrics['loss'], 0).sum()
                 ## gradient step
                 loss.backward()
                 optimizer.step()
