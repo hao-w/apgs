@@ -13,7 +13,7 @@ def train(models, objective, optimizer, data, mcmc_steps, Train_Params):
     GROUP_SIZE = len(data)
     NUM_DATASETS = data[0].shape[0]
     NUM_BATCHES = int((NUM_DATASETS / B))
-    annealed_coefficient = (torch.arange(mcmc_steps+1) + 1).float() / (mcmc_steps+1)
+    # annealed_coefficient = (torch.arange(mcmc_steps+1) + 1).float() / (mcmc_steps+1)
     EPS = torch.FloatTensor([1e-15]).log() ## EPS for KL between categorial distributions
     if CUDA:
         EPS = EPS.cuda().to(device) ## EPS for KL between categorial distributions
@@ -31,11 +31,13 @@ def train(models, objective, optimizer, data, mcmc_steps, Train_Params):
                 ob = data_g[batch_indices]
                 ob = shuffler(ob).repeat(S, 1, 1, 1)
                 if CUDA:
-                    ob = ob.cuda().to(device)
-                    annealed_coefficient = annealed_coefficient.cuda()
+                    with torch.cuda.device(device):
+                        ob = ob.cuda()
+                        # annealed_coefficient = annealed_coefficient.cuda()
 
                 metrics, reused = objective(models, ob, mcmc_steps)
-                loss = (torch.cat(metrics['loss'], 0) * annealed_coefficient).sum()
+                # loss = (torch.cat(metrics['loss'], 0) * annealed_coefficient).sum()
+                loss = torch.cat(metrics['loss'], 0).sum()
                 ## gradient step
                 loss.backward()
                 optimizer.step()

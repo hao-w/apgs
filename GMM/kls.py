@@ -6,7 +6,7 @@ from forward_backward import *
 
 def kl_train(models, ob, reused, EPS):
     (z) = reused
-    (os_eta, f_z, f_eta, b_z, b_eta) = models
+    (os_eta, f_z, f_eta) = models
     q_f_eta, p_f_eta, q_f_nu = f_eta(ob, z)
     ob_mu = q_f_eta['means'].value
     ob_tau = q_f_eta['precisions'].value

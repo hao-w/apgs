@@ -121,7 +121,7 @@ class Rings:
     def visual_data(self, num_seqs):
         for n in range(num_seqs):
             ob, state, mu, _, _ = self.sim_mixture_rings(num_seqs)
-            plot_rings(ob, state, self.num_clusters, self.bound)
+            plot_shapes(ob, state, self.num_clusters, self.bound)
 
     def sim_save_data(self, num_seqs, path):
         if self.truncate:
@@ -148,4 +148,3 @@ class Rings:
             RADI[n] = radi
             ANGLE[n] = angle
         np.save(path + '/ob_%d' % (self.num_points * self.num_clusters), OB)
-

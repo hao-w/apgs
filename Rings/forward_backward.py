@@ -63,8 +63,8 @@ def Update_mu(f_mu, b_mu, dec_x, ob, state, angle, mu_old, K, training=True):
     log_f_w = log_p_f_x.detach() + log_p_f_mu - log_q_f_mu
 
     q_b_mu, p_b_mu = b_mu(ob, state, angle, sampled=False, mu_old=mu_old)     ## backward
-    log_p_b_mu = p_b_mu['means'].log_prob.sum(-1)
-    log_q_b_mu = q_b_mu['means'].log_prob.sum(-1)
+    log_p_b_mu = p_b_mu['means'].log_prob.sum(-1).detach()
+    log_q_b_mu = q_b_mu['means'].log_prob.sum(-1).detach()
     p_recon_b = dec_x.forward(ob, state, angle, mu_old)
     log_p_b_x = torch.cat([((state.argmax(-1)==k).float() * (p_recon_b['likelihood'].log_prob.sum(-1).detach())).sum(-1).unsqueeze(-1) for k in range(K)], -1) # S * B * K
     log_b_w = log_p_b_x.detach() + log_p_b_mu - log_q_b_mu
@@ -97,8 +97,8 @@ def Update_state_angle(f_state, f_angle, b_state, b_angle, dec_x, ob, state_old,
     beta_old = angle_old / (2*math.pi)
     q_b_state, p_b_state = b_state.forward(ob, mu, K, sampled=False, state_old=state_old) ## backward
     q_b_angle, p_b_angle = b_angle(ob, state_old, mu, sampled=False, beta_old=beta_old)
-    log_q_b = q_b_state['states'].log_prob + q_b_angle['angles'].log_prob.sum(-1)
-    log_p_b = p_b_state['states'].log_prob + p_b_angle['angles'].log_prob.sum(-1)
+    log_q_b = (q_b_state['states'].log_prob + q_b_angle['angles'].log_prob.sum(-1)).detach()
+    log_p_b = (p_b_state['states'].log_prob + p_b_angle['angles'].log_prob.sum(-1)).detach()
     p_recon_b = dec_x.forward(ob, state_old, angle_old, mu)
     log_p_b_x = p_recon_b['likelihood'].log_prob.sum(-1).detach()
     log_b_w = log_p_b_x.detach() + log_p_b - log_q_b
@@ -167,6 +167,7 @@ def Compose_IW(log_f_w, log_q_f, log_b_w, log_q_b, log_p_x):
     theta_loss := w * (log_p_x)
     """
     w = F.softmax(log_f_w - log_b_w, 0).detach()
-    phi_loss = (w * ( - log_q_f)).sum(0).sum(-1).mean() - log_q_b.sum(-1).mean()
+    # phi_loss = (w * ( - log_q_f)).sum(0).sum(-1).mean() - log_q_b.sum(-1).mean()
+    phi_loss = (w * ( - log_q_f)).sum(0).sum(-1).mean()
     theta_loss = (w * (- log_p_x)).sum(0).sum(-1).mean()
     return phi_loss, theta_loss, w

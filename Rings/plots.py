@@ -21,7 +21,7 @@ def plot_cov_ellipse(cov, pos, nstd=2, ax=None, **kwargs):
     ax.add_artist(ellip)
     return ellip
 
-def plot_rings(obs, states, K, bound):
+def plot_shapes(obs, states, K, bound):
     colors = ['r', 'b', 'g', 'k', 'y']
     assignments = states.argmax(-1)
     fig = plt.figure(figsize=(5,5))

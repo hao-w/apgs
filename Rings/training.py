@@ -11,7 +11,7 @@ def train(models, objective, optimizer, data, mcmc_steps, Train_Params):
     GROUP_SIZE = len(data)
     NUM_DATASETS = data[0].shape[0]
     NUM_BATCHES = int((NUM_DATASETS / B))
-    annealed_coefficient = (torch.arange(mcmc_steps+1) + 1).float() / (mcmc_steps+1)
+    # annealed_coefficient = (torch.arange(mcmc_steps+1) + 1).float() / (mcmc_steps+1)
     for epoch in range(NUM_EPOCHS):
         Metrics = dict()
         time_start = time.time()
@@ -28,20 +28,10 @@ def train(models, objective, optimizer, data, mcmc_steps, Train_Params):
                 if CUDA:
                     with torch.cuda.device(device):
                         ob = ob.cuda()
-                        annealed_coefficient = annealed_coefficient.cuda()
+                        # annealed_coefficient = annealed_coefficient.cuda()
                 metrics = objective(models, optimizer, ob, mcmc_steps, K)
                 phi_loss = torch.cat(metrics['phi_loss'], 0).sum()
-                theta_loss = (torch.cat(metrics['theta_loss'], 0) * annealed_coefficient).sum()
-                # for obj in gc.get_objects():
-                #     try:
-                #         p1 = torch.is_tensor(obj) and obj.is_cuda()
-                #         p2 = hasattr(obj, 'data') and torch.is_tensor(obj.data) and obj.data.is_cuda()
-                #         if p1 or p2:
-                #             print('Garbage Detected!')
-                #
-                #             print(type(obj), obj.size())
-                #     except:
-                #         pass
+                theta_loss = (torch.cat(metrics['theta_loss'], 0)).sum()
                 phi_loss.backward(retain_graph=True)
                 theta_loss.backward()
                 optimizer.step()

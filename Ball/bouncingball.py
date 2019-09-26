@@ -1,3 +1,4 @@
+
 import torch
 import numpy as np
 #from bokeh.plotting import figure, output_notebook, show
@@ -58,7 +59,7 @@ def intialization(init_v, Boundary):
 
 def generate_seq(T, K, dt, Boundary, noise_ratio, radius):
     init_v = init_velocity(dt)
-    noise_cov = np.array([[1, 0], [0, 1]]) * noise_ratio     
+    noise_cov = np.array([[1, 0], [0, 1]]) * noise_ratio
     A = np.zeros((4,4))
     STATE = np.zeros((T+1, 4)) # since I want to make the displacement of length T, I need the coordinates of length T+1
     init_state = intialization(init_v, Boundary)
@@ -124,4 +125,3 @@ def generate_pixels(T, K, num_seq, Boundary, dt, noise_ratio, pixels, dpi, radiu
         STATE, mu_ks, cov_ks, Pi, Y, A_true, Zs_true = generate_seq(T, K, dt, Boundary, noise_ratio, radius)
         generate_frames(STATE, Boundary, pixels, dpi, radius, s)
     print('dataset generate completed!')
-

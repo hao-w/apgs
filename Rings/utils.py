@@ -31,14 +31,13 @@ def True_decoder(ob, state, angle, mu, recon_sigma, idw_flag=False):
     cluster_flag = False : return S * B * N
     cluster_flag = True, return S * B * K
     """
-    D = mu.shape[-1]
-    K = state.shape[-1]
-    labels = state.argmax(-1).unsqueeze(-1).repeat(1, 1, 1, D)
-    var_expand = torch.gather(mu, -2, labels)
+    labels = state.argmax(-1)
+    labels_expand = labels.unsqueeze(-1).repeat(1, 1, 1, mu.shape[-1])
+    mu_expand = torch.gather(mu, -2, labels_expand)
     recon_mu = torch.cat((torch.cos(angle), torch.sin(angle)), -1) * 2.0 + mu_expand
     ll = Normal(recon_mu, recon_sigma).log_prob(ob).sum(-1)
     if idw_flag:
-        ll = torch.cat([((labels==k).float() * ll).sum(-1).unsqueeze(-1) for k in range(K)], -1) # S * B * K
+        ll = torch.cat([((labels==k).float() * ll).sum(-1).unsqueeze(-1) for k in range(state.shape[-1])], -1) # S * B * K
     return ll
 
 def global_to_local(var, state):
