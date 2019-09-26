@@ -8,12 +8,13 @@ import torch
 from torch.distributions.uniform import Uniform
 from torch.nn.functional import affine_grid, grid_sample
 class BouncingMNIST():
-    def __init__(self, path, timesteps, num_digits, step_length):
+    def __init__(self, mnist_path, path, timesteps, num_digits, step_length):
         '''
         X : coordinates
         V : velocity
         '''
         super(BouncingMNIST, self).__init__()
+        self.mnist_path = mnist_path
         self.path = path
         self.timesteps = timesteps
         self.num_digits = num_digits
@@ -23,7 +24,7 @@ class BouncingMNIST():
 
     def load_mnist(self):
       # Load MNIST dataset for generating training data.
-        path = os.path.join(self.path, 'train-images-idx3-ubyte.gz')
+        path = os.path.join(self.mnist_path, 'train-images-idx3-ubyte.gz')
         with gzip.open(path, 'rb') as f:
             mnist = np.frombuffer(f.read(), np.uint8, offset=16)
             mnist = mnist.reshape(-1, 28, 28)

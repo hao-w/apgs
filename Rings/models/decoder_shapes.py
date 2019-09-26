@@ -11,7 +11,11 @@ class Dec_x(nn.Module):
         super(self.__class__, self).__init__()
         self.recon_mu = nn.Sequential(
             nn.Linear(2, num_hidden),
+<<<<<<< HEAD
             nn.ReLU(),
+=======
+            nn.Tanh(),
+>>>>>>> 275993c21a43e1a2593cc2771950a4fa33b00d4c
             nn.Linear(num_hidden, D))
 
         self.recon_sigma = recon_sigma

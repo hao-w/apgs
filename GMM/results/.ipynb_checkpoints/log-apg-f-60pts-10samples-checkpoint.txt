@@ -1,0 +1,1 @@
+(264s) loss: 61.097,  ess: 3.964,  kl_eta_ex: 96.478,  kl_eta_in: 49.956,  kl_z_ex: 1.148,  kl_z_in: 0.308

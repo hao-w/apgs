@@ -1,0 +1,11 @@
+(291s) phi_loss: 136.102,  theta_loss: 21824.524,  ess: 1.184
+(297s) phi_loss: -63.288,  theta_loss: 8784.722,  ess: 1.307
+(292s) phi_loss: -193.582,  theta_loss: 6511.241,  ess: 1.548
+(293s) phi_loss: -274.643,  theta_loss: 4361.352,  ess: 1.815
+(293s) phi_loss: -335.087,  theta_loss: 3177.840,  ess: 2.038
+(291s) phi_loss: -371.421,  theta_loss: 2723.580,  ess: 2.158
+(285s) phi_loss: -390.431,  theta_loss: 2449.847,  ess: 2.196
+(282s) phi_loss: -399.249,  theta_loss: 2243.037,  ess: 2.179
+(285s) phi_loss: -403.582,  theta_loss: 2038.815,  ess: 2.156
+(283s) phi_loss: -409.620,  theta_loss: 1928.106,  ess: 2.155
+(290s) phi_loss: -419.640,  theta_loss: 1881.562,  ess: 2.173

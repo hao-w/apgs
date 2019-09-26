@@ -37,12 +37,12 @@ class Shapes:
 
     def sim_one_triangle(self):
         pts_edge = int(self.pts_t/ self.period / 3)
-        lower_x = np.linspace(-self.radi, self.radi, pts_edge, endpoint=True)
+        lower_x = np.linspace(-self.radi, self.radi, pts_edge, endpoint=False)
         lower_y = np.zeros(pts_edge) - 0.5 * self.radi
         lower = np.concatenate((lower_x[:, None], lower_y[:, None]), -1)
-        left_x = np.linspace(-self.radi, self.radi, pts_edge, endpoint=True)
+        left_x = np.linspace(-self.radi, self.radi, pts_edge, endpoint=False)
         left_y = np.zeros(pts_edge) + 0.5 * self.radi
-        right_x = np.linspace(-self.radi, self.radi, pts_edge, endpoint=True)
+        right_x = np.linspace(-self.radi, self.radi, pts_edge, endpoint=False)
         right_y = np.zeros(pts_edge) + 0.5 * self.radi
         rotation_left = np.pi * 2 / 3
         rotation_matrix_left = np.array([[np.cos(rotation_left), -np.sin(rotation_left)], [np.sin(rotation_left), np.cos(rotation_left)]])
@@ -53,7 +53,7 @@ class Shapes:
         left = np.matmul(left, rotation_matrix_left)
         left = left + np.array([-2, 1])
         offset_y = np.sqrt(3) * self.radi - 1.0 - left[0, 1]
-        offset_x = -self.radi - left[-1, 0] 
+        offset_x = -self.radi - left[-1, 0]
         right = np.matmul(right, rotation_matrix_right)
         left[:, 1] = left[:, 1] + offset_y
         right[:, 1] = right[:, 1] + offset_y

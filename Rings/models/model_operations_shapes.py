@@ -1,8 +1,14 @@
 import torch
 from global_oneshot_mu import *
+<<<<<<< HEAD
 from local_oneshot_state_shapes import *
 from local_enc_angle import *
 from global_enc_mu_shapes import *
+=======
+from local_oneshot_state import *
+from local_enc_angle import *
+from global_enc_mu import *
+>>>>>>> 275993c21a43e1a2593cc2771950a4fa33b00d4c
 from decoder_shapes import *
 
 def Init_models(K, D, num_hidden, num_hidden_local, num_nss, RECON_SIGMA, CUDA, device, lr, RESTORE=False, PATH=None):
