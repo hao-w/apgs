@@ -54,3 +54,4 @@
 (160s) loss: 10.968,  ess: 9.901,  kl_eta_ex: 0.001,  kl_eta_in: 0.001,  kl_z_ex: 0.002,  kl_z_in: 0.001
 (171s) loss: 10.960,  ess: 9.901,  kl_eta_ex: 0.001,  kl_eta_in: 0.001,  kl_z_ex: 0.002,  kl_z_in: 0.001
 (174s) loss: 10.942,  ess: 9.902,  kl_eta_ex: 0.001,  kl_eta_in: 0.001,  kl_z_ex: 0.002,  kl_z_in: 0.001
+(169s) loss: 10.926,  ess: 9.902,  kl_eta_ex: 0.001,  kl_eta_in: 0.001,  kl_z_ex: 0.002,  kl_z_in: 0.001
