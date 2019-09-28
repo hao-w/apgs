@@ -34,6 +34,7 @@ class BouncingMNIST():
         ''' Generate a random sequence of a MNIST digit '''
         X0= Uniform(-1, 1).sample((2,))
         v_norm = Uniform(0, 1).sample() * 2 * math.pi
+        # v_norm = torch.ones(1) * 2 * math.pi
         v_y = torch.sin(v_norm).item()
         v_x = torch.cos(v_norm).item()
         V0 = torch.Tensor([v_x, v_y])
@@ -99,7 +100,7 @@ class BouncingMNIST():
 
     def save_data(self, num_videoes):
         data = self.sim_videoes(num_videoes)
-        np.save('./data/bmnist', data)
+        np.save(self.mnist_path + 'bmnist', data)
 
     def viz_moving_mnist(self, fs, num_videoes):
         data = self.sim_videoes(num_videoes)

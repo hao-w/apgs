@@ -8,7 +8,6 @@ def train(models, objective, optimizer, data, mcmc_steps, Train_Params):
     """
     NUM_DATASETS = data.shape[0]
     NUM_BATCHES = int((NUM_DATASETS / B))
-    annealed_coefficient = (torch.arange(mcmc_steps+1) + 1).float() / (mcmc_steps+1)
     if CUDA:
         with torch.cuda.device(device):
             annealed_coefficient = annealed_coefficient.cuda()
@@ -25,7 +24,7 @@ def train(models, objective, optimizer, data, mcmc_steps, Train_Params):
                     ob = ob.cuda()
             metrics = objective(models, optimizer, ob, mcmc_steps, K)
             phi_loss = torch.cat(metrics['phi_loss'], 0).sum()
-            theta_loss = (torch.cat(metrics['theta_loss'], 0) * annealed_coefficient).sum()
+            theta_loss = (torch.cat(metrics['theta_loss'], 0)).sum()
             phi_loss.backward(retain_graph=True)
             theta_loss.backward()
             optimizer.step()

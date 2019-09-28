@@ -41,13 +41,6 @@ def train_vae(models, objective, optimizer, data, Train_Params):
                         Metrics[key] += metrics[key][-1].detach().item()
                     else:
                         Metrics[key] = metrics[key][-1].detach().item()
-                # ## compute KL
-                # kl_step = kl_train(models, ob, reused, EPS)
-                # for key in kl_step.keys():
-                #     if key in Metrics:
-                #         Metrics[key] += kl_step[key]
-                #     else:
-                #         Metrics[key] = kl_step[key]
         time_end = time.time()
         metrics_print = ",  ".join(['%s: %.3f' % (k, v/(GROUP_SIZE*NUM_BATCHES)) for k, v in Metrics.items()])
         flog = open('../results/log-' + path + '.txt', 'a+')

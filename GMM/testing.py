@@ -45,7 +45,7 @@ class Eval:
                     # log_S = log_S.cuda() ## EPS for KL between categorial distributions
             metrics = objective(self.models, data, mcmc_steps, log_S)
             Metrics['samples'].append(metrics['samples'])
-            Metrics['elbos'].append(torch.cat(metrics['elbos'], 0))
+            # Metrics['elbos'].append(torch.cat(metrics['elbos'], 0))
             Metrics['ess'].append(torch.cat(metrics['ess'], 0))
             Metrics['log_joint'].append(torch.cat(metrics['log_joint'], 0))
         return Metrics

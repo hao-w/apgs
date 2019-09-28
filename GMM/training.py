@@ -54,7 +54,7 @@ def train(models, objective, optimizer, data, mcmc_steps, Train_Params):
                     else:
                         Metrics[key] = kl_step[key]
         time_end = time.time()
-        metrics_print = ",  ".join(['%s: %.3f' % (k, v/(GROUP_SIZE*NUM_BATCHES)) for k, v in Metrics.items()])
+        metrics_print = ",  ".join(['%s: %.6f' % (k, v/(GROUP_SIZE*NUM_BATCHES)) for k, v in Metrics.items()])
         flog = open('../results/log-' + path + '.txt', 'a+')
         print("(%ds) " % (time_end - time_start) + metrics_print, file=flog)
         flog.close()

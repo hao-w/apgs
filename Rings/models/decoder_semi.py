@@ -7,7 +7,7 @@ import math
 from utils import *
 
 class Dec_x(nn.Module):
-    def __init__(self, D, num_hidden, recon_sigma, CUDA, device):
+    def __init__(self, K, D, num_hidden, recon_sigma, CUDA, device):
         super(self.__class__, self).__init__()
         self.recon_mu = nn.Sequential(
             nn.Linear(1, num_hidden),
@@ -21,7 +21,7 @@ class Dec_x(nn.Module):
                 self.radi = self.radi.cuda()
         # self.recon_sigma = nn.Parameter(self.recon_sigma)
         self.radi = nn.Parameter(self.radi)
-    
+
     def forward(self, ob, state, angle, mu):
         p = probtorch.Trace()
         S, B, N, D = ob.shape

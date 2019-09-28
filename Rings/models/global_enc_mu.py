@@ -11,12 +11,12 @@ class Enc_mu(nn.Module):
     def __init__(self, K, D, num_hidden, num_stats, CUDA, device):
         super(self.__class__, self).__init__()
         self.neural_stats = nn.Sequential(
-            nn.Linear(D+K, num_hidden),
+            nn.Linear(D+1, num_hidden),
             nn.Tanh(),
             nn.Linear(num_hidden, num_stats))
 
         self.gammas = nn.Sequential(
-            nn.Linear(D+K, num_hidden),
+            nn.Linear(K, num_hidden),
             nn.Tanh(),
             nn.Linear(num_hidden, K),
             nn.Softmax(-1))
@@ -44,8 +44,8 @@ class Enc_mu(nn.Module):
         p = probtorch.Trace()
         S, B, N, D = ob.shape
         K = state.shape[-1]
-        ss = self.neural_stats(torch.cat((ob, state), -1))
-        gammas = self.gammas(torch.cat((ob, state), -1))
+        ss = self.neural_stats(torch.cat((ob, angle), -1))
+        gammas = self.gammas(state)
         nss = ss_to_stats(ss, gammas) # S * B * K * STAT_DIM
         nss_prior = torch.cat((nss, self.prior_mu_mu.repeat(S, B, K, 1), self.prior_mu_sigma.repeat(S, B, K, 1)), -1)
         q_mu_mu= self.mean_mu(nss_prior)
@@ -70,7 +70,7 @@ class Enc_mu(nn.Module):
             p.normal(self.prior_mu_mu,
                      self.prior_mu_sigma,
                      value=q['means'],
-                     name='means')            
+                     name='means')
         return q, p
 
     def sample_prior(self, S, B, K):
