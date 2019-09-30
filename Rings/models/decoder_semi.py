@@ -26,8 +26,7 @@ class Dec_x(nn.Module):
         p = probtorch.Trace()
         S, B, N, D = ob.shape
         # embedding = torch.cat((global_to_local(mu, state), angle), -1)
-        embedding = angle
-        a = self.recon_mu(embedding)
+        a = self.recon_mu(angle)
         reco_centered = a / (a**2).sum(-1).unsqueeze(-1).sqrt()
         recon_mu = reco_centered * self.radi + global_to_local(mu, state)
         p.normal(recon_mu,

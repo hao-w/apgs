@@ -10,7 +10,7 @@ class Dec_x(nn.Module):
     def __init__(self, K, D, num_hidden, recon_sigma, CUDA, device):
         super(self.__class__, self).__init__()
         self.recon_mu = nn.Sequential(
-            nn.Linear(K+1, num_hidden),
+            nn.Linear(1, num_hidden),
             nn.Tanh(),
             nn.Linear(num_hidden, D))
 
@@ -29,18 +29,9 @@ class Dec_x(nn.Module):
     def forward(self, ob, state, angle, mu):
         p = probtorch.Trace()
         S, B, N, D = ob.shape
-
-        embedding = torch.cat((angle, state), -1)
-        # embedding = angle
-        a = self.recon_mu(embedding)
-        # labels = state.argmax(-1).unsqueeze(-1).repeat(1, 1, 1, D)
-        # ob_torch.gather(ob, -2, labels)
-        # radi = self.log_radi(embedding).exp()
-        # reco_centered = a / (a**2).sum(-1).unsqueeze(-1).sqrt()
-        recon_mu = a  + global_to_local(mu, state)
+        recon_mu = self.recon_mu(angle)  + global_to_local(mu, state)
         p.normal(recon_mu,
                  self.recon_sigma.repeat(S, B, N, D),
                  value=ob,
                  name='likelihood')
-
         return p

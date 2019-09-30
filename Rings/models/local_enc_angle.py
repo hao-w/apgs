@@ -20,12 +20,10 @@ class Enc_angle(nn.Module):
 
         self.prior_con1 = torch.ones(1)
         self.prior_con0 = torch.ones(1)
-        self.lg2pi = torch.log(torch.ones(1) * 2 * math.pi)
         if CUDA:
             with torch.cuda.device(device):
                 self.prior_con1 = self.prior_con1.cuda()
                 self.prior_con0 = self.prior_con0.cuda()
-                self.lg2pi = self.lg2pi.cuda()
     def forward(self, ob, state, mu, sampled=True, beta_old=None):
         q = probtorch.Trace()
         p = probtorch.Trace()
@@ -53,5 +51,5 @@ class Enc_angle(nn.Module):
             p.beta(self.prior_con1,
                    self.prior_con0,
                    value=beta_old,
-                   name='angles')            
+                   name='angles')
         return q, p

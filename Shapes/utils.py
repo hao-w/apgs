@@ -60,5 +60,5 @@ def ss_to_stats(ss, state):
     K = state.shape[-1]
     state_expand = state.unsqueeze(-1).repeat(1, 1, 1, 1, D)
     ss_expand = ss.unsqueeze(-1).repeat(1, 1, 1, 1, K).transpose(-1, -2)
-    nss = (state_expand * ss_expand).sum(2)
+    nss = (state_expand * ss_expand).sum(2) / (state_expand.sum(2) + 1e-6)
     return nss

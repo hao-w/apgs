@@ -26,7 +26,7 @@ class Viz_MC:
         if latents == None:
             ax.scatter(ob[:, 0], ob[:, 1], c='k', s=self.ob_ms, zorder=3)
         else:
-            (mu, state) = latents
+            (mu, state, _) = latents
             assignments = state.argmax(-1)
             for k in range(self.K):
                 ob_k = ob[np.where(assignments == k)]
@@ -37,7 +37,7 @@ class Viz_MC:
         ax.set_xticks([])
         ax.set_yticks([])
 
-    def Plot_chains(self, data_list, sample_lists, recon_lists, sample_lists_vae, recon_lists_vae, filename):
+    def Plot_chains(self, data_list, sample_lists, recon_lists, filename):
         ## initialize figure object
         num_rows = len(data_list)
         num_steps = len(sample_lists[0])
@@ -49,13 +49,16 @@ class Viz_MC:
         for row_ind, sample_list in enumerate(sample_lists):
             data = data_list[row_ind].data.numpy()
             recon_list = recon_lists[row_ind]
-            recon_list_vae = recon_lists_vae[row_ind]
+            # recon_list_vae = recon_lists_vae[row_ind]
             ax = fig.add_subplot(gs[row_ind, 0])
             self.Plot_onestep(ax, data) ## visualize raw dataset in the 1st column
 
             if row_ind == 0:
                 ax.set_title('Data', fontsize=self.title_fontsize)
             col_ind = 1
+            # ax = fig.add_subplot(gs[row_ind, col_ind])
+            # self.Plot_onestep(ax, data, latents=sample_list[0]) ## To remove when apg finishes
+            # col_ind += 1
             for i in range(0, num_steps, self.viz_interval):
                 ax = fig.add_subplot(gs[row_ind, col_ind])
                 self.Plot_onestep(ax, data, latents=sample_list[i]) ## visualize raw dataset in the 1st column
@@ -65,17 +68,17 @@ class Viz_MC:
                     else:
                         ax.set_title('Step %d' % i, fontsize=self.title_fontsize)
                 col_ind += 1
-            ax = fig.add_subplot(gs[row_ind, col_ind])
-            self.Plot_onestep(ax, recon_list_vae[0])
-            if row_ind == 0:
-                ax.set_title('Recon(VAE)', fontsize=self.title_fontsize)
-            col_ind += 1
+            # ax = fig.add_subplot(gs[row_ind, col_ind])
+            # self.Plot_onestep(ax, recon_list_vae[0])
+            # if row_ind == 0:
+            #     ax.set_title('Recon(VAE)', fontsize=self.title_fontsize)
+            # col_ind += 1
             ax = fig.add_subplot(gs[row_ind, col_ind])
             self.Plot_onestep(ax, recon_list[-1])
             if row_ind == 0:
                 ax.set_title('Recon(APG)', fontsize=self.title_fontsize)
-        plt.savefig(filename +'.svg', dpi=300)
-        plt.savefig(filename + '.pdf')
+        # plt.savefig(filename +'.svg', dpi=300)
+        # plt.savefig(filename + '.pdf')
 
     def Plot_metrics(self, log_joint_lists, ess_lists, sample_size, filename):
         num_cols = len(log_joint_lists)
@@ -86,24 +89,18 @@ class Viz_MC:
         for col_ind in range(num_cols):
             ax1 = fig.add_subplot(gs[0, col_ind])
             ax2 = fig.add_subplot(gs[1, col_ind])
-            # ax3 = fig.add_subplot(gs[2, col_ind])
             temp = log_joint_lists[col_ind].data.numpy()
-
             baseline = np.ones(temp.shape[0]) * temp[0]
             ax1.plot(log_joint_lists[col_ind].data.numpy(), c=self.colors[0], marker='o')
             ax1.plot(baseline, '--', c=self.colors[1], alpha=0.4)
-
-            # ax2.plot(elbo_lists[col_ind].data.numpy(), c=self.colors[1], marker='o')
             ax2.plot(ess_lists[col_ind].data.numpy() / sample_size, c=self.colors[2])
             ax2.scatter(np.arange(temp.shape[0]), ess_lists[col_ind].data.numpy() / sample_size, c=self.colors[2], s=6.0)
 
-            # ax1.set_title('N= %d' % ((col_ind+1) * 20), fontsize=self.title_fontsize)
-            # if col_ind == 0:
-                # ax1.set_ylabel('log p(z, x)', fontsize=self.title_fontsize)
-                # ax2.set_ylabel('ELBO', fontsize=self.title_fontsize)
-                # ax2.set_ylabel('ESS / L', fontsize=self.title_fontsize)
+            if col_ind == 0:
+                ax1.set_ylabel('log p(z, x)', fontsize=self.title_fontsize)
+                ax2.set_ylabel('ESS / L', fontsize=self.title_fontsize)
             ax2.set_ylim([-0.1, 1.1])
             ax1.set_xticks([])
             ax1.set_ylim([temp.min()-50, temp.max()+10])
-        plt.savefig(filename + '.svg', dpi=300)
-        plt.savefig(filename + '.pdf')
+        # plt.savefig(filename + '.svg', dpi=300)
+        # plt.savefig(filename + '.pdf')

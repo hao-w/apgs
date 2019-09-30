@@ -2,6 +2,7 @@ import torch
 import time
 from utils import *
 from apg import *
+import numpy as np
 
 class Eval:
     def __init__(self, K, D, batch_size, CUDA, device):
@@ -22,11 +23,15 @@ class Eval:
         """
         sample one dataset from each group
         """
+        data_dir = "/home/hao/Research/apg_data/ncmm/rings_10size/"
+
         OB = []
         for i in range(self.B):
-            num_datasets = Data[i].shape[0]
+            N = ((i*2+1) * 10 + 20) * 4
+            data_g = torch.from_numpy(np.load(data_dir + 'ob_%d.npy' % N)).float()
+            num_datasets = data_g.shape[0]
             indices = torch.arange(num_datasets)
-            ob_g = Data[i*2+1][indices[data_ptr]]
+            ob_g = data_g[indices[data_ptr]]
             OB.append(ob_g)
         return OB
 
