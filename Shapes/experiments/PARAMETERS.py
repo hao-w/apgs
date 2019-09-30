@@ -4,8 +4,8 @@ import numpy as np
 
 data_dir = "/home/hao/Research/apg_data/"
 ## Load dataset
-K = 3
-N_c, N_s, N_t = 70, 72, 72
+K = 4
+N_c, N_s, N_t = 70, 48, 48
 N = N_c+N_s+N_t
 Data_squares = []
 Data_triangles = []
