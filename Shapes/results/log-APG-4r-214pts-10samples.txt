@@ -1,2 +1,0 @@
-(42s) phi_loss: -166.010,  theta_loss: 33320.985,  ess: 1.409
-(68s) phi_loss: -167.915,  theta_loss: 47887.751,  ess: 1.413
