@@ -1,1 +1,6 @@
 (117s) phi_loss: 562.045,  theta_loss: 7492.615,  ess: 1.372
+(115s) phi_loss: 31.534,  theta_loss: 1390.436,  ess: 2.740
+(115s) phi_loss: 19.957,  theta_loss: 1293.340,  ess: 3.089
+(117s) phi_loss: 18.546,  theta_loss: 1274.935,  ess: 3.208
+(116s) phi_loss: 14.129,  theta_loss: 1262.292,  ess: 3.237
+(117s) phi_loss: 11.528,  theta_loss: 1269.592,  ess: 3.271
