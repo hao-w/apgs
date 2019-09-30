@@ -25,7 +25,7 @@ class Enc_state(nn.Module):
         S, B, N, D = ob.shape
 
         ob_mu = torch.cat((ob.unsqueeze(2).repeat(1, 1, K, 1, 1),  mu.unsqueeze(-2).repeat(1, 1, 1, N, 1)), -1) ## S * B * K * N * 2*D
-        q_probs = F.softmax(self.pi_log_prob(ob_mu).squeeze(-1), -1).transpose(-1, -2)
+        q_probs = F.softmax(self.pi_log_prob(ob_mu).squeeze(-1).transpose(-1, -2), -1)
         if sampled == True:
             state = cat(q_probs).sample()
             _ = q.variable(cat, probs=q_probs, value=state, name='states')
