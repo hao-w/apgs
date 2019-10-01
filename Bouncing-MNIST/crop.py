@@ -26,8 +26,8 @@ class Crop():
         self.scale2 = torch.FloatTensor([[self.digit_size / self.frame_size, 0], [0, self.digit_size / self.frame_size]])
         if CUDA:
             with torch.cuda.device(device):
-                self.scale1 = self.scale1
-                self.scale2 = self.scale2
+                self.scale1 = self.scale1.cuda()
+                self.scale2 = self.scale2.cuda()
     def digit_to_frame(self, digit, z_where):
         S, B, T, _ = z_where.shape
         affine_p1 = self.scale1.repeat(S, B, T, 1, 1)## S * B * T * 2 * 2

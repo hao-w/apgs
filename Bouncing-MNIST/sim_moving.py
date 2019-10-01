@@ -79,6 +79,7 @@ class BouncingMNIST():
         s_factor = self.image_size / self.digit_size
         t_factor = (self.image_size - self.digit_size) / self.digit_size
         Video = []
+        TJ = []
         inds = torch.randint(0, mnist.shape[0], (self.num_digits,))
         for n in range(self.num_digits):
             X, V = self.sim_trajectory()
@@ -87,23 +88,28 @@ class BouncingMNIST():
             Thetas = torch.cat((S, X.unsqueeze(-1) * t_factor), -1)
             grid = affine_grid(Thetas, torch.Size((self.timesteps, 1, self.image_size, self.image_size)))
             Video.append(grid_sample(digit_image.repeat(self.timesteps, 1, 1).unsqueeze(1), grid, mode='nearest'))
+            # TJ.append(X.unsqueeze(0))
+            # Init_V.append(V[0.unsqueeze()])
         Video = torch.cat(Video, 1).sum(1).clamp(min=0.0, max=1.0)
-        return Video
+        return Video, X
 
     def sim_videoes(self, num_videoes):
         Videoes = []
+        TJs = []
         mnist = self.load_mnist()
         for i in range(num_videoes):
-            video = self.sim_bouncing_mnist(mnist)
+            video, tj = self.sim_bouncing_mnist(mnist)
             Videoes.append(video.unsqueeze(0))
-        return torch.cat(Videoes, 0) ## num_videoes * timesteps * image_size * image_size
+            TJs.append(tj.unsqueeze(0))
+        return torch.cat(Videoes, 0) , torch.cat(TJs, 0)## num_videoes * timesteps * image_size * image_size
 
     def save_data(self, num_videoes):
-        data = self.sim_videoes(num_videoes)
-        np.save(self.mnist_path + 'bmnist', data)
+        data, TJs = self.sim_videoes(num_videoes)
+        np.save(self.mnist_path + '/bmnist/ob', data)
+        np.save(self.mnist_path + '/bmnist/tj', TJs)
 
     def viz_moving_mnist(self, fs, num_videoes):
-        data = self.sim_videoes(num_videoes)
+        data, _ = self.sim_videoes(num_videoes)
         num_cols = self.timesteps
         num_rows = num_videoes
         gs = gridspec.GridSpec(num_rows, num_cols)
