@@ -24,7 +24,7 @@ def Init_models(FRAME_PIXELS, DIGIT_PIXELS, HIDDEN_LIST, CUDA, device, lr, RESTO
     return (enc_coor, enc_digit, dec_digit), optimizer
 
 
-def Save_models(models, path):
+def Save_models(models, PATH):
     (enc_coor, enc_digit, dec_digit) = models
     torch.save(enc_coor.state_dict(), '../weights/enc-coor-' + PATH)
     torch.save(enc_digit.state_dict(), '../weights/enc-digit-' + PATH)

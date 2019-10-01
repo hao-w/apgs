@@ -27,9 +27,9 @@ def Init_step(enc_coor, enc_digit, dec_digit, frames, tjs, tj_std, crop, mnist_m
         return phi_loss, theta_loss, ess, w, z_where, z_what
     else:
         ess = (1. / (w ** 2).sum(0)).mean()
-        E_what =  q_what['z_what'].dist.loc.mean(0).cpu().data.numpy()
-        E_where = q_where['z_where'].dist.loc.mean(0).cpu().data.numpy()
-        return E_where, E_what, ess, w, z_where, z_what
+        E_what =  q_what['z_what'].dist.loc.mean(0).detach()
+        E_where = q_where['z_where'].dist.loc.mean(0).detach()
+        return E_where, E_what, recon.detach(), ess, w, z_where, z_what, (w * (ll.sum(-1))).sum(0).mean().detach()
 
 def Update_where(enc_coor, dec_digit, frames, tjs, tj_std, crop, z_what, z_where_old, training=True):
     """
@@ -57,10 +57,10 @@ def Update_where(enc_coor, dec_digit, frames, tjs, tj_std, crop, z_what, z_where
         ess = (1. / (w**2).sum(0)).mean()
         return phi_loss, theta_loss, ess, w, z_where
     else:
-        w = F.softmax(log_f_w - log_b_w, 0).detach()
+        w = F.softmax(log_w_f - log_w_b, 0).detach()
         ess = (1. / (w**2).sum(0)).mean()
-        E_where = q_f_where['z_where'].dist.loc.mean(0).cpu().data.numpy()
-        return recon, E_where, ess, w, z_where
+        E_where = q_f_where['z_where'].dist.loc.mean(0).detach()
+        return E_where, recon.detach(), ess, w, z_where, (w * (ll_f.sum(-1))).sum(0).mean().detach()
 
 def Update_what(enc_digit, dec_digit, frames, crop, z_where, z_what_old, training=True):
     """
@@ -85,10 +85,10 @@ def Update_what(enc_digit, dec_digit, frames, crop, z_where, z_what_old, trainin
         ess = (1. / (w**2).sum(0)).mean()
         return phi_loss, theta_loss, ess, w, z_what
     else:
-        w = F.softmax(log_f_w - log_b_w, 0).detach()
-        ess = (1. / (w**2).sum(0)).mean()
-        E_what = q_f_what['z_what'].dist.loc.mean(0).cpu().data.numpy()
-        return recon, E_what, ess, w, z_what
+        w = F.softmax(log_w_f - log_w_b, 0).detach()
+        ess = (1. / (w**2).sum(0)).mean().detach()
+        E_what = q_f_what['z_what'].dist.loc.mean(0).detach()
+        return  E_what, recon.detach(), ess, w, z_what, (w * (ll_f.sum(-1))).sum(0).mean().detach()
 
 
 def Compose_IW(log_w_f, log_q_f, log_w_b, log_p_x):
