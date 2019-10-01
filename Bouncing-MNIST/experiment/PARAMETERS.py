@@ -3,7 +3,7 @@ import torch
 
 data_dir = "/home/hao/Research/apg_data/"
 
-K = 2
+K = 1
 FRAME_PIXELS = 64
 DIGIT_PIXELS = 28
 
@@ -12,12 +12,12 @@ data_path = data_dir + "mnist/bmnist/"
 #data = torch.from_numpy(np.load(data_path + 'ob.npy' )).float()
 #tjs = torch.from_numpy(np.load(data_path + 'tj.npy' )).float()
 mnist_mean = torch.from_numpy(np.load('../mnist_mean.npy')).float()
-NUM_GROUPS = 10
+NUM_GROUPS = 1
 ## Train Parameters
 NUM_EPOCHS = 500
 T = 10
 D = 2
-SAMPLE_SIZE = 5
+SAMPLE_SIZE = 10
 BATCH_SIZE = 20
 ## MOdel Parameters
 NUM_HIDDEN_DIGIT = 400

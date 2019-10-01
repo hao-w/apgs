@@ -32,13 +32,13 @@ class Enc_digit(nn.Module):
     def forward(self, frames, z_where, crop, sampled=True, z_what_old=None):
         q = probtorch.Trace()
         p = probtorch.Trace()
-        S, B, T, _ = z_where.shape
-        nss = self.enc_nss(crop.frame_to_digit(frames, z_where).view(S, B, T, 28*28)).mean(2) ## S * B * nss_dim
+        S, B, T, K, D = z_where.shape
+        nss = self.enc_nss(crop.frame_to_digit(frames, z_where).view(S, B, T, K, 28*28)).mean(2) ## S * B * K * nss_dim
 
-        q_mu = self.q_mean(nss)
+        q_mu = self.q_mean(nss) ## S * B * K * what_dim
         q_std = self.q_log_std(nss).exp()
         if sampled:
-            z_what = Normal(q_mu, q_std).sample() ## S * B * z_what_dim
+            z_what = Normal(q_mu, q_std).sample() ## S * B * K * z_what_dim
             q.normal(loc=q_mu,
                      scale=q_std,
                      value=z_what,

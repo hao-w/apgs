@@ -33,7 +33,7 @@ def train(models, objective, optimizer, data_path, mcmc_steps, mnist_mean, crop,
                         tj_b = tj_b.cuda()
                         tj_std = tj_std.cuda()
 
-                metrics = objective(models, frames, tj_b, tj_std, mcmc_steps, mnist_mean, crop)
+                metrics = objective(models, K, D, frames, mcmc_steps, mnist_mean, crop, tj_b, tj_std)
                 phi_loss = torch.cat(metrics['phi_loss'], 0).sum()
                 theta_loss = (torch.cat(metrics['theta_loss'], 0)).sum()
                 phi_loss.backward(retain_graph=True)
