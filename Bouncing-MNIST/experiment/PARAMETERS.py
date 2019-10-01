@@ -12,7 +12,7 @@ data_path = data_dir + "mnist/bmnist/"
 #data = torch.from_numpy(np.load(data_path + 'ob.npy' )).float()
 #tjs = torch.from_numpy(np.load(data_path + 'tj.npy' )).float()
 mnist_mean = torch.from_numpy(np.load('../mnist_mean.npy')).float()
-NUM_GROUPS = 10
+NUM_GROUPS = 1
 ## Train Parameters
 NUM_EPOCHS = 500
 T = 10
