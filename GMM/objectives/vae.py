@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 from utils import *
 import probtorch
-from forward_backward import *
+from forward_backward_lstm import *
 
 
 def VAE(models, ob, mcmc_steps):
@@ -14,7 +14,7 @@ def VAE(models, ob, mcmc_steps):
     (os_eta, f_z) = models
     metrics = {'loss' : [], 'ess' : []}
 
-    loss_os, ess_os, w_z, ob_tau, ob_mu, z = Init_eta(os_eta, f_z, ob)
+    loss_os, ess_os, w_z, ob_tau, ob_mu, z = Init_eta(os_eta, f_z, ob, K=3)
     metrics['loss'].append(loss_os.unsqueeze(0))
     metrics['ess'].append(ess_os.unsqueeze(0))
     reused = (z)
