@@ -89,10 +89,10 @@ class BouncingMNIST():
             Thetas = torch.cat((S, X.unsqueeze(-1) * t_factor), -1)
             grid = affine_grid(Thetas, torch.Size((self.timesteps, 1, self.image_size, self.image_size)))
             Video.append(grid_sample(digit_image.repeat(self.timesteps, 1, 1).unsqueeze(1), grid, mode='nearest'))
-            # TJ.append(X.unsqueeze(0))
+            TJ.append(X.unsqueeze(0))
             # Init_V.append(V[0.unsqueeze()])
         Video = torch.cat(Video, 1).sum(1).clamp(min=0.0, max=1.0)
-        return Video, X
+        return Video, torch.cat(TJ, 0)
 
     def sim_videoes(self, num_videoes):
         Videoes = []
@@ -102,7 +102,7 @@ class BouncingMNIST():
             video, tj = self.sim_bouncing_mnist(mnist)
             Videoes.append(video.unsqueeze(0))
             TJs.append(tj.unsqueeze(0))
-        return torch.cat(Videoes, 0) , torch.cat(TJs, 0)## num_videoes * timesteps * image_size * image_size
+        return torch.cat(Videoes, 0) , torch.cat(TJs, 0)## NUM_VIDEOES * K * N * 2
 
     def save_data(self, num_videoes):
 

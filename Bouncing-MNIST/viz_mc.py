@@ -42,7 +42,7 @@ class Viz_MC:
                 row_ind += 1
 
             #
-            # plt.savefig(filename +'.svg', dpi=300)
+            plt.savefig(filename +'.svg', dpi=300)
             # plt.savefig(filename + '.pdf')
 
     def Plot_metrics(self, log_joint_lists, ess_lists, sample_size, filename):

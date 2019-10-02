@@ -14,7 +14,7 @@ class OS_coor(nn.Module):
                  reshape the templates
 
     frames : B * T * 64 * 64
-    templates : S * B * 28 * 28
+    digit (mnist_mean) : S * B * 28 * 28
     """
     def __init__(self, K, D, num_pixels, num_hidden, CUDA, device):
         super(self.__class__, self).__init__()

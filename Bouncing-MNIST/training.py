@@ -26,14 +26,15 @@ def train(models, objective, optimizer, data_path, mcmc_steps, mnist_mean, crop,
                 optimizer.zero_grad()
                 b_ind = indices[step*B : (step+1)*B]
                 frames = data[b_ind] ## B * T * 64 * 64
-                tj_b = tjs[b_ind]
+                tj = tjs[b_ind].transpose(1,2)
                 if CUDA:
                     with torch.cuda.device(device):
                         frames = frames.cuda()
-                        tj_b = tj_b.cuda()
+                        tj = tj.cuda()
                         tj_std = tj_std.cuda()
+                # print(tj.shape)
 
-                metrics = objective(models, K, D, frames, mcmc_steps, mnist_mean, crop, tj_b, tj_std)
+                metrics = objective(models, K, D, frames, mcmc_steps, mnist_mean, crop, tj, tj_std)
                 phi_loss = torch.cat(metrics['phi_loss'], 0).sum()
                 theta_loss = (torch.cat(metrics['theta_loss'], 0)).sum()
                 phi_loss.backward(retain_graph=True)

@@ -27,10 +27,10 @@ class Eval:
         TJ = []
         group_ind = torch.randperm(self.NUM_GROUPS)
         for i in range(self.B):
-            data_g = torch.from_numpy(np.load(data_path + 'ob_%d.npy' % group_ind[i])).float()
-            tj = torch.from_numpy(np.load(data_path + 'tj_%d.npy' % group_ind[i])).float()
-            Data.append(data_g[data_ptr])
-            TJ.append(tj[data_ptr])
+            data_g = torch.from_numpy(np.load(data_path + 'ob_%d.npy' % group_ind[0])).float()
+            tj = torch.from_numpy(np.load(data_path + 'tj_%d.npy' % group_ind[0])).float()
+            Data.append(data_g[data_ptr+i])
+            TJ.append(tj[data_ptr+i])
         return Data, TJ
 
     def Test_uniform(self, models, objective, data_path, mnist_mean, crop, data_ptr, mcmc_steps, sample_size):
@@ -46,8 +46,8 @@ class Eval:
             if self.CUDA:
                 with torch.cuda.device(self.device):
                     frames = frames.cuda().unsqueeze(0)
-                    tj = TJ[i].cuda().unsqueeze(0)
-            metrics = objective(models, frames, tj, tj_std, mcmc_steps, mnist_mean, crop)
+                    tj = TJ[i].cuda().unsqueeze(0).transpose(1,2)
+            metrics = objective(models, self.K, self.D, frames, mcmc_steps, mnist_mean, crop, tj, tj_std)
             Metrics['samples'].append(metrics['samples'])
             Metrics['recon'].append(metrics['recon'])
             Metrics['ess'].append(torch.cat(metrics['ess'], 0))

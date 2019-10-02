@@ -3,12 +3,12 @@ import torch.nn.functional as F
 from torch.distributions.normal import Normal
 import probtorch
 
-def Init_step(tj_b, tj_std, os_coor, enc_digit, dec_digit, K, D, frames, crop, mnist_mean, training=True):
+def Init_step(tj, tj_std, os_coor, enc_digit, dec_digit, K, D, frames, crop, mnist_mean, training=True):
     q_where = os_coor(K=K, D=D, frames=frames, digit=mnist_mean)
     z_where = q_where['z_where'].value # S * B * T * K * D
     log_q_where = q_where['z_where'].log_prob.sum(-1).sum(-1).sum(-1) # S * B
     ##
-    log_p_where = Normal(tj_b.unsqueeze(-2), tj_std).log_prob(z_where).sum(-1).sum(-1).sum(-1)
+    log_p_where = Normal(tj, tj_std).log_prob(z_where).sum(-1).sum(-1).sum(-1)
     # print(log_p_where.shape)
     ##
     q_what, p_what = enc_digit(frames, z_where, crop)
@@ -28,7 +28,7 @@ def Init_step(tj_b, tj_std, os_coor, enc_digit, dec_digit, K, D, frames, crop, m
         E_where = q_where['z_where'].dist.loc.mean(0).detach()
         return E_where, E_what, recon.detach(), ess, w, z_where, z_what, (w * (ll.sum(-1))).sum(0).mean().detach()
 
-def Update_where(tj_b, tj_std, enc_coor, dec_digit, frames, crop, z_what, z_where_old, training=True):
+def Update_where(tj, tj_std, enc_coor, dec_digit, frames, crop, z_what, z_where_old, training=True):
     """
     update the z_where given the frames and digit images
     z_what  S * B * H* W
@@ -38,7 +38,7 @@ def Update_where(tj_b, tj_std, enc_coor, dec_digit, frames, crop, z_what, z_wher
     z_where = q_f_where['z_where'].value
     log_q_f = q_f_where['z_where'].log_prob.sum(-1).sum(-1).sum(-1) # S * B
     ##
-    log_p_f = Normal(tj_b.unsqueeze(-2), tj_std).log_prob(z_where).sum(-1).sum(-1).sum(-1)
+    log_p_f = Normal(tj, tj_std).log_prob(z_where).sum(-1).sum(-1).sum(-1)
 
     ##
     recon, ll_f = dec_digit(frames, z_what, crop, z_where=z_where)
@@ -46,7 +46,7 @@ def Update_where(tj_b, tj_std, enc_coor, dec_digit, frames, crop, z_what, z_wher
 
     q_b_where = enc_coor(frames=frames, digit=digit, sampled=False, z_where_old=z_where_old)
     _, ll_b = dec_digit(frames, z_what, crop, z_where=z_where_old)
-    log_p_b = Normal(tj_b.unsqueeze(-2), tj_std).log_prob(z_where_old).sum(-1).sum(-1).sum(-1)
+    log_p_b = Normal(tj, tj_std).log_prob(z_where_old).sum(-1).sum(-1).sum(-1)
     log_w_b = ll_b.sum(-1).detach() + log_p_b - q_b_where['z_where'].log_prob.sum(-1).sum(-1).sum(-1).detach()
     # log_w_b = ll_b.sum(-1).detach() + p_b_where['z_where'].log_prob.sum(-1).sum(-1).detach() - q_b_where['z_where'].log_prob.sum(-1).sum(-1).detach()
     if training:
