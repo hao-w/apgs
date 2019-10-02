@@ -37,12 +37,14 @@ class Viz_MC:
                 for inc in range(num_cols):
                     ax = fig.add_subplot(gs[row_ind, inc])
                     ax.imshow(recon_frames[inc], cmap='gray')
+                    ax.set_xticks([])
+                    ax.set_yticks([])
                     if inc == 0 :
                         ax.set_ylabel('Step %d' % r, fontsize=self.title_fontsize)
                 row_ind += 1
 
             #
-            # plt.savefig(filename +'.svg', dpi=300)
+            plt.savefig(filename +'.svg', dpi=300)
             # plt.savefig(filename + '.pdf')
 
     def Plot_metrics(self, log_joint_lists, ess_lists, sample_size, filename):

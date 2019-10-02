@@ -27,6 +27,7 @@ class Dec_digit(nn.Module):
         else:
             S, B, T, K, _ = z_where.shape
             # print(z_where.shape)
-            recon_mean = crop.digit_to_frame(digit_mean.view(S, B, K, DP, DP), z_where).sum(-3) # S * B * T * 64 * 64
-            log_recon = MBern_log_prob(recon_mean, frames) # S * B * T
-            return recon_mean, log_recon
+            recon_mean = crop.digit_to_frame(digit_mean.view(S, B, K, DP, DP), z_where)
+            recon_frame = torch.clamp(recon_mean.sum(-3), min=0.0, max=1.0) # S * B * T * 64 * 64
+            log_recon = MBern_log_prob(recon_frame, frames) # S * B * T
+            return recon_frame, log_recon

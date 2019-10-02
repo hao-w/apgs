@@ -25,13 +25,14 @@ class Crop():
             with torch.cuda.device(device):
                 self.scale1 = self.scale1.cuda()
                 self.scale2 = self.scale2.cuda()
+
     def digit_to_frame(self, digit, z_where):
         S, B, T, K, _ = z_where.shape
         affine_p1 = self.scale1.repeat(S, B, T, K, 1, 1)## S * B * T * 2 * 2
         affine_p2 = z_where.unsqueeze(-1) * self.t1_factor ## S * B * T * K * 2 * 1
         affine_p2[:, :, :, :, 0, :] = -1 * affine_p2[:, :, :, :, 0, :] ## flip the x-axis due to grid function
         grid = affine_grid(torch.cat((affine_p1, affine_p2), -1).view(S*B*T*K, 2, 3), torch.Size((S*B*T*K, 1, self.frame_size, self.frame_size)))
-        frames = grid_sample(digit.unsqueeze(2).repeat(1, 1, T, K, 1, 1).view(S*B*T*K, self.digit_size, self.digit_size).unsqueeze(1), grid, mode='nearest')
+        frames = grid_sample(digit.unsqueeze(2).repeat(1, 1, T, 1, 1, 1).view(S*B*T*K, self.digit_size, self.digit_size).unsqueeze(1), grid, mode='nearest')
         return frames.squeeze(1).view(S, B, T, K, self.frame_size, self.frame_size)
 
     def frame_to_digit(self, frames, z_where):

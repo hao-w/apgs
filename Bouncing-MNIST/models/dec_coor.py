@@ -1,48 +1,41 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional.conv2d
 from torch.distributions.normal import Normal
 import probtorch
 import math
 
-class Dec_coor(nn.Module):
+class Dec_coor():
     """
-    z_where S * B * T * 2
+    Real generative model for time dynamics
+    z_1 ~ N (0, Sigma_0)
+    z_t | z_t-1 ~ N (A z_t-1, Sigma_t)
+    where A is the transformation matrix
     """
-    def __init__(self, num_hidden, init_std, noise_std, CUDA, device):
+    def __init__(self, D, Sigma0, CUDA, device):
         super(self.__class__, self)
-        self.dec_hidden = nn.Sequential(
-                            nn.Linear(4, num_hidden),
-                            nn.Tanh(),
-                            nn.Linear(num_hidden, 2),
-                            nn.Tanh())
 
-        self.prior_Sigma = torch.ones(2) * noise_std
-        self.prior_init_mean = torch.zeros(2)
-        self.prior_init_std = torch.ones(2) * init_std
+        self.prior_mu0 = torch.zeros(D)
+        self.prior_Sigma0 = torch.ones(D) * Sigma0
+        self.prior_Sigmat = torch.ones(D) * 0.1
         if CUDA:
             with torch.cuda.device(device):
-                self.prior_Sigma = self.prior_Sigma.cuda()
-                self.prior_init_mean = self.prior_init_mean.cuda()
-                self.prior_init_std = self.prior_init_std.mean()
-
-    def forward(self, init_v, z_where, sampled=False):
-        S, B, T _ = z_where.shape
+                self.prior_mu0  = self.prior_mu0 .cuda()
+                self.prior_Sigma0 = self.prior_Sigma0.cuda()
+                self.prior_Sigmat = self.prior_Sigmat.cuda()
+        # self.prior_Sigmat = nn.Parameter(self.prior_Sigmat)
+    def forward(self, z_where, disp):
+        S, B, T, K, D = z_where.shape
         log_P = []
-        log_p_0 = Normal(self.prior_init_mean, self.prior_init_std).log_prob(z_where[:,:,0,:]).sum(-1)
-        log_P.append(log_p_0.unsqueeze(2))
-        for t in range(T-1):
-            if t == 0:
-                v_new = self.enc_hidden(torch.cat((z_where[:,:, t, :], init_v), -1))
-            else:
-                v_new = self.enc_hidden(torch.cat((z_where[:,:, t, :], v_new), -1))
-
-            pt = Normal(v_new * 0.2 + z_where[:,:, t, :], self.prior_Sigma)
-            # if sampled:
-            #     samples_t = pt.sample()
-            #     log_p_t = pt.log_prob(samples_t)
-            #     return samples_t
-            # else:
-            log_p_t = pt.log_prob(z_where[:,:, t+1, :]).sum(-1)
-            log_P.append(log_p_t.unsqueeze(2))
-        return torch.cat(log_P, 2) # S * B * T
+        p0 = Normal(self.prior_mu0, self.prior_Sigma0)
+        log_p0 = p0.log_prob(z_where[:, :, 0, :, :]) # S * B * K * D
+        log_v0 = p0.log_prob(disp[:, :, 0, :, :])
+        log_P.append(log_p0.unsqueeze(2) + log_v0.unsqueeze(2)) # S * B * 1 * K * D
+        new_z_where = z_where[:,:,:T-1,:, :] + disp
+        new_disp = torch.where(new_z_where > 1, - disp, disp)
+        new_disp = torch.where(new_z_where < -1, - new_disp, new_disp)
+        new_z_where = torch.where(new_z_where > 1, 2.0 - new_z_where, new_z_where)
+        new_z_where = torch.where(new_z_where < -1, - 2.0 - new_z_where, new_z_where)
+        pt = Normal(new_z_where, self.prior_Sigmat)
+        log_pt = pt.log_prob(z_where[:,:,1:,:,:])# S * B * T-1 * K * D
+        log_P.append(log_pt)
+        return new_z_where, new_disp, torch.cat(log_P, 2) # S * B * T * K * D
