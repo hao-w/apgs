@@ -1,8 +1,8 @@
 import torch
 from global_oneshot_mu import *
-from local_enc_state import *
+from local_enc_state_v2 import *
 from local_enc_angle import *
-from global_enc_mu import *
+from global_enc_mu_v2 import *
 from decoder_semi import *
 
 def Init_models(K, D, hidden_list, RECON_SIGMA, CUDA, device, lr, RESTORE=False, PATH=None, NAME='APG'):
