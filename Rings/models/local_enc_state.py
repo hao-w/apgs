@@ -33,8 +33,7 @@ class Enc_state(nn.Module):
         q = probtorch.Trace()
         p = probtorch.Trace()
         S, B, N, D = ob.shape
-        # ob_mu_angle = torch.cat((ob.unsqueeze(2).repeat(1, 1, K, 1, 1),  mu.unsqueeze(-2).repeat(1, 1, 1, N, 1), angle), -1) ## S * B * K * N * D
-        ob_mu = torch.cat((ob.unsqueeze(2).repeat(1, 1, K, 1, 1), mu.unsqueeze(-2).repeat(1, 1, 1, N, 1)), -1)
+        ob_mu = torch.cat((ob.unsqueeze(2).repeat(1, 1, K, 1, 1),  mu.unsqueeze(-2).repeat(1, 1, 1, N, 1)), -1)
         q_probs = F.softmax(self.pi_log_prob(ob_mu).squeeze(-1).transpose(-1, -2), -1)
         # q_probs = F.softmax(self.pi_log_prob(ob_mu_angle), -3)
         if sampled == True:
