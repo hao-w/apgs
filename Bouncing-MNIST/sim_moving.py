@@ -31,9 +31,8 @@ class BouncingMNIST():
             mnist = mnist.reshape(-1, 28, 28)
         return mnist
 
-    def sim_trajectory(self):
+    def sim_trajectory(self, init_xs):
         ''' Generate a random sequence of a MNIST digit '''
-        X0= Uniform(-1, 1).sample((2,))
         v_norm = Uniform(0, 1).sample() * 2 * math.pi
         #v_norm = torch.ones(1) * 2 * math.pi
         v_y = torch.sin(v_norm).item()
@@ -41,7 +40,7 @@ class BouncingMNIST():
         V0 = torch.Tensor([v_x, v_y])
         X = torch.zeros((self.timesteps, 2))
         V = torch.zeros((self.timesteps, 2))
-        X[0] = X0
+        X[0] = init_xs
         V[0] = V0
         for t in range(0, self.timesteps -1):
             X_new = X[t] + V[t] * self.step_length
@@ -66,12 +65,16 @@ class BouncingMNIST():
     def sim_tjs(self, num_tjs):
         Xs = []
         Vs = []
+        a2 = 0.5**2
+        while(True):
+            x0 = Uniform(-1, 1).sample((num_tjs, 2))
+            if ((x0[0] - x0[1])**2).sum() > a2:
+                break
         for i in range(num_tjs):
-            x, v = self.sim_trajectory()
+            x, v = self.sim_trajectory(init_xs=x0[i])
             Xs.append(x.unsqueeze(0))
             Vs.append(v.unsqueeze(0))
-        np.save('./data/tjs_x', torch.cat(Xs, 0))
-        np.save('./data/tjs_v', torch.cat(Vs, 0))
+        return torch.cat(Xs, 0), torch.cat(Vs, 0)
 
     def sim_bouncing_mnist(self, mnist):
         '''
@@ -82,14 +85,14 @@ class BouncingMNIST():
         Video = []
         TJ = []
         inds = torch.randint(0, mnist.shape[0], (self.num_digits,))
+        Xs, Vs = self.sim_tjs(num_tjs=self.num_digits)
         for n in range(self.num_digits):
-            X, V = self.sim_trajectory()
             digit_image = torch.from_numpy(mnist[inds[n]] / 255.0).float()
             S = torch.Tensor([[s_factor, 0], [0, s_factor]]).repeat(self.timesteps, 1, 1)
-            Thetas = torch.cat((S, X.unsqueeze(-1) * t_factor), -1)
+            Thetas = torch.cat((S, Xs[n].unsqueeze(-1) * t_factor), -1)
             grid = affine_grid(Thetas, torch.Size((self.timesteps, 1, self.image_size, self.image_size)))
             Video.append(grid_sample(digit_image.repeat(self.timesteps, 1, 1).unsqueeze(1), grid, mode='nearest'))
-            TJ.append(X.unsqueeze(0))
+            TJ.append(Xs[n].unsqueeze(0))
             # Init_V.append(V[0.unsqueeze()])
         Video = torch.cat(Video, 1).sum(1).clamp(min=0.0, max=1.0)
         return Video, torch.cat(TJ, 0)
