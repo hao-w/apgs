@@ -25,7 +25,7 @@ def Init_models(K, D, FRAME_PIXELS, DIGIT_PIXELS, HIDDEN_LIST, Sigma0, CUDA, dev
         enc_coor.load_state_dict(torch.load('../weights/enc-coor-' + PATH))
         enc_digit.load_state_dict(torch.load('../weights/enc-digit-' + PATH))
         dec_digit.load_state_dict(torch.load('../weights/dec-digit-' + PATH))
-        dec_coor.load_state_dict(torch.load('../weights/dec-coor-' + PATH))
+        # dec_coor.load_state_dict(torch.load('../weights/dec-coor-' + PATH))
 
     optimizer =  torch.optim.Adam(list(os_coor.parameters())+
                                     list(enc_coor.parameters())+
