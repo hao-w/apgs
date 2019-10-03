@@ -858,3 +858,8 @@
 (115s) phi_loss: -562.107,  theta_loss: 825.058,  ess: 4.592
 (113s) phi_loss: -561.446,  theta_loss: 817.778,  ess: 4.597
 (113s) phi_loss: -560.923,  theta_loss: 827.987,  ess: 4.614
+(113s) phi_loss: -560.643,  theta_loss: 834.623,  ess: 4.605
+(113s) phi_loss: -560.943,  theta_loss: 827.465,  ess: 4.607
+(113s) phi_loss: -561.308,  theta_loss: 822.987,  ess: 4.605
+(113s) phi_loss: -560.290,  theta_loss: 831.864,  ess: 4.606
+(113s) phi_loss: -559.763,  theta_loss: 823.495,  ess: 4.628
