@@ -30,7 +30,7 @@ def Init_eta(os_eta, f_z, ob, training=True):
         return loss, ess, w, ob_tau, ob_mu, z
     else:
         elbo = log_w.mean().cpu()
-        log_joint = (log_obs_n.sum(-1) + log_p_z.sum(-1) + log_p_eta.sum(-1)).mean().cpu()
+        log_joint = (log_obs_n.sum(-1)).mean().cpu()
         E_z = q_z['zs'].dist.probs.mean(0)[0].cpu().data.numpy()
         E_mu = q_eta['means'].dist.loc.mean(0)[0].cpu().data.numpy()
         E_tau = (q_eta['precisions'].dist.concentration / q_eta['precisions'].dist.rate).mean(0)[0].cpu().data.numpy()
@@ -89,7 +89,7 @@ def Update_z(f_z, b_z, ob, ob_tau, ob_mu, z_old, training=True):
         ess = (1. / (w**2).sum(0)).mean().cpu()
         E_z = q_f_z['zs'].dist.probs.mean(0)[0].cpu().data.numpy()
         return E_z, log_f_obs, log_p_f_z, ess, w, z
-# 
+#
 # def BP(M, models, ob, ob_tau, ob_mu, z, log_S):
 #     (os_eta, f_z, f_eta, b_z, b_eta) = models
 #     ob_tau_old = ob_tau
