@@ -1,26 +1,12 @@
 import torch
 import torch.nn as nn
-from torch.nn.functional import conv2d, softmax
+import  torch.nn.functional as F
 from torch.distributions.normal import Normal
 import probtorch
 import math
 
 class Enc_coor(nn.Module):
-    def __init__():
-        super(self.__class__, self)
-    """
-    conv2d usage : input T * B * H * W
-                 : kernels (S*B) * 1 * H_k * W_k
-                 reshape the templates
-
-    frames : B * T * 64 * 64
-    templates : S * B * 28 * 28
-
-    10.02 update: Base on the DSSM paper, we infer time-dependent latent variable
-    S_t = [z_where_t, v_t], where v_t is the velocity
-    Now we infer v_0 by the whole video q(v_0 | x_{1:T})
-    """
-    def __init__(self, D, num_pixels, num_hidden, CUDA, device):
+    def __init__(self, D, num_pixels, num_hidden):
         super(self.__class__, self).__init__()
         self.enc_hidden = nn.Sequential(
                             nn.Linear(num_pixels, num_hidden),
@@ -35,34 +21,24 @@ class Enc_coor(nn.Module):
                             nn.Linear(num_hidden, int(0.5*num_hidden)),
                             nn.ReLU(),
                             nn.Linear(int(0.5*num_hidden), D))
+        #
+        # self.enc = nn.Sequential(
+        #                     nn.Linear(num_pixels, num_hidden),
+        #                     nn.ReLU(),
+        #                     nn.Linear(num_hidden, int(0.5*num_hidden)),
+        #                     nn.ReLU(),
+        #                     nn.Linear(int(0.5*num_hidden), D),
+        #                     nn.Tanh())
 
-        self.disp_mean = nn.Sequential(
-                            nn.Linear(num_pixels, num_hidden),
-                            nn.ReLU(),
-                            nn.Linear(num_hidden, int(0.5*num_hidden)),
-                            nn.ReLU(),
-                            nn.Linear(int(0.5*num_hidden), D),
-                            nn.Tanh())
-
-    def forward(self, dec_coor, frames, digit, sampled=True, z_where_old=None):
+    def forward(self, conved, sampled=True, z_where_old=None):
         q = probtorch.Trace()
-        B, T, FP, _ = frames.shape
-        S, B, K, DP, _ = digit.shape
-        convolved = conv2d(frames.transpose(0, 1).unsqueeze(1).repeat(1, S, 1, 1, 1).unsqueeze(3).repeat(1, 1, 1, K, 1, 1).view(T, S*B*K, FP, FP), digit.view(S*B*K, DP, DP).unsqueeze(1), groups=int(S*B*K))
-        CP = convolved.shape[-1] # convolved output pixels ## T * S * B * CP * CP
-        convolved = convolved.view(T, S, B, K, CP, CP).view(T, S, B, K, CP*CP).permute(1, 2, 0, -2, -1) ## S * B * T * K * 1639
-        convolved_disp = convolved[:, :, 1:, :, :] -  convolved[:, :, :T-1, :, :]
-        disp = self.disp_mean(convolved_disp)
-        hidden = self.enc_hidden(softmax(convolved, -1))
-        q_mean = self.where_mean(hidden) ## S * B * T * K * D
-        q_std = self.where_log_std(hidden).exp() ## S * B * T * K * D
+        hidden = self.enc_hidden(conved)
+        q_mean = self.where_mean(hidden)
+        q_std = self.where_log_std(hidden).exp()
+        # if z_where_t_1 i None:
         if sampled:
             z_where = Normal(q_mean, q_std).sample()
-            _, _, log_p = dec_coor.forward(z_where, disp)
             q.normal(loc=q_mean, scale=q_std, value=z_where, name='z_where')
         else:
-            _, _, log_p = dec_coor.forward(z_where_old, disp)
             q.normal(loc=q_mean, scale=q_std, value=z_where_old, name='z_where')
-
-
-        return q, log_p
+        return q
