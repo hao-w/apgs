@@ -43,20 +43,23 @@ class APG():
         and iterate over z_where_t and z_what
         """
         metrics = {'phi_loss' : [], 'theta_loss' : [], 'ess' : [], 'll' : []}
-        phi_loss, theta_loss, w_what, vars = self.Step0(frames, training=self.training)
+        phi_loss, theta_loss, w_what_0, vars_0 = self.Step0(frames, training=self.training)
+        z_what = self.Resample_what(vars_0['z_what'], w_what_0)
+        z_where = vars_0['z_where']
         metrics['phi_loss'].append(phi_loss.unsqueeze(0))
         metrics['theta_loss'].append(theta_loss.unsqueeze(0))
-        metrics['ess'].append(vars['ess'].unsqueeze(0))
-        metrics['ll'].append(vars['ll'].mean().unsqueeze(0))
+        metrics['ess'].append(vars_0['ess'].unsqueeze(0))
+        metrics['ll'].append(vars_0['ll'].mean().unsqueeze(0))
         # metrics['recon'].append(vars['recon'])
         for m in range(self.mcmc_steps):
-            z_what = self.Resample_what(vars['z_what'], w_what)
-            phi_loss_where, theta_loss_where, w_where, vars_where = self.APG_where(frames, z_what=z_what, z_where_old=vars['z_where'], training=self.training)
-            phi_loss_what, theta_loss_what, w_what, vars = self.APG_what(frames, z_where=vars_where['z_where'], z_what_old=z_what, training=self.training)
+            phi_loss_where, theta_loss_where, w_where, vars_where = self.APG_where(frames, z_what=z_what, z_where_old=z_where, training=self.training)
+            z_where = vars_where['z_where']
+            phi_loss_what, theta_loss_what, w_what, vars_what = self.APG_what(frames, z_where=z_where, z_what_old=z_what, training=self.training)
+            z_what = vars_what['z_what']
             metrics['phi_loss'].append((phi_loss_what + phi_loss_where).unsqueeze(0))
             metrics['theta_loss'].append((theta_loss_what + theta_loss_where).unsqueeze(0))
-            metrics['ess'].append((vars_where['ess'] + vars['ess']).unsqueeze(0) / 2)
-            metrics['ll'].append(vars['ll'].mean().unsqueeze(0))
+            metrics['ess'].append((vars_where['ess'] + vars_what['ess']).unsqueeze(0) / 2)
+            metrics['ll'].append(vars_what['ll'].mean().unsqueeze(0))
             # metrics['recon'].append(vars['recon'])
         return metrics
 
