@@ -9,45 +9,48 @@ class Viz_MC:
         Plot_onestep : visualize the data/sample in one time Step
         Plot_chains : align all visualizaztion of all datasets in different rows
     """
-    def __init__(self, K, viz_interval, fs, title_fontsize, bound):
+    def __init__(self, K, viz_interval, FS, TITLE_FS, bound):
         super().__init__()
         self.K = K
         self.viz_interval = viz_interval
-        self.fs = fs
-        self.title_fontsize = title_fontsize
+        self.FS = FS
+        self.TITLE_FS = TITLE_FS
 
-    def Plot_TJs(self, frame_list, sample_lists, recon_lists, filename):
+    def Plot_samples(self, Metrics, filename):
         ## initialize figure object
-        num_cols = frame_list[0].shape[0]
-        num_steps = len(sample_lists[0])
-        num_rows = 2 + int((num_steps - 1)/ self.viz_interval)
-        for g, frames in enumerate(frame_list):
-
+        Data = Metrics['data']
+        Recons = Metrics['recon']
+        NUM_DATASETS = len(Data)
+        apg_steps = len(Recons)
+        num_cols = Data[0].shape[0]
+        num_rows = 2 + int((apg_steps - 1)/ self.viz_interval)
+        for g, frames in enumerate(Data):
             gs = gridspec.GridSpec(num_rows, num_cols)
             gs.update(left=0.05 , bottom=0.05, right=0.95, top=0.95, wspace=0.05, hspace=0.05)
-            fig = plt.figure(figsize=(self.fs, self.fs * num_rows / num_cols))
+            fig = plt.figure(figsize=(self.FS, self.FS * num_rows / num_cols))
             for c in range(num_cols):
                 ax = fig.add_subplot(gs[0, c])
                 ax.imshow(frames[c], cmap='gray')
                 if c == 0:
-                    ax.set_ylabel('Data', fontsize=self.title_fontsize)
+                    ax.set_ylabel('Data', fontsize=self.TITLE_FS)
+                ax.set_xticks([])
+                ax.set_yticks([])
             row_ind = 1
-            for r in range(0, num_steps, self.viz_interval):
-                recon_frames = recon_lists[g][r].squeeze(0).squeeze(0)
+            for r in range(0, apg_steps, self.viz_interval):
+                recon_frames = Recons[r].squeeze(0)[g]
                 for inc in range(num_cols):
                     ax = fig.add_subplot(gs[row_ind, inc])
                     ax.imshow(recon_frames[inc], cmap='gray')
                     ax.set_xticks([])
                     ax.set_yticks([])
                     if inc == 0 :
-                        ax.set_ylabel('Step %d' % r, fontsize=self.title_fontsize)
+                        ax.set_ylabel('Step %d' % r, fontsize=self.TITLE_FS)
                 row_ind += 1
+            plt.savefig(filename + '-%d-' % g + '.svg', dpi=300)
 
-            #
-            plt.savefig(filename +'.svg', dpi=300)
-            # plt.savefig(filename + '.pdf')
-
-    def Plot_metrics(self, log_joint_lists, ess_lists, sample_size, filename):
+    def Plot_metrics(self, Metrics, sample_size, filename):
+        LL = Metrics['ll']
+        ESS = Metrics['ess']
         num_cols = len(log_joint_lists)
         gs = gridspec.GridSpec(2, num_cols)
         gs.update(left=0.05 , bottom=0.05, right=0.95, top=0.95, wspace=0.2, hspace=0.05)
