@@ -2,13 +2,11 @@ import torch
 import time
 import numpy as np
 
-def train(models, objective, optimizer, data_path, mcmc_steps, mnist_mean, AT, Train_Params, DEVICE, PATH):
-    (NUM_EPOCHS, NUM_GROUPS, K, D, S, B) = Train_Params
+def train(APG, optimizer, data_path, Train_Params, DEVICE, PATH):
+    (NUM_EPOCHS, NUM_GROUPS, S, B) = Train_Params
     """
     training function
     """
-    with torch.cuda.device(DEVICE):
-        mnist_mean = mnist_mean.cuda().repeat(S, B, K, 1, 1)
     for epoch in range(NUM_EPOCHS):
         Metrics = dict()
         time_start = time.time()
@@ -22,7 +20,7 @@ def train(models, objective, optimizer, data_path, mcmc_steps, mnist_mean, AT, T
                 optimizer.zero_grad()
                 b_ind = indices[step*B : (step+1)*B]
                 frames = data[b_ind].repeat(S, 1, 1, 1, 1).cuda().to(DEVICE) ## S * B * T * 64 * 64
-                metrics = objective(models, AT, K, D, frames, mcmc_steps, mnist_mean)
+                metrics = APG.Sweeps(frames)
                 phi_loss = torch.cat(metrics['phi_loss'], 0).sum()
                 theta_loss = (torch.cat(metrics['theta_loss'], 0)).sum()
                 phi_loss.backward(retain_graph=True)
@@ -34,6 +32,7 @@ def train(models, objective, optimizer, data_path, mcmc_steps, mnist_mean, AT, T
                         Metrics[key] += metrics[key][-1].detach().item()
                     else:
                         Metrics[key] = metrics[key][-1].detach().item()
+                print(step)
         metrics_print = ",  ".join(['%s: %.3f' % (k, v/(NUM_GROUPS*NUM_BATCHES)) for k, v in Metrics.items()])
         flog = open('../results/log-' + PATH + '.txt', 'a+')
         time_end = time.time()

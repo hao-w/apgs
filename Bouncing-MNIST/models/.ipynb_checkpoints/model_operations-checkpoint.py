@@ -38,6 +38,6 @@ def Init_models(K, D, FRAME_PIXELS, DIGIT_PIXELS, HIDDEN_LIST, Sigma0, CUDA, DEV
 def Save_models(models, PATH):
     (enc_coor, dec_coor, enc_digit, dec_digit) = models
     torch.save(enc_coor.state_dict(), '../weights/enc-coor-' + PATH)
-    # torch.save(dec_coor.state_dict(), '../weights/dec-coor-' + PATH)
+    torch.save(dec_coor.state_dict(), '../weights/dec-coor-' + PATH)
     torch.save(enc_digit.state_dict(), '../weights/enc-digit-' + PATH)
     torch.save(dec_digit.state_dict(), '../weights/dec-digit-' + PATH)

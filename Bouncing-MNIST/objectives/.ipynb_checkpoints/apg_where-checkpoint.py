@@ -3,7 +3,25 @@ import torch.nn.functional as F
 from torch.distributions.normal import Normal
 import probtorch
 from utils import, Compose_IW
+    """
+    Update z_where_t^k step by step and apply resampling after each single time step
+    ========================
+    conv2d usage : input 1 * SB * H * W
+                 : kernels (SB) * 1 * H_k * W_k
 
+    frames  : S * B * T * 64 * 64
+    frame_t : S * B * 64 * 64
+    digit : step 0  = z_what = mnist_mean                       : S * B * K * 28 * 28
+            step 1:M  = dec_digit(z_what) = reconstructed mnist : S * B * K * 28 * 28
+
+    10.02 update: Based on the DSSM paper, we infer time-dependent latent variable
+    S_t = [z_where_t, v_t], where v_t is the velocity
+    Now we infer v_0 by the whole video q(v_0 | x_{1:T})
+    ========================
+    10.03 update : To change the sampling strategy, we merge two coor encoders because
+    1. we jointly predict K*D thing even we have individual templates in the subsequent steps
+    2. we break down the trajectory into each single step
+    """
     def __init__(self, K, D, T, S, enc_coor, dec_coor, dec_digit, AT, mnist_mean):
         super().__init__()
         self.K = K
