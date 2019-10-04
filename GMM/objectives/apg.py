@@ -58,7 +58,7 @@ def APG_test(models, ob, mcmc_steps, log_S):
         E_z, ll, log_prior_z, ess_z, w_z, z = Update_z(f_z, f_z, ob, ob_tau, ob_mu, z, training=False) ## update cluster assignments
         # sum_log_Ex = BP(m+1, models, ob, ob_tau, ob_mu, z, log_S)
         # print(log_p_zM_x.shape)
-        log_joint = (ll.sum(-1) + log_prior_z.sum(-1) + log_prior_eta.sum(-1)).mean().cpu()  # S * B
+        log_joint = (ll.sum(-1)).mean().cpu()  # S * B
         # elbo = log_joint - sum_log_Ex
         metrics['log_joint'].append(log_joint.unsqueeze(0))
         metrics['samples'].append((E_tau, E_mu, E_z))

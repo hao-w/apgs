@@ -13,6 +13,7 @@ data_path = data_dir + "mnist/bmnist/"
 #tjs = torch.from_numpy(np.load(data_path + 'tj.npy' )).float()
 mnist_mean = torch.from_numpy(np.load('../mnist_mean.npy')).float()
 NUM_GROUPS = 10
+
 ## Train Parameters
 NUM_EPOCHS = 500
 T = 10
@@ -25,5 +26,10 @@ NUM_HIDDEN_COOR = 400
 Z_WHAT_DIM = 10
 HIDDEN_LIST = (NUM_HIDDEN_DIGIT, NUM_HIDDEN_COOR, Z_WHAT_DIM)
 Sigma0 = 1
+<<<<<<< HEAD
 LEARNING_RATE = 5*1e-4
 Train_Params = (NUM_EPOCHS, NUM_GROUPS, K, D, SAMPLE_SIZE, BATCH_SIZE)
+=======
+LEARNING_RATE = 1e-4
+Train_Params = (NUM_EPOCHS, NUM_GROUPS, SAMPLE_SIZE, BATCH_SIZE)
+>>>>>>> e14d8109a46e36eb9f4a580398c88f39d49149cb
