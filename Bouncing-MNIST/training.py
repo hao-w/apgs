@@ -32,7 +32,6 @@ def train(APG, optimizer, data_path, Train_Params, DEVICE, PATH):
                         Metrics[key] += metrics[key][-1].detach().item()
                     else:
                         Metrics[key] = metrics[key][-1].detach().item()
-                print(step)
         metrics_print = ",  ".join(['%s: %.3f' % (k, v/(NUM_GROUPS*NUM_BATCHES)) for k, v in Metrics.items()])
         flog = open('../results/log-' + PATH + '.txt', 'a+')
         time_end = time.time()
