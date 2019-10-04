@@ -108,11 +108,13 @@ class BouncingMNIST():
         return torch.cat(Videoes, 0)
 
     def save_data(self, num_videoes):
-
+        save_path = os.path.join(self.path, 'bmnist_%ddigits/' % (self.num_digits))
+        if not os.path.exists(save_path):
+            os.makedirs(save_path)
         num_files = int(num_videoes / self.file_size)
         for i in range(num_files):
             data = self.sim_videoes( self.file_size)
-            np.save(self.mnist_path + '/bmnist/ob_%d' % i, data)
+            np.save(save_path + 'ob_%d' % (i), data)
             # np.save(self.mnist_path + '/bmnist/tj_%d' % i, TJs)
 
     def viz_moving_mnist(self, fs, num_videoes):
