@@ -47,7 +47,8 @@ class APG():
         metrics['phi_loss'].append(phi_loss.unsqueeze(0))
         metrics['theta_loss'].append(theta_loss.unsqueeze(0))
         metrics['ess'].append(vars['ess'].unsqueeze(0))
-        metrics['ll'].append(vars['ll'].unsqueeze(0))
+        metrics['ll'].append(vars['ll'].mean().unsqueeze(0))
+        # metrics['recon'].append(vars['recon'])
         for m in range(self.mcmc_steps):
             z_what = self.Resample_what(vars['z_what'], w_what)
             phi_loss_where, theta_loss_where, w_where, vars_where = self.APG_where(frames, z_what=z_what, z_where_old=vars['z_where'], training=self.training)
@@ -56,6 +57,7 @@ class APG():
             metrics['theta_loss'].append((theta_loss_what + theta_loss_where).unsqueeze(0))
             metrics['ess'].append((vars_where['ess'] + vars['ess']).unsqueeze(0) / 2)
             metrics['ll'].append(vars['ll'].mean().unsqueeze(0))
+            # metrics['recon'].append(vars['recon'])
         return metrics
 
     def Step0(self, frames, training=True):
