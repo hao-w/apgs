@@ -24,62 +24,81 @@ class APG():
     1. we jointly predict K*D thing even we have individual templates in the subsequent steps
     2. we break down the trajectory into each single step
     """
-    def __init__(self, models, AT, K, D, T, B, S, mcmc_steps, mnist_mean, training=True):
+    def __init__(self, models, AT, K, D, T, mnist_mean, training=True):
         super().__init__()
         self.enc_coor, self.dec_coor, self.enc_digit, self.dec_digit = models
         self.AT= AT
         self.K = K
         self.D = D
         self.T = T
-        self.B = B
-        self.S = S
-        self.mcmc_steps = mcmc_steps
-        self.mnist_mean = mnist_mean.repeat(self.S, self.B, self.K, 1, 1)
+        self.mnist_mean = mnist_mean
         self.training = training
 
-    def Sweeps(self, frames):
+    def Sweeps(self, apg_steps, S, B, frames):
         """
         Start with the mnist_mean template,
         and iterate over z_where_t and z_what
         """
-        metrics = {'phi_loss' : [], 'theta_loss' : [], 'ess' : [], 'll' : []}
-        phi_loss, theta_loss, w_what_0, vars_0 = self.Step0(frames, training=self.training)
-        z_what = self.Resample_what(vars_0['z_what'], w_what_0)
-        z_where = vars_0['z_where']
-        metrics['phi_loss'].append(phi_loss.unsqueeze(0))
-        metrics['theta_loss'].append(theta_loss.unsqueeze(0))
-        metrics['ess'].append(vars_0['ess'].unsqueeze(0))
-        metrics['ll'].append(vars_0['ll'].mean().unsqueeze(0))
-        # metrics['recon'].append(vars['recon'])
-        for m in range(self.mcmc_steps):
-            phi_loss_where, theta_loss_where, w_where, vars_where = self.APG_where(frames, z_what=z_what, z_where_old=z_where, training=self.training)
-            z_where = vars_where['z_where']
-            phi_loss_what, theta_loss_what, w_what, vars_what = self.APG_what(frames, z_where=z_where, z_what_old=z_what, training=self.training)
-            z_what = vars_what['z_what']
-            metrics['phi_loss'].append((phi_loss_what + phi_loss_where).unsqueeze(0))
-            metrics['theta_loss'].append((theta_loss_what + theta_loss_where).unsqueeze(0))
-            metrics['ess'].append((vars_where['ess'] + vars_what['ess']).unsqueeze(0) / 2)
-            metrics['ll'].append(vars_what['ll'].mean().unsqueeze(0))
-            # metrics['recon'].append(vars['recon'])
-        return metrics
+        if self.training:
+            metrics = {'phi_loss' : [], 'theta_loss' : [], 'ess' : [], 'll' : []}
+            phi_loss, theta_loss, w_what_0, vars_0 = self.Step0(S=S, B=B, frames=frames, training=self.training)
+            z_what = self.Resample_what(vars_0['z_what'], w_what_0)
+            z_where = vars_0['z_where']
+            metrics['phi_loss'].append(phi_loss.unsqueeze(0))
+            metrics['theta_loss'].append(theta_loss.unsqueeze(0))
+            metrics['ess'].append(vars_0['ess'].unsqueeze(0))
+            metrics['ll'].append(vars_0['ll'].mean().unsqueeze(0))
+            for m in range(apg_steps):
+                phi_loss_where, theta_loss_where, w_where, vars_where = self.APG_where(S=S, B=B, frames=frames, z_what=z_what, z_where_old=z_where, training=self.training)
+                z_where = vars_where['z_where']
+                phi_loss_what, theta_loss_what, w_what, vars_what = self.APG_what(S=S, B=B, frames=frames, z_where=z_where, z_what_old=z_what, training=self.training)
+                z_what = vars_what['z_what']
+                metrics['phi_loss'].append((phi_loss_what + phi_loss_where).unsqueeze(0))
+                metrics['theta_loss'].append((theta_loss_what + theta_loss_where).unsqueeze(0))
+                metrics['ess'].append((vars_where['ess'] + vars_what['ess']).unsqueeze(0) / 2)
+                metrics['ll'].append(vars_what['ll'].mean().unsqueeze(0))
+            return metrics
+        else:
+            metrics = {'recon' : [], 'E_where' : [], 'E_what' : [], 'ess' : [], 'll' : []}
+            w_what_0, vars_0 = self.Step0(S=S, B=B, frames=frames, training=self.training)
+            z_what = self.Resample_what(vars_0['z_what'], w_what_0)
+            z_where = vars_0['z_where']
+            metrics['recon'].append(vars_0['recon'])
+            metrics['E_what'].append(vars_0['E_what'])
+            metrics['E_where'].append(vars_0['E_where'])
+            metrics['ess'].append(vars_0['ess'].unsqueeze(0))
+            metrics['ll'].append(vars_0['ll'].mean().unsqueeze(0))
+            for m in range(apg_steps):
+                w_where, vars_where = self.APG_where(S=S, B=B, frames=frames, z_what=z_what, z_where_old=z_where, training=self.training)
+                z_where = vars_where['z_where']
+                w_what, vars_what = self.APG_what(S=S, B=B, frames=frames, z_where=z_where, z_what_old=z_what, training=self.training)
+                z_what = vars_what['z_what']
+                metrics['recon'].append(vars_what['recon'])
+                metrics['E_what'].append(vars_what['E_what'])
+                metrics['E_where'].append(vars_where['E_where'])
+                metrics['ess'].append((vars_where['ess'] + vars_what['ess']).unsqueeze(0) / 2)
+                metrics['ll'].append(vars_what['ll'].mean().unsqueeze(0))
+            return metrics
 
-    def Step0(self, frames, training=True):
+    def Step0(self, S, B, frames, training=True):
+        mnist_mean_exp = self.mnist_mean.repeat(S, B, self.K, 1, 1)
         vars = {'z_where' : [], 'E_where' : [], 'z_what' : [], 'E_what' : [], 'ess' : [], 'll' : []}
         for t in range(self.T):
             frame_t = frames[:,:,t, :,:]
+
             if t == 0:
-                log_w_t, log_q_t, z_where_t, E_where_t = self.Where_1step(frame_t=frame_t, digit=self.mnist_mean, z_where_t_1=None)
+                log_w_t, log_q_t, z_where_t, E_where_t = self.Where_1step(S=S, B=B, frame_t=frame_t, digit=mnist_mean_exp, z_where_t_1=None)
                 log_w_where = log_w_t
                 log_q_where = log_q_t
             else:
-                log_w_t, log_q_t, z_where_t, E_where_t = self.Where_1step(frame_t=frame_t, digit=self.mnist_mean, z_where_t_1=z_where_t)
+                log_w_t, log_q_t, z_where_t, E_where_t = self.Where_1step(S=S, B=B, frame_t=frame_t, digit=mnist_mean_exp, z_where_t_1=z_where_t)
                 log_w_where = log_w_where + log_w_t
                 log_q_where = log_q_where + log_q_t
             vars['z_where'].append(z_where_t.unsqueeze(2)) ## S * B * 1 * K * D
             vars['E_where'].append(E_where_t.unsqueeze(2))
         vars['z_where'] = torch.cat(vars['z_where'], 2)
         vars['E_where'] = torch.cat(vars['E_where'], 2).mean(0).cpu()
-        cropped = self.AT.frame_to_digit_vectorized(frames, vars['z_where']).view(self.S, self.B, self.T, self.K, 28*28)
+        cropped = self.AT.frame_to_digit_vectorized(frames, vars['z_where']).view(S, B, self.T, self.K, 28*28)
         q_f_what, p_f_what = self.enc_digit(cropped)
         vars['z_what'] = q_f_what['z_what'].value # S * B * K * z_what_dim
         vars['E_what'] = q_f_what['z_what'].dist.loc.mean(0).cpu()
@@ -99,14 +118,14 @@ class APG():
         else:
             return w, vars
 
-    def Where_1step(self, frame_t, digit, z_where_t_1=None):
+    def Where_1step(self, S, B, frame_t, digit, z_where_t_1=None):
         frame_left = frame_t
         vars = {'log_w' : [], 'log_q' : [], 'z_where_t' : [], 'E_where_t' : []}
         for k in range(self.K):
             digit_k = digit[:,:,k,:,:]
-            conved_k = F.conv2d(frame_left.view(self.S*self.B, 64, 64).unsqueeze(0), digit_k.view(self.S*self.B, 28, 28).unsqueeze(1), groups=int(self.S*self.B))
+            conved_k = F.conv2d(frame_left.view(S*B, 64, 64).unsqueeze(0), digit_k.view(S*B, 28, 28).unsqueeze(1), groups=int(S*B))
             CP = conved_k.shape[-1] # convolved output pixels ##  S * B * CP * CP
-            conved_k = F.softmax(conved_k.squeeze(0).view(self.S, self.B, CP, CP).view(self.S, self.B, CP*CP), -1) ## S * B * 1639
+            conved_k = F.softmax(conved_k.squeeze(0).view(S, B, CP, CP).view(S, B, CP*CP), -1) ## S * B * 1639
             q_k = self.enc_coor.forward(conved_k)
             z_where_k = q_k['z_where'].value
             vars['z_where_t'].append(z_where_k.unsqueeze(2)) ## expand to S B 1 2
@@ -122,14 +141,14 @@ class APG():
             frame_left = frame_left - recon_frame_t_k
         return torch.cat(vars['log_w'], -1).sum(-1), torch.cat(vars['log_q'], -1).sum(-1), torch.cat(vars['z_where_t'], 2), torch.cat(vars['E_where_t'], 2)
 
-    def Where_apg_step(self, frame_t, digit, z_where_old_t, z_where_old_t_1=None, z_where_t_1=None):
+    def Where_apg_step(self, S, B, frame_t, digit, z_where_old_t, z_where_old_t_1=None, z_where_t_1=None):
         frame_left = frame_t
         vars = {'log_w_f' : [], 'log_w_b' : [], 'log_q' : [], 'z_where_t' : [], 'E_where_t' : []}
         for k in range(self.K):
             digit_k = digit[:,:,k,:,:]
-            conved_k = F.conv2d(frame_left.view(self.S*self.B, 64, 64).unsqueeze(0), digit_k.view(self.S*self.B, 28, 28).unsqueeze(1), groups=int(self.S*self.B))
+            conved_k = F.conv2d(frame_left.view(S*B, 64, 64).unsqueeze(0), digit_k.view(S*B, 28, 28).unsqueeze(1), groups=int(S*B))
             CP = conved_k.shape[-1] # convolved output pixels ## T * S * B * CP * CP
-            conved_k = F.softmax(conved_k.squeeze(0).view(self.S, self.B, CP, CP).view(self.S, self.B, CP*CP), -1) ## S * B * 1639
+            conved_k = F.softmax(conved_k.squeeze(0).view(S, B, CP, CP).view(S, B, CP*CP), -1) ## S * B * 1639
             q_k = self.enc_coor.forward(conved_k)
             z_where_k = q_k['z_where'].value
             vars['z_where_t'].append(z_where_k.unsqueeze(2)) ## expand to S B 1 2
@@ -153,7 +172,7 @@ class APG():
             frame_left = frame_left - recon_frame_t_k
         return torch.cat(vars['log_w_f'], -1).sum(-1) - torch.cat(vars['log_w_b'], -1).sum(-1), torch.cat(vars['log_q'], -1).sum(-1), torch.cat(vars['z_where_t'], 2), torch.cat(vars['E_where_t'], 2)
 
-    def APG_where(self, frames, z_what, z_where_old, training=True):
+    def APG_where(self, S, B, frames, z_what, z_where_old, training=True):
         vars = {'z_where' : [], 'E_where' : [], 'ess' : [], 'll' : []}
         Phi_loss = []
         Theta_loss = []
@@ -161,9 +180,9 @@ class APG():
             frame_t = frames[:,:,t, :,:]
             digit = self.dec_digit(frame_t, z_what)
             if t == 0:
-                log_w_t, log_q_t, z_where_t, E_where_t = self.Where_apg_step(frame_t=frame_t, digit=digit, z_where_old_t=z_where_old[:,:,t, :, :], z_where_old_t_1=None, z_where_t_1=None)
+                log_w_t, log_q_t, z_where_t, E_where_t = self.Where_apg_step(S=S, B=B, frame_t=frame_t, digit=digit, z_where_old_t=z_where_old[:,:,t, :, :], z_where_old_t_1=None, z_where_t_1=None)
             else:
-                log_w_t, log_q_t, z_where_t, E_where_t = self.Where_apg_step(frame_t=frame_t, digit=digit, z_where_old_t=z_where_old[:,:,t, :, :],  z_where_old_t_1=z_where_old[:,:,t-1, :,:], z_where_t_1=z_where_t)
+                log_w_t, log_q_t, z_where_t, E_where_t = self.Where_apg_step(S=S, B=B, frame_t=frame_t, digit=digit, z_where_old_t=z_where_old[:,:,t, :, :],  z_where_old_t_1=z_where_old[:,:,t-1, :,:], z_where_t_1=z_where_t)
 
             recon_t, ll_f_t = self.dec_digit(frame_t, z_what, z_where=z_where_t)
             _, ll_b_t = self.dec_digit(frame_t, z_what, z_where=z_where_old[:,:,t,:,:])
@@ -185,9 +204,9 @@ class APG():
         else:
             return w,  vars
 
-    def APG_what(self, frames, z_where, z_what_old=None, training=True):
+    def APG_what(self, S, B, frames, z_where, z_what_old=None, training=True):
         vars = {'z_what' : [], 'E_what' : [], 'ess' : [], 'll' : [], 'recon' : []}
-        croppd = self.AT.frame_to_digit_vectorized(frames, z_where).view(self.S, self.B, self.T, self.K, 28*28)
+        croppd = self.AT.frame_to_digit_vectorized(frames, z_where).view(S, B, self.T, self.K, 28*28)
         q_f_what, p_f_what = self.enc_digit(croppd)
         z_what = q_f_what['z_what'].value # S * B * K * z_what_dim
         vars['z_what'] = z_what
