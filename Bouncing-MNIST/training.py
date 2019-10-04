@@ -8,10 +8,10 @@ def train(APG, optimizer, data_path, Train_Params, APG_STEPS, DEVICE, PATH):
     training function
     """
     for epoch in range(NUM_EPOCHS):
-        Metrics = dict()
         time_start = time.time()
         group_ind = torch.randperm(NUM_GROUPS)
         for g in range(NUM_GROUPS):
+            Metrics = dict()
             data = torch.from_numpy(np.load(data_path + 'ob_%d.npy' % group_ind[g])).float()
             NUM_DATASETS = data.shape[0]
             NUM_BATCHES = int((NUM_DATASETS / B))
@@ -32,9 +32,9 @@ def train(APG, optimizer, data_path, Train_Params, APG_STEPS, DEVICE, PATH):
                         Metrics[key] += metrics[key][-1].detach().item()
                     else:
                         Metrics[key] = metrics[key][-1].detach().item()
-        metrics_print = ",  ".join(['%s: %.3f' % (k, v/(NUM_GROUPS*NUM_BATCHES)) for k, v in Metrics.items()])
-        flog = open('../results/log-' + PATH + '.txt', 'a+')
-        time_end = time.time()
-        print("(%ds) " % (time_end - time_start) + metrics_print, file=flog)
-        flog.close()
-        print("Completed  in (%ds),  " % (time_end - time_start) + metrics_print)
+            metrics_print = ",  ".join(['%s: %.3f' % (k, v/(NUM_BATCHES)) for k, v in Metrics.items()])
+            flog = open('../results/log-' + PATH + '.txt', 'a+')
+            time_end = time.time()
+            print("Epoch=%d, Group=%d, (%ds) " % (epoch, g, time_end - time_start) + metrics_print, file=flog)
+            flog.close()
+            print("Epoch=%d, Group=%d, (%ds),  " % (epoch, g, time_end - time_start) + metrics_print)

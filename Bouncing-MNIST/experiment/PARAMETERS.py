@@ -3,7 +3,7 @@ import torch
 
 data_dir = "/home/hao/Research/apg_data/"
 
-K = 2
+K = 3
 FRAME_PIXELS = 64
 DIGIT_PIXELS = 28
 
