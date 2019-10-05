@@ -8,7 +8,7 @@ import torch
 from torch.distributions.uniform import Uniform
 from torch.nn.functional import affine_grid, grid_sample
 class BouncingMNIST():
-    def __init__(self, mnist_path, path, timesteps, num_digits, step_length, file_size):
+    def __init__(self, mnist_path, path, timesteps, num_digits, image_size, step_length, file_size):
         '''
         X : coordinates
         V : velocity
@@ -18,7 +18,7 @@ class BouncingMNIST():
         self.path = path
         self.timesteps = timesteps
         self.num_digits = num_digits
-        self.image_size = 64
+        self.image_size = image_size
         self.digit_size = 28
         self.step_length = step_length
         self.file_size = file_size
@@ -99,12 +99,10 @@ class BouncingMNIST():
 
     def sim_videoes(self, num_videoes):
         Videoes = []
-        TJs = []
         mnist = self.load_mnist()
         for i in range(num_videoes):
             video = self.sim_bouncing_mnist(mnist)
             Videoes.append(video.unsqueeze(0))
-            #TJs.append(tj.unsqueeze(0))
         return torch.cat(Videoes, 0)
 
     def save_data(self, num_videoes):
@@ -118,7 +116,7 @@ class BouncingMNIST():
             # np.save(self.mnist_path + '/bmnist/tj_%d' % i, TJs)
 
     def viz_moving_mnist(self, fs, num_videoes):
-        data, _ = self.sim_videoes(num_videoes)
+        data = self.sim_videoes(num_videoes)
         num_cols = self.timesteps
         num_rows = num_videoes
         gs = gridspec.GridSpec(num_rows, num_cols)

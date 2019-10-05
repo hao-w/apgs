@@ -8,9 +8,7 @@ FRAME_PIXELS = 64
 DIGIT_PIXELS = 28
 
 
-data_path = "/data/hao/apg_data/bmnist_%ddigits/" % K
-#data = torch.from_numpy(np.load(data_path + 'ob.npy' )).float()
-#tjs = torch.from_numpy(np.load(data_path + 'tj.npy' )).float()
+data_path = '/data/hao/apg_data/bmnist_2digits/'
 mnist_mean = torch.from_numpy(np.load('../mnist_mean.npy')).float()
 NUM_GROUPS = 60
 

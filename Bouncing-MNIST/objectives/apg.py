@@ -24,15 +24,17 @@ class APG():
     1. we jointly predict K*D thing even we have individual templates in the subsequent steps
     2. we break down the trajectory into each single step
     """
-    def __init__(self, models, AT, K, D, T, mnist_mean, training=True):
+    def __init__(self, models, AT, K, D, T, mnist_mean, frame_size, training=True):
         super().__init__()
-        self.enc_coor, self.dec_coor, self.enc_digit, self.dec_digit = models
+        self.models = models
+        (self.enc_coor, self.dec_coor, self.enc_digit, self.dec_digit) = self.models
         self.AT= AT
         self.K = K
         self.D = D
         self.T = T
         self.mnist_mean = mnist_mean
         self.training = training
+        self.frame_size = frame_size
 
     def Sweeps(self, apg_steps, S, B, frames):
         """
@@ -123,7 +125,7 @@ class APG():
         vars = {'log_w' : [], 'log_q' : [], 'z_where_t' : [], 'E_where_t' : []}
         for k in range(self.K):
             digit_k = digit[:,:,k,:,:]
-            conved_k = F.conv2d(frame_left.view(S*B, 64, 64).unsqueeze(0), digit_k.view(S*B, 28, 28).unsqueeze(1), groups=int(S*B))
+            conved_k = F.conv2d(frame_left.view(S*B, self.frame_size, self.frame_size).unsqueeze(0), digit_k.view(S*B, 28, 28).unsqueeze(1), groups=int(S*B))
             CP = conved_k.shape[-1] # convolved output pixels ##  S * B * CP * CP
             conved_k = F.softmax(conved_k.squeeze(0).view(S, B, CP, CP).view(S, B, CP*CP), -1) ## S * B * 1639
             q_k = self.enc_coor.forward(conved_k)
@@ -146,7 +148,7 @@ class APG():
         vars = {'log_w_f' : [], 'log_w_b' : [], 'log_q' : [], 'z_where_t' : [], 'E_where_t' : []}
         for k in range(self.K):
             digit_k = digit[:,:,k,:,:]
-            conved_k = F.conv2d(frame_left.view(S*B, 64, 64).unsqueeze(0), digit_k.view(S*B, 28, 28).unsqueeze(1), groups=int(S*B))
+            conved_k = F.conv2d(frame_left.view(S*B, self.frame_size, self.frame_size).unsqueeze(0), digit_k.view(S*B, 28, 28).unsqueeze(1), groups=int(S*B))
             CP = conved_k.shape[-1] # convolved output pixels ## T * S * B * CP * CP
             conved_k = F.softmax(conved_k.squeeze(0).view(S, B, CP, CP).view(S, B, CP*CP), -1) ## S * B * 1639
             q_k = self.enc_coor.forward(conved_k)

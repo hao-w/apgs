@@ -1,6 +1,7 @@
 import torch
 import time
 import numpy as np
+from model_operations import Save_models
 
 def train(APG, optimizer, data_path, Train_Params, APG_STEPS, DEVICE, PATH):
     (NUM_EPOCHS, NUM_GROUPS, S, B) = Train_Params
@@ -8,9 +9,9 @@ def train(APG, optimizer, data_path, Train_Params, APG_STEPS, DEVICE, PATH):
     training function
     """
     for epoch in range(NUM_EPOCHS):
-        time_start = time.time()
         group_ind = torch.randperm(NUM_GROUPS)
         for g in range(NUM_GROUPS):
+            time_start = time.time()
             Metrics = dict()
             data = torch.from_numpy(np.load(data_path + 'ob_%d.npy' % group_ind[g])).float()
             NUM_DATASETS = data.shape[0]
@@ -38,3 +39,5 @@ def train(APG, optimizer, data_path, Train_Params, APG_STEPS, DEVICE, PATH):
             print("Epoch=%d, Group=%d, (%ds) " % (epoch, g, time_end - time_start) + metrics_print, file=flog)
             flog.close()
             print("Epoch=%d, Group=%d, (%ds),  " % (epoch, g, time_end - time_start) + metrics_print)
+
+            Save_models(APG.models, PATH=PATH)
