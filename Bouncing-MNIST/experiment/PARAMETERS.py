@@ -9,8 +9,6 @@ DIGIT_PIXELS = 28
 
 
 data_path = data_dir + "mnist/bmnist/"
-#data = torch.from_numpy(np.load(data_path + 'ob.npy' )).float()
-#tjs = torch.from_numpy(np.load(data_path + 'tj.npy' )).float()
 mnist_mean = torch.from_numpy(np.load('../mnist_mean.npy')).float()
 NUM_GROUPS = 60
 
@@ -22,7 +20,7 @@ SAMPLE_SIZE = 10
 BATCH_SIZE = 20
 ## MOdel Parameters
 NUM_HIDDEN_DIGIT = 400
-NUM_HIDDEN_COOR = 200
+NUM_HIDDEN_COOR = 400
 Z_WHAT_DIM = 10
 HIDDEN_LIST = (NUM_HIDDEN_DIGIT, NUM_HIDDEN_COOR, Z_WHAT_DIM)
 Sigma0 = 1
