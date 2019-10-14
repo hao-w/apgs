@@ -4,8 +4,7 @@ from utils import *
 from normal_gamma import *
 from forward_backward import *
 
-def kl_train(models, ob, reused, EPS):
-    (z) = reused
+def kl_train(models, ob, z, EPS):
     (os_eta, f_z, f_eta) = models
     q_f_eta, p_f_eta, q_f_nu = f_eta(ob, z)
     ob_mu = q_f_eta['means'].value
@@ -27,5 +26,5 @@ def kl_train(models, ob, reused, EPS):
     ## KLs for cluster assignments
     post_logits = Post_z(ob, ob_tau, ob_mu, pr_pi)
     kl_z_ex, kl_z_in = kls_cats(q_pi.log(), post_logits, EPS)
-    kl_step = {"kl_eta_ex" : kl_eta_ex.mean(-1).mean().item(),"kl_eta_in" : kl_eta_in.mean(-1).mean().item(),"kl_z_ex" : kl_z_ex.mean(-1).mean().item(),"kl_z_in" : kl_z_in.mean(-1).mean().item()}
+    kl_step = {"kl_eta_ex" : kl_eta_ex.mean(-1).mean(0).cpu(),"kl_eta_in" : kl_eta_in.mean(-1).mean(0).cpu(),"kl_z_ex" : kl_z_ex.mean(-1).mean(0).cpu(),"kl_z_in" : kl_z_in.mean(-1).mean(0).cpu()}
     return kl_step

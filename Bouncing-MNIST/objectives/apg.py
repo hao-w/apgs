@@ -24,7 +24,7 @@ class APG():
     1. we jointly predict K*D thing even we have individual templates in the subsequent steps
     2. we break down the trajectory into each single step
     """
-    def __init__(self, models, AT, K, D, T, mnist_mean, frame_size, training=True):
+    def __init__(self, models, AT, K, D, T, mnist_mean, frame_size, DEVICE, training=True):
         super().__init__()
         self.models = models
         (self.enc_coor, self.dec_coor, self.enc_digit, self.dec_digit) = self.models
@@ -35,6 +35,7 @@ class APG():
         self.mnist_mean = mnist_mean
         self.training = training
         self.frame_size = frame_size
+        self.DEVICE = DEVICE
 
     def Sweeps(self, apg_steps, S, B, frames):
         """
@@ -85,15 +86,16 @@ class APG():
     def Step0(self, S, B, frames, training=True):
         mnist_mean_exp = self.mnist_mean.repeat(S, B, self.K, 1, 1)
         vars = {'z_where' : [], 'E_where' : [], 'z_what' : [], 'E_what' : [], 'ess' : [], 'll' : []}
+        conv_order = torch.randperm(self.K)
         for t in range(self.T):
             frame_t = frames[:,:,t, :,:]
 
             if t == 0:
-                log_w_t, log_q_t, z_where_t, E_where_t = self.Where_1step(S=S, B=B, frame_t=frame_t, digit=mnist_mean_exp, z_where_t_1=None)
+                log_w_t, log_q_t, z_where_t, E_where_t = self.Where_1step(S=S, B=B, frame_t=frame_t, digit=mnist_mean_exp, conv_order=conv_order, z_where_t_1=None)
                 log_w_where = log_w_t
                 log_q_where = log_q_t
             else:
-                log_w_t, log_q_t, z_where_t, E_where_t = self.Where_1step(S=S, B=B, frame_t=frame_t, digit=mnist_mean_exp, z_where_t_1=z_where_t)
+                log_w_t, log_q_t, z_where_t, E_where_t = self.Where_1step(S=S, B=B, frame_t=frame_t, digit=mnist_mean_exp, conv_order=conv_order, z_where_t_1=z_where_t)
                 log_w_where = log_w_where + log_w_t
                 log_q_where = log_q_where + log_q_t
             vars['z_where'].append(z_where_t.unsqueeze(2)) ## S * B * 1 * K * D
@@ -120,59 +122,69 @@ class APG():
         else:
             return w, vars
 
-    def Where_1step(self, S, B, frame_t, digit, z_where_t_1=None):
+    def Where_1step(self, S, B, frame_t, digit, conv_order, z_where_t_1=None):
         frame_left = frame_t
-        vars = {'log_w' : [], 'log_q' : [], 'z_where_t' : [], 'E_where_t' : []}
+        vars = {'log_w' : [], 'log_q' : []}
+        z_where_t = torch.zeros((S, B, self.K, self.D)).cuda().to(self.DEVICE)
+        E_where_t  = torch.zeros((B, self.K, self.D))
         for k in range(self.K):
-            digit_k = digit[:,:,k,:,:]
+            ind_k = conv_order[k].item()
+            # print(ind_k)
+            digit_k = digit[:,:,ind_k,:,:]
             conved_k = F.conv2d(frame_left.view(S*B, self.frame_size, self.frame_size).unsqueeze(0), digit_k.view(S*B, 28, 28).unsqueeze(1), groups=int(S*B))
             CP = conved_k.shape[-1] # convolved output pixels ##  S * B * CP * CP
             conved_k = F.softmax(conved_k.squeeze(0).view(S, B, CP, CP).view(S, B, CP*CP), -1) ## S * B * 1639
             q_k = self.enc_coor.forward(conved_k)
             z_where_k = q_k['z_where'].value
-            vars['z_where_t'].append(z_where_k.unsqueeze(2)) ## expand to S B 1 2
+            z_where_t[:,:, ind_k, :] = z_where_k
+            E_where_t[:,ind_k,:] = q_k['z_where'].dist.loc.mean(0).cpu()
+            # vars['z_where_t'].append(z_where_k.unsqueeze(2)) ## expand to S B 1 2
             log_q_f_k = q_k['z_where'].log_prob.sum(-1) ## S B D
             vars['log_q'].append(log_q_f_k.unsqueeze(-1))
-            vars['E_where_t'].append(q_k['z_where'].dist.loc.mean(0).cpu().unsqueeze(1))
+            # vars['E_where_t'].append()
             if z_where_t_1 is not None:
-                log_p_f_k = self.dec_coor.forward(z_where_k, z_where_t_1=z_where_t_1[:,:,k,:])
+                log_p_f_k = self.dec_coor.forward(z_where_k, z_where_t_1=z_where_t_1[:,:,ind_k,:])
             else:
                 log_p_f_k = self.dec_coor.forward(z_where_k)
             vars['log_w'].append((log_p_f_k - log_q_f_k).unsqueeze(-1)) ## S B 1
             recon_frame_t_k = self.AT.digit_to_frame(digit_k.unsqueeze(2), z_where_k.unsqueeze(2)).squeeze(2) ## S * B * 64 * 64
             frame_left = frame_left - recon_frame_t_k
-        return torch.cat(vars['log_w'], -1).sum(-1), torch.cat(vars['log_q'], -1).sum(-1), torch.cat(vars['z_where_t'], 2), torch.cat(vars['E_where_t'], 2)
 
-    def Where_apg_step(self, S, B, frame_t, digit, z_where_old_t, z_where_old_t_1=None, z_where_t_1=None):
+        return torch.cat(vars['log_w'], -1).sum(-1), torch.cat(vars['log_q'], -1).sum(-1), z_where_t, E_where_t
+
+    def Where_apg_step(self, S, B, frame_t, digit, z_where_old_t, conv_order, z_where_old_t_1=None, z_where_t_1=None):
         frame_left = frame_t
-        vars = {'log_w_f' : [], 'log_w_b' : [], 'log_q' : [], 'z_where_t' : [], 'E_where_t' : []}
+        vars = {'log_w_f' : [], 'log_w_b' : [], 'log_q' : []}
+        z_where_t = torch.zeros((S, B, self.K, self.D)).cuda().to(self.DEVICE)
+        E_where_t  = torch.zeros((B, self.K, self.D))
         for k in range(self.K):
-            digit_k = digit[:,:,k,:,:]
+            ind_k = conv_order[k].item()
+            digit_k = digit[:,:,ind_k,:,:]
             conved_k = F.conv2d(frame_left.view(S*B, self.frame_size, self.frame_size).unsqueeze(0), digit_k.view(S*B, 28, 28).unsqueeze(1), groups=int(S*B))
             CP = conved_k.shape[-1] # convolved output pixels ## T * S * B * CP * CP
             conved_k = F.softmax(conved_k.squeeze(0).view(S, B, CP, CP).view(S, B, CP*CP), -1) ## S * B * 1639
             q_k = self.enc_coor.forward(conved_k)
             z_where_k = q_k['z_where'].value
-            vars['z_where_t'].append(z_where_k.unsqueeze(2)) ## expand to S B 1 2
-            vars['E_where_t'].append(q_k['z_where'].dist.loc.mean(0).cpu().unsqueeze(1))
+            z_where_t[:,:, ind_k, :] = z_where_k
+            E_where_t[:,ind_k,:] = q_k['z_where'].dist.loc.mean(0).cpu()
             log_q_f_k = q_k['z_where'].log_prob.sum(-1)
             vars['log_q'].append(log_q_f_k.unsqueeze(-1)) ## S B 1
             if z_where_t_1 is not None:
-                log_p_f_k = self.dec_coor.forward(z_where_k, z_where_t_1=z_where_t_1[:,:,k,:])
+                log_p_f_k = self.dec_coor.forward(z_where_k, z_where_t_1=z_where_t_1[:,:,ind_k,:])
             else:
                 log_p_f_k = self.dec_coor.forward(z_where_k)
             ## backward
-            log_q_b_k = Normal(q_k['z_where'].dist.loc, q_k['z_where'].dist.scale).log_prob(z_where_old_t[:,:,k,:]).sum(-1).detach()
+            log_q_b_k = Normal(q_k['z_where'].dist.loc, q_k['z_where'].dist.scale).log_prob(z_where_old_t[:,:,ind_k,:]).sum(-1).detach()
             if z_where_old_t_1 is not None:
-                log_p_b_k = self.dec_coor.forward(z_where_old_t[:,:,k,:], z_where_t_1=z_where_old_t_1[:,:,k,:])
+                log_p_b_k = self.dec_coor.forward(z_where_old_t[:,:,ind_k,:], z_where_t_1=z_where_old_t_1[:,:,ind_k,:])
             else:
-                log_p_b_k = self.dec_coor.forward(z_where_old_t[:,:,k,:])
+                log_p_b_k = self.dec_coor.forward(z_where_old_t[:,:,ind_k,:])
 
             vars['log_w_f'].append((log_p_f_k - log_q_f_k).unsqueeze(-1)) ## S B 1
             vars['log_w_b'].append((log_p_b_k - log_q_b_k).unsqueeze(-1))
             recon_frame_t_k = self.AT.digit_to_frame(digit_k.unsqueeze(2), z_where_k.unsqueeze(2)).squeeze(2) ## S * B * 64 * 64
             frame_left = frame_left - recon_frame_t_k
-        return torch.cat(vars['log_w_f'], -1).sum(-1) - torch.cat(vars['log_w_b'], -1).sum(-1), torch.cat(vars['log_q'], -1).sum(-1), torch.cat(vars['z_where_t'], 2), torch.cat(vars['E_where_t'], 2)
+        return torch.cat(vars['log_w_f'], -1).sum(-1) - torch.cat(vars['log_w_b'], -1).sum(-1), torch.cat(vars['log_q'], -1).sum(-1), z_where_t, E_where_t
 
     def APG_where(self, S, B, frames, z_what, z_where_old, training=True):
         vars = {'z_where' : [], 'E_where' : [], 'ess' : [], 'll' : []}

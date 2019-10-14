@@ -2,7 +2,9 @@ import torch
 from torch.distributions.normal import Normal
 from torch.distributions.one_hot_categorical import OneHotCategorical as cat
 from torch.distributions.categorical import Categorical
+from torch.distributions.uniform import Uniform
 import math
+import numpy as np
 
 def shuffler(data):
     DIM1, DIM2, DIM3 = data.shape
@@ -63,3 +65,32 @@ def ss_to_stats(ss, state):
     nss = (state_expand * ss_expand).sum(2) / (state_expand.sum(2) + 1e-6)
     return nss
 
+def sample_ancestral_index(weights, DEVICE):
+    batch_size, num_particles = weights.size()
+    indices = np.zeros([batch_size, num_particles])
+
+    uniforms = np.random.uniform(size=[batch_size, 1])
+    pos = (uniforms + np.arange(0, num_particles)) / num_particles
+
+    normalized_weights = weights.cpu().data.numpy()
+
+    # np.ndarray [batch_size, num_particles]
+    cumulative_weights = np.cumsum(normalized_weights, axis=1)
+
+    # hack to prevent numerical issues
+    cumulative_weights = cumulative_weights / np.max(
+        cumulative_weights, axis=1, keepdims=True)
+    for batch in range(batch_size):
+        indices[batch] = np.digitize(pos[batch], cumulative_weights[batch])
+    return torch.from_numpy(indices).long().cuda().to(DEVICE)
+
+
+def S_Resample(var, weights, DEVICE, idw_flag=True):
+    S, B, dim3, dim4 = var.shape
+    if idw_flag :
+        indices = sample_ancestral_index(weights.view(S, B*dim3).transpose(0,1), DEVICE)
+        ancesters = indices.transpose(0,1).view(S, B, dim3).unsqueeze(-1).repeat(1, 1, 1, dim4)
+    else:
+        indices = sample_ancestral_index(weights.transpose(0,1), DEVICE) # B * S or B * S * N
+        ancesters = indices.transpose(0,1).unsqueeze(-1).unsqueeze(-1).repeat(1, 1, dim3, dim4)
+    return torch.gather(var, 0, ancesters)

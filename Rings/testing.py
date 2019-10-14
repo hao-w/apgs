@@ -19,37 +19,50 @@ class Eval:
     Plot_chains : align all visualizaztion of all datasets in different rows
     Test_single_dataset : apply APG algorithm at test time and return necessary metrics/variables
     """
-    def Sample_data_uniform(self, Data, data_ptr):
+    def Sample_data_uniform(self, data_ptr):
         """
         sample one dataset from each group
         """
         data_dir = "/home/hao/Research/apg_data/ncmm/rings_10size/"
 
         OB = []
+        Ns = [120, 160, 200, 400, 600]
         for i in range(self.B):
-            N = ((i*2+1) * 10 + 20) * 4
-            data_g = torch.from_numpy(np.load(data_dir + 'ob_%d.npy' % N)).float()
+            data_g = torch.from_numpy(np.load(data_dir + 'ob_%d.npy' % Ns[i])).float()
             num_datasets = data_g.shape[0]
             indices = torch.arange(num_datasets)
             ob_g = data_g[indices[data_ptr]]
             OB.append(ob_g)
         return OB
 
-    def Test_uniform(self, models, objective, Data, data_ptr, mcmc_steps, sample_size):
-        Metrics = {'samples' : [], 'data' : [], 'recon' : [], 'log_joint' : [], 'elbos' : [], 'ess' : []}
-        batch = self.Sample_data_uniform(Data, data_ptr)
+    def Test_uniform(self, models, objective, data_ptr, mcmc_steps, sample_size):
+        Metrics = {'samples' : [], 'data' : [], 'recon' : [], 'log_joint' : [], 'ess_z' : [], 'ess_mu' : []}
+        batch = self.Sample_data_uniform(data_ptr)
         for data in batch:
             Metrics['data'].append(data)
             data = data.repeat(sample_size, 1, 1, 1)
-            log_S = torch.FloatTensor([sample_size]).log()
             if self.CUDA:
                 with torch.cuda.device(self.device):
                     data = data.cuda()
-                    log_S = log_S.cuda() ## EPS for KL between categorial distributions
-            metrics = objective(models, data, mcmc_steps, self.K, log_S)
+            metrics = objective(models, data, mcmc_steps, self.K)
             Metrics['samples'].append(metrics['samples'])
             Metrics['recon'].append(metrics['recon'])
-            # Metrics['elbos'].append(torch.cat(metrics['elbos'], 0))
-            Metrics['ess'].append(torch.cat(metrics['ess'], 0))
-            Metrics['log_joint'].append(torch.cat(metrics['log_joint'], 0))
+            Metrics['ess_z'].append(metrics['ess_z'])
+            Metrics['ess_mu'].append(metrics['ess_mu'])
+            Metrics['log_joint'].append(metrics['log_joint'])
+        return Metrics
+
+    def Test_budget(self, models, objective, data_ptr, mcmc_steps, sample_size):
+        Metrics = { 'log_joint' : [],  'ess_mu' : [], 'ess_z' : []}
+        batch = self.Sample_data_uniform(data_ptr)
+        for data in batch:
+            data = data.repeat(sample_size, 1, 1, 1)
+            if self.CUDA:
+                with torch.cuda.device(self.device):
+                    data = data.cuda()
+            metrics = objective(models, data, mcmc_steps, self.K)
+            Metrics['ess_z'].append(metrics['ess_z'][0, -1].unsqueeze(0))
+            Metrics['log_joint'].append(metrics['log_joint'][0, -1].unsqueeze(0))
+        Metrics['log_joint'] = torch.cat(Metrics['log_joint'], 0)
+        Metrics['ess_z'] = torch.cat(Metrics['ess_z'], 0)
         return Metrics

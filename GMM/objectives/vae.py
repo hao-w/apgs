@@ -20,17 +20,17 @@ def VAE(models, ob, mcmc_steps):
     reused = (z)
     return metrics, reused
 
-def VAE_test(models, ob, mcmc_steps, log_S):
+def VAE_test(models, ob, mcmc_steps):
     """
     APG objective used at test time
     NOTE: need to implement an interface
     which returns different variables needed during training and testing
     """
     (os_eta, f_z) = models
-    metrics = {'samples' : [], 'elbos' : [], 'ess' : [], 'log_joint' : []}
-    E_tau, E_mu, E_z, log_joint_os, elbo_os, ess_os, w_z, ob_tau, ob_mu, z = Init_eta(os_eta, f_z, ob, training=False)
+    metrics = {'samples' : [], 'ess' : [], 'll' : []}
+    E_tau, E_mu, E_z, ll, ess_os, w_z, ob_tau, ob_mu, z = Init_eta(os_eta, f_z, ob, training=False)
     metrics['samples'].append((E_tau, E_mu, E_z))
-    metrics['ess'].append(ess_os.unsqueeze(0))
-    metrics['log_joint'].append(log_joint_os.unsqueeze(0))
+    metrics['ess'] = ess_os.unsqueeze(-1)
+    metrics['ll'] = ll.mean(0).unsqueeze(-1)
 
     return metrics

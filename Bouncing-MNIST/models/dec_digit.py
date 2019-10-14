@@ -28,7 +28,7 @@ class Dec_digit(nn.Module):
             recon_mean = self.AT.digit_to_frame(digit_mean, z_where)
             recon_frame = torch.clamp(recon_mean.sum(-3), min=0.0, max=1.0) # S * B * 64 * 64
             log_recon = MBern_log_prob(recon_frame, frames) # S * B
-            return recon_frame, log_recon
+            return recon_frame, log_recon, digit_mean.detach()
 
     def forward_vectorized(self, frames, z_what, z_where=None):
         digit_mean = self.digit_mean(z_what)  # S * B * K * (28*28)
@@ -40,7 +40,7 @@ class Dec_digit(nn.Module):
             recon_mean = self.AT.digit_to_frame_vectorized(digit_mean, z_where)
             recon_frame = torch.clamp(recon_mean.sum(-3), min=0.0, max=1.0) # S * B * T * 64 * 64
             log_recon = MBern_log_prob(recon_frame, frames).sum(-1) # S * B
-            return recon_frame, log_recon
+            return recon_frame, log_recon, digit_mean.detach()
 
 def MBern_log_prob(x_mean, x, EPS=1e-9):
     """

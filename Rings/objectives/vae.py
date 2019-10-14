@@ -17,18 +17,17 @@ def VAE(models, optimizer, ob, mcmc_steps, K):
     metrics['ess'].append(ess_os.unsqueeze(0).detach())
     return metrics
 
-def VAE_test(models, ob, mcmc_steps, K, log_S):
+def VAE_test(models, ob, mcmc_steps, K):
     """
     APG objective used at test time
     NOTE: need to implement an interface
     which returns different variables needed during training and testing
     """
     (os_mu, f_state, f_angle, dec_x) = models
-    metrics = {'samples' : [], 'recon' : [], 'log_joint' : [], 'elbos' : [], 'ess' : []}
-    E_recon, E_mu, E_z, log_joint_os, elbo_os, ess_os, w_os, mu, state, angle = Init_mu(os_mu, f_state, f_angle, dec_x, ob, K, training=False)
-    metrics['samples'].append((E_mu, E_z))
-    metrics['recon'].append(E_recon)
-    metrics['elbos'].append(elbo_os.unsqueeze(0).unsqueeze(0))
-    metrics['ess'].append(ess_os.unsqueeze(0))
-    metrics['log_joint'].append(log_joint_os.unsqueeze(0))
+    metrics = {'samples' : [], 'recon' : [], 'log_joint' : [], 'ess' : []}
+    E_recon, E_mu, E_z, log_j, ess_os, w_os, mu, state, angle = Init_mu(os_mu, f_state, f_angle, dec_x, ob, K, training=False)
+    # metrics['samples'].append((E_mu, E_z))
+    # metrics['recon'].append(E_recon)
+    metrics['ess'] = ess_os.unsqueeze(-1)
+    metrics['log_joint'] = log_j.mean(0)
     return metrics

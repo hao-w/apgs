@@ -35,10 +35,10 @@ class Rings:
         angle = []
         a = 2.0
         a2 = a**1
-        while(True):
-            mu = np.random.normal(0, self.center_std, (self.num_clusters, 2))
-            if ((mu[0] - mu[1])**2).sum() > a2 and ((mu[0] - mu[2])**2).sum() > a2 and ((mu[1] - mu[2])**2).sum() > a2 and ((mu[0] - mu[3])**2).sum() > a2:
-                break
+        # while(True):
+        mu = np.random.normal(0, self.center_std, (self.num_clusters, 2))
+            ## if ((mu[0] - mu[1])**2).sum() > a2 and ((mu[0] - mu[2])**2).sum() > a2 and ((mu[1] - mu[2])**2).sum() > a2 and ((mu[0] - mu[3])**2).sum() > a2:
+                # break
         for k in range(self.num_clusters):
             ob_k, radi_k, angle_k = self.sim_one_ring()
             one_hot_k = np.zeros(self.num_clusters)

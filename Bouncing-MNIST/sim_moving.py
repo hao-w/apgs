@@ -76,20 +76,19 @@ class BouncingMNIST():
             Vs.append(v.unsqueeze(0))
         return torch.cat(Xs, 0), torch.cat(Vs, 0)
 
-    def sim_bouncing_mnist(self, mnist):
+    def sim_bouncing_mnist(self, mnist, mnist_index):
         '''
         Get random trajectories for the digits and generate a video.
         '''
         s_factor = self.image_size / self.digit_size
         t_factor = (self.image_size - self.digit_size) / self.digit_size
         Video = []
-        TJ = []
-        inds = torch.randint(0, mnist.shape[0], (self.num_digits,))
+#         inds = torch.randint(0, mnist.shape[0], (self.num_digits,))
         Xs, Vs = self.sim_tjs(num_tjs=self.num_digits)
-        for n in range(self.num_digits):
-            digit_image = torch.from_numpy(mnist[inds[n]] / 255.0).float()
+        for k in range(self.num_digits):
+            digit_image = torch.from_numpy(mnist[mnist_index[k]] / 255.0).float()
             S = torch.Tensor([[s_factor, 0], [0, s_factor]]).repeat(self.timesteps, 1, 1)
-            Thetas = torch.cat((S, Xs[n].unsqueeze(-1) * t_factor), -1)
+            Thetas = torch.cat((S, Xs[k].unsqueeze(-1) * t_factor), -1)
             grid = affine_grid(Thetas, torch.Size((self.timesteps, 1, self.image_size, self.image_size)))
             Video.append(grid_sample(digit_image.repeat(self.timesteps, 1, 1).unsqueeze(1), grid, mode='nearest'))
             # TJ.append(Xs[n].unsqueeze(0))
@@ -100,19 +99,21 @@ class BouncingMNIST():
     def sim_videoes(self, num_videoes):
         Videoes = []
         mnist = self.load_mnist()
+        mnist_indices = torch.arange(mnist.shape[0]).repeat(1, self.num_digits).squeeze(0)
+        mnist_indices = mnist_indices[torch.randperm(mnist.shape[0]*self.num_digits)].view(mnist.shape[0], self.num_digits)
         for i in range(num_videoes):
-            video = self.sim_bouncing_mnist(mnist)
+            video = self.sim_bouncing_mnist(mnist, mnist_indices[i])
             Videoes.append(video.unsqueeze(0))
         return torch.cat(Videoes, 0)
 
     def save_data(self, num_videoes):
-        save_path = os.path.join(self.path, 'bmnist_%ddigits/' % (self.num_digits))
+        save_path = self.path + 'ob_%d' % (i)
         if not os.path.exists(save_path):
             os.makedirs(save_path)
         num_files = int(num_videoes / self.file_size)
         for i in range(num_files):
             data = self.sim_videoes( self.file_size)
-            np.save(save_path + 'ob_%d' % (i), data)
+            np.save(svae_path, data)
             # np.save(self.mnist_path + '/bmnist/tj_%d' % i, TJs)
 
     def viz_moving_mnist(self, fs, num_videoes):

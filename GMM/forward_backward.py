@@ -22,19 +22,19 @@ def Init_eta(os_eta, f_z, ob, training=True):
     log_q_z = q_z['zs'].log_prob
     z = q_z['zs'].value ## S * B * N * K
     log_obs_n = Log_likelihood(ob, z, ob_tau, ob_mu, cluster_flag=False)
-    log_w = log_obs_n.sum(-1) + log_p_z.sum(-1) - log_q_z.sum(-1) + log_p_eta.sum(-1) - log_q_eta.sum(-1)
+    log_w = log_obs_n.sum(-1) +  log_p_eta.sum(-1) - log_q_eta.sum(-1) + log_p_z.sum(-1) - log_q_z.sum(-1)
     w = F.softmax(log_w, 0).detach()
-    ess = (1. / (w**2).sum(0)).mean().cpu()
     if training :
+        ess = (1. / (w**2).sum(0)).mean().cpu()
         loss = (w * log_w).sum(0).mean()
         return loss, ess, w, ob_tau, ob_mu, z
     else:
-        elbo = log_w.mean().cpu()
-        log_joint = (log_obs_n.sum(-1)).mean().cpu()
+        ess = (1. / (w**2).sum(0)).cpu()
+        # log_joint = log_obs_n.sum(-1).cpu().detach() + log_p_z.sum(-1).cpu() + log_p_eta.sum(-1).cpu()
         E_z = q_z['zs'].dist.probs.mean(0)[0].cpu().data.numpy()
         E_mu = q_eta['means'].dist.loc.mean(0)[0].cpu().data.numpy()
         E_tau = (q_eta['precisions'].dist.concentration / q_eta['precisions'].dist.rate).mean(0)[0].cpu().data.numpy()
-        return E_tau, E_mu, E_z, log_joint, elbo, ess, w, ob_tau, ob_mu, z
+        return E_tau, E_mu, E_z, ess, w, ob_tau, ob_mu, z
 
 def Update_eta(f_eta, b_eta, ob, state, ob_tau_old, ob_mu_old, training=True):
     """
@@ -59,10 +59,12 @@ def Update_eta(f_eta, b_eta, ob, state, ob_tau_old, ob_mu_old, training=True):
         return loss, ess, w, ob_tau, ob_mu
     else:
         w = F.softmax(log_f_w - log_b_w, 0).detach()
-        ess = (1. / (w**2).sum(0)).mean().cpu()
+        # log_w = log_f_w - log_b_w
+        ess = (1. / (w**2).sum(0)).mean(-1).cpu()
+
         E_mu = q_f_eta['means'].dist.loc.mean(0)[0].cpu().data.numpy()
         E_tau = (q_f_eta['precisions'].dist.concentration / q_f_eta['precisions'].dist.rate).mean(0)[0].cpu().data.numpy()
-        return E_tau, E_mu, log_p_f_eta, ess, w, ob_tau, ob_mu
+        return E_tau, E_mu, ess, w, ob_tau, ob_mu
 
 def Update_z(f_z, b_z, ob, ob_tau, ob_mu, z_old, training=True):
     """
@@ -86,44 +88,10 @@ def Update_z(f_z, b_z, ob, ob_tau, ob_mu, z_old, training=True):
         return loss, ess, w, z
     else:
         w = F.softmax(log_f_w - log_b_w, 0).detach()
-        ess = (1. / (w**2).sum(0)).mean().cpu()
+        # log_w = log_f_w - log_b_w
+        ess = (1. / (w**2).sum(0)).mean(-1).cpu().detach()
         E_z = q_f_z['zs'].dist.probs.mean(0)[0].cpu().data.numpy()
-        return E_z, log_f_obs, log_p_f_z, ess, w, z
-#
-# def BP(M, models, ob, ob_tau, ob_mu, z, log_S):
-#     (os_eta, f_z, f_eta, b_z, b_eta) = models
-#     ob_tau_old = ob_tau
-#     ob_mu_old = ob_mu
-#     z_old = z
-#     S = ob_mu.shape[0]
-#     sum_log_Ex = []
-#     for m in range(M, 0, -1):
-#         q_b_z, p_b_z = b_z.forward(ob, ob_tau_old, ob_mu_old) ## backward
-#         z = q_b_z['zs'].value
-#         log_q_b_z = q_b_z['zs'].log_prob.detach().sum(-1) # S * B
-#
-#         q_b_eta, _, _ = b_eta(ob, z)
-#         ob_mu = q_b_eta['means'].value
-#         ob_tau = q_b_eta['precisions'].value
-#         log_q_b_eta = q_b_eta['means'].log_prob.sum(-1).detach().sum(-1) + q_b_eta['precisions'].log_prob.sum(-1).detach().sum(-1) # S * B
-#
-#         q_f_eta, _, _ = f_eta(ob, z, sampled=False, tau_old=ob_tau_old, mu_old=ob_mu_old)
-#         log_q_f_eta = q_f_eta['means'].log_prob.sum(-1).detach().sum(-1) + q_f_eta['precisions'].log_prob.sum(-1).detach().sum(-1) # S * B
-#
-#         q_f_z, _ = f_z.forward(ob, ob_tau_old, ob_mu_old, sampled=False, z_old=z_old)
-#         log_q_f_z = q_f_z['zs'].log_prob.detach().sum(-1) # S * B
-#         sum_log_Ex.append((log_q_f_z + log_q_f_eta - log_q_b_z - log_q_b_eta).unsqueeze(0))
-#         ## assign the samples as old samples
-#         ob_tau_old = ob_tau
-#         ob_mu_old = ob_mu
-#         z_old = z
-#     q_os_eta, _, _ = os_eta(ob, sampled=False, tau_old=ob_tau_old, mu_old=ob_mu_old)
-#     log_q_os_eta = q_os_eta['means'].log_prob.sum(-1).detach().sum(-1) + q_f_eta['precisions'].log_prob.sum(-1).detach().sum(-1) # S * B
-#     q_os_z, _ = f_z.forward(ob, ob_tau_old, ob_mu_old, sampled=False, z_old=z_old)
-#     log_q_os_z = q_os_z['zs'].log_prob.detach().sum(-1) # S * B
-#     sum_log_Ex.append((log_q_os_eta + log_q_os_z).unsqueeze(0))
-#     log_Ex = logsumexp(torch.cat(sum_log_Ex, 0).sum(0), dim=0).mean() - log_S
-#     return log_Ex.cpu()
+        return E_z, ess, w, z
 
 def Compose_IW(log_f_w, log_q_f, log_b_w, log_q_b):
     """

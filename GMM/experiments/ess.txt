@@ -1,0 +1,35 @@
+n=20
+samples=1000, steps=0, ess=3.994251, logp=-157.303436
+samples=500, steps=1, ess=247.646790, logp=-136.833939
+samples=200, steps=4, ess=158.762299, logp=-118.890503
+samples=100, steps=9, ess=94.566406, logp=-108.419395
+samples=10, steps=99, ess=9.672461, logp=-109.588463
+samples=5, steps=199, ess=4.980335, logp=-109.987259
+n=40
+samples=1000, steps=0, ess=1.054853, logp=-263.706329
+samples=500, steps=1, ess=464.603607, logp=-231.580750
+samples=200, steps=4, ess=128.783844, logp=-225.265656
+samples=100, steps=9, ess=91.977402, logp=-187.090012
+samples=10, steps=99, ess=9.733204, logp=-187.100418
+samples=5, steps=199, ess=4.934171, logp=-186.864670
+n=60
+samples=1000, steps=0, ess=1.383752, logp=-387.886536
+samples=500, steps=1, ess=320.686554, logp=-362.761292
+samples=200, steps=4, ess=156.181961, logp=-336.935883
+samples=100, steps=9, ess=94.584366, logp=-267.821014
+samples=10, steps=99, ess=9.779457, logp=-265.358368
+samples=5, steps=199, ess=4.961194, logp=-267.198578
+n=80
+samples=1000, steps=0, ess=4.184967, logp=-594.663147
+samples=500, steps=1, ess=360.145477, logp=-536.611877
+samples=200, steps=4, ess=188.132172, logp=-370.254486
+samples=100, steps=9, ess=91.192162, logp=-368.681671
+samples=10, steps=99, ess=9.765738, logp=-369.275574
+samples=5, steps=199, ess=4.962551, logp=-370.196533
+n=100
+samples=1000, steps=0, ess=2.596877, logp=-674.581665
+samples=500, steps=1, ess=493.360718, logp=-527.042725
+samples=200, steps=4, ess=170.556793, logp=-459.453339
+samples=100, steps=9, ess=88.984200, logp=-445.908203
+samples=10, steps=99, ess=9.878645, logp=-408.265411
+samples=5, steps=199, ess=4.977439, logp=-407.490723

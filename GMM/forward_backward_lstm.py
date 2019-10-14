@@ -29,9 +29,8 @@ def Init_eta(os_eta, f_z, ob, K=3, training=True):
         loss = (w * log_w).sum(0).mean()
         return loss, ess, w, ob_tau, ob_mu, z
     else:
-        elbo = log_w.mean().cpu()
-        log_joint = (log_obs_n.sum(-1) + log_p_z.sum(-1) + log_p_eta.sum(-1)).mean().cpu()
+        log_j = log_obs_n.sum(-1).detach().cpu() + log_p_z.sum(-1).cpu() + log_p_eta.sum(-1).cpu()
         E_z = q_z['zs'].dist.probs.mean(0)[0].cpu().data.numpy()
         E_mu = q_eta['means'].dist.loc.mean(0)[0].cpu().data.numpy()
         E_tau = (q_eta['precisions'].dist.concentration / q_eta['precisions'].dist.rate).mean(0)[0].cpu().data.numpy()
-        return E_tau, E_mu, E_z, log_joint, elbo, ess, w, ob_tau, ob_mu, z
+        return E_tau, E_mu, E_z, log_j, ess, w, ob_tau, ob_mu, z

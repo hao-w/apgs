@@ -66,3 +66,66 @@ def Save_models(models, path, NAME='APG'):
         torch.save(dec_x.state_dict(), '../weights/dec-x-' + path)
     else:
         print('ERROR : Undefined model name!')
+
+
+def Init_models_test(K, D, hidden_list, RECON_SIGMA, CUDA, device, lr, RESTORE=False, PATH=None, NAME='APG'):
+    (num_hidden_global, num_hidden_state, num_hidden_angle, num_hidden_dec, num_nss) = hidden_list
+    # initialization
+    if NAME == 'APG':
+        os_mu = Oneshot_mu(K, D, num_hidden_global, num_nss, CUDA, device)
+        f_state = Enc_state(K, D, num_hidden_state, CUDA, device)
+        f_angle = Enc_angle(D, num_hidden_angle, CUDA, device)
+        f_mu = Enc_mu(K, D, num_hidden_global, num_nss, CUDA, device)
+        dec_x = Dec_x(K, D, num_hidden_dec, RECON_SIGMA, CUDA, device)
+        if CUDA:
+            with torch.cuda.device(device):
+                os_mu.cuda()
+                f_state.cuda()
+                f_angle.cuda()
+                f_mu.cuda()
+                dec_x.cuda()
+        if RESTORE:
+            os_mu.load_state_dict(torch.load('../weights/os-mu-' + PATH))
+            f_state.load_state_dict(torch.load('../weights/f-state-' + PATH))
+            f_angle.load_state_dict(torch.load('../weights/f-angle-' + PATH))
+            f_mu.load_state_dict(torch.load('../weights/f-mu-' + PATH))
+            dec_x.load_state_dict(torch.load('../weights/dec-x-' + PATH))
+        for p in os_mu.parameters():
+            p.requires_grad = False
+        for p in f_state.parameters():
+            p.requires_grad = False
+        for p in f_angle.parameters():
+            p.requires_grad = False
+        for p in f_mu.parameters():
+            p.requires_grad = False
+        for p in dec_x.parameters():
+            p.requires_grad = False
+        return (os_mu, f_state, f_angle, f_mu, dec_x)
+    elif NAME == 'VAE':
+        os_mu = Oneshot_mu(K, D, num_hidden_global, num_nss, CUDA, device)
+        f_state = Enc_state(K, D, num_hidden_state, CUDA, device)
+        f_angle = Enc_angle(D, num_hidden_angle, CUDA, device)
+        dec_x = Dec_x(K, D, num_hidden_dec, RECON_SIGMA, CUDA, device)
+        if CUDA:
+            with torch.cuda.device(device):
+                os_mu.cuda()
+                f_state.cuda()
+                f_angle.cuda()
+                dec_x.cuda()
+        if RESTORE:
+            os_mu.load_state_dict(torch.load('../weights/os-mu-' + PATH))
+            f_state.load_state_dict(torch.load('../weights/f-state-' + PATH))
+            f_angle.load_state_dict(torch.load('../weights/f-angle-' + PATH))
+            dec_x.load_state_dict(torch.load('../weights/dec-x-' + PATH))
+        for p in os_mu.parameters():
+            p.requires_grad = False
+        for p in f_state.parameters():
+            p.requires_grad = False
+        for p in f_angle.parameters():
+            p.requires_grad = False
+
+        for p in dec_x.parameters():
+            p.requires_grad = False
+        return (os_mu, f_state, f_angle, dec_x)
+    else:
+        print('ERROR : Undefined model name!')

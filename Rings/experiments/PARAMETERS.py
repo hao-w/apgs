@@ -7,15 +7,15 @@ data_dir = "/home/hao/Research/apg_data/"
 K = 4
 N = 50
 data_path = data_dir + "ncmm/rings_%d" % N*K
-Data = []
-data = torch.from_numpy(np.load(data_path + '/ob_%d.npy' % (N * K))).float()
-Data.append(data)
+
+Data = torch.from_numpy(np.load(data_path + '/ob_%d.npy' % (N * K))).float()
+
 ## Train Parameters
 NUM_EPOCHS = 500
 D = 2
-SAMPLE_SIZE = 10
+SAMPLE_SIZE = 20
 BATCH_SIZE = 20
-RECON_SIGMA = torch.ones(1) * 0.2
+RECON_SIGMA = torch.ones(1) * 0.3
 ## MOdel Parameters
 NUM_HIDDEN_GLOBAL = 32
 NUM_HIDDEN_STATE = 32
