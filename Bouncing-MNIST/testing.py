@@ -4,35 +4,27 @@ import numpy as np
 from utils import *
 
 class Eval:
-    def __init__(self, DATA_PATH, NUM_GROUPS, K, D):
-        super().__init__()
+    def __init__(self, APG, APG_STEPS, S, DATA_PATH, DEVICE):
+        self.APG = APG
+        self.APG_STEPS = APG_STEPS
+        self.S = S
         self.DATA_PATH = DATA_PATH
-        self.NUM_GROUPS = NUM_GROUPS
-        self.K = K
-        self.D = D
+        self.DEVICE = DEVICE
+        super().__init__()
     """
     A class for the purpose of evaluation after training, including the following functions:
-    Sample_data : extract one batch of datasets based on the data pointer
-    Plot_onestep : visualize the data/sample in one time Step
-    Plot_chains : align all visualizaztion of all datasets in different rows
-    Test_single_dataset : apply APG algorithm at test time and return necessary metrics/variables
     """
+    # def Test_single_video(self, APG, data_ptr):
 
-    def Test_uniform(self, APG, optimizer, data_ptr, APG_STEPS, S, B, DEVICE, PATH):
-        """
-        training function
-        """
-        Metrics = dict()
+    # def Test_one_batch():
 
-        group_ind = torch.randperm(self.NUM_GROUPS)
-        data_g = torch.from_numpy(np.load(self.DATA_PATH + 'ob_%d.npy' % group_ind[0])).float()
-        indices = torch.randperm(data_g.shape[0])
-        b_ind = indices[data_ptr*B : (data_ptr+1)*B]
-        frames = data_g[b_ind]
-        Metrics['data'] = frames
-        frames = frames.repeat(S, 1, 1, 1, 1).cuda().to(DEVICE)
-        metrics = APG.Sweeps(APG_STEPS, S, B, frames)
-        optimizer.zero_grad()
-        for key in metrics.keys():
-            Metrics[key] = metrics[key]
-        return Metrics
+    def Test_single_video(self, group_ptr, data_ptr):
+        """
+        testing function
+        """
+        data = torch.from_numpy(np.load(self.DATA_PATH + 'ob_%d.npy' % group_ptr)).float()
+        frames = data[data_ptr]
+        frames_input = frames.unsqueeze(0).unsqueeze(0).repeat(self.S, 1, 1, 1, 1).cuda().to(self.DEVICE)
+        metrics = self.APG.Sweeps(self.APG_STEPS, self.S, 1, frames_input)
+        metrics['data'] = frames
+        return metrics

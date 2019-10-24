@@ -3,7 +3,7 @@ from torch.nn.functional import affine_grid, grid_sample
 
 class Affine_Transformer():
     """
-    z_where : samples of the coordinates, S * B * K * 2
+    z_where : samples of the coordinates, S * B * T * K * 2
     frames : S * B * H * W
     digit : S * B * K * H * W
     s_factor : the scaling parameters in the affine matrices
@@ -34,27 +34,27 @@ class Affine_Transformer():
         grid = affine_grid(torch.cat((affine_p1, affine_p2), -1).view(S*B*K, 2, 3), torch.Size((S*B*K, 1, self.frame_size, self.frame_size)))
         frames = grid_sample(digit.view(S*B*K, self.digit_size, self.digit_size).unsqueeze(1), grid, mode='nearest')
         return frames.squeeze(1).view(S, B, K, self.frame_size, self.frame_size)
+    #
+    # def frame_to_digit(self, frames, z_where):
+    #     S, B, K, _ = z_where.shape
+    #     affine_p1 = self.scale2.repeat(S, B, K, 1, 1)## S * B * K * 2 * 2
+    #     affine_p2 = z_where.unsqueeze(-1) * self.t2_factor ## S * B * K * 2 * 1
+    #     affine_p2[:, :, :, 1, :] = -1 * affine_p2[:, :, :, 1, :] ## flip the y-axis due to grid function
+    #     grid = affine_grid(torch.cat((affine_p1, affine_p2), -1).view(S*B*K, 2, 3), torch.Size((S*B*K, 1, self.digit_size, self.digit_size)))
+    #     digit = grid_sample(frames.unsqueeze(-3).repeat(1, 1, K, 1, 1).view(S*B*K, self.frame_size, self.frame_size).unsqueeze(1), grid, mode='nearest')
+    #     return digit.squeeze(1).view(S, B, K, self.digit_size, self.digit_size)
 
-    def frame_to_digit(self, frames, z_where):
-        S, B, K, _ = z_where.shape
-        affine_p1 = self.scale2.repeat(S, B, K, 1, 1)## S * B * K * 2 * 2
-        affine_p2 = z_where.unsqueeze(-1) * self.t2_factor ## S * B * K * 2 * 1
-        affine_p2[:, :, :, 1, :] = -1 * affine_p2[:, :, :, 1, :] ## flip the y-axis due to grid function
-        grid = affine_grid(torch.cat((affine_p1, affine_p2), -1).view(S*B*K, 2, 3), torch.Size((S*B*K, 1, self.digit_size, self.digit_size)))
-        digit = grid_sample(frames.unsqueeze(-3).repeat(1, 1, K, 1, 1).view(S*B*K, self.frame_size, self.frame_size).unsqueeze(1), grid, mode='nearest')
-        return digit.squeeze(1).view(S, B, K, self.digit_size, self.digit_size)
-
-    def digit_to_frame_vectorized(self, digit, z_where):
+    def digit_to_frame_vec(self, digit, z_where):
         S, B, T, K, _ = z_where.shape
-        affine_p1 = self.scale1.repeat(S, B, T, K, 1, 1)## S * B * K * 2 * 2
-        affine_p2 = z_where.unsqueeze(-1) * self.t1_factor ## S * B * K * 2 * 1
+        affine_p1 = self.scale1.repeat(S, B, T, K, 1, 1)## S * B * T * K * 2 * 2
+        affine_p2 = z_where.unsqueeze(-1) * self.t1_factor ## S * B * T * K * 2 * 1
         affine_p2[:, :, :, :, 0, :] = -1 * affine_p2[:, :, :, :, 0, :] ## flip the x-axis due to grid function
         grid = affine_grid(torch.cat((affine_p1, affine_p2), -1).view(S*B*T*K, 2, 3), torch.Size((S*B*T*K, 1, self.frame_size, self.frame_size)))
         frames = grid_sample(digit.unsqueeze(2).repeat(1,1,T,1,1,1).view(S*B*T*K, self.digit_size, self.digit_size).unsqueeze(1), grid, mode='nearest')
         return frames.squeeze(1).view(S, B, T, K, self.frame_size, self.frame_size)
 
 
-    def frame_to_digit_vectorized(self, frames, z_where):
+    def frame_to_digit(self, frames, z_where):
         S, B, T, K, _ = z_where.shape
         affine_p1 = self.scale2.repeat(S, B, T, K, 1, 1)## S * B * T * K * 2 * 2
         affine_p2 = z_where.unsqueeze(-1) * self.t2_factor ## S * B * T * K * 2 * 1
