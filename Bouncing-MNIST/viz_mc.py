@@ -72,23 +72,23 @@ class Viz_MC:
             ax.set_xticks([])
             ax.set_yticks([])
             ax.imshow(Data[t], cmap='gray')
-            plt.savefig(save_path + 'data/%d.svg' % (t+1))
+            plt.savefig(save_path + 'data/%03d.png' % (t+1), dpi=300)
             plt.close()
             fig = plt.figure(figsize=(FS,FS)) # recon
             ax = fig.add_subplot(111)
             ax.set_xticks([])
             ax.set_yticks([])
             ax.imshow(recons[t], cmap='gray')
-            plt.savefig(save_path + 'recon/%d.svg' % (t+1))
+            plt.savefig(save_path + 'recon/%03d.png' % (t+1), dpi=300)
             plt.close()        
 
             fig = plt.figure(figsize=(FS,FS)) # tracking
             ax = fig.add_subplot(111)
             ax.set_xticks([])
             ax.set_yticks([])
-            for k in range(K):
+            for k in range(self.K):
                 rect_k = patches.Rectangle((c_pixels[t, k, :]), 27, 27, linewidth=self.LW, edgecolor=self.COLORS[k],facecolor='none')
                 ax.add_patch(rect_k)
             ax.imshow(Data[t], cmap='gray')
-            plt.savefig(save_path + 'tracking/%d.svg' % (t+1))
+            plt.savefig(save_path + 'tracking/%03d.png' % (t+1), dpi=300)
             plt.close()
