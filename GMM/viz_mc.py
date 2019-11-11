@@ -1,6 +1,6 @@
 import matplotlib.gridspec as gridspec
 import matplotlib.pyplot as plt
-from plots import plot_cov_ellipse
+from plot_ellipse import plot_cov_ellipse
 import torch
 import numpy as np
 

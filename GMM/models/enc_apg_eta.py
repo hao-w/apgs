@@ -3,7 +3,7 @@ import torch.nn as nn
 import probtorch
 from torch.distributions.normal import Normal
 from torch.distributions.gamma import Gamma
-from normal_gamma import posterior_eta
+from kls_gmm import posterior_eta
 
 class Enc_apg_eta(nn.Module):
     def __init__(self, K, D):
@@ -14,11 +14,11 @@ class Enc_apg_eta(nn.Module):
         self.ob = nn.Sequential(
             nn.Linear(K+D, D))
 
-    def forward(self, ob, z, priors, sampled=True, tau_old=None, mu_old=None):
+    def forward(self, ob, z, prior_ng, sampled=True, tau_old=None, mu_old=None):
         q = probtorch.Trace()
-        (prior_alpha, prior_beta, prior_mu, prior_nu) = priors
+        (prior_alpha, prior_beta, prior_mu, prior_nu) = prior_ng
         ob_z = torch.cat((ob, z), -1) # concatenate observations and cluster asssignemnts
-        q_alpha, q_beta, q_mu, q_nu = Post_eta(self.ob(ob_z) , self.gamma(ob_z), prior_alpha, prior_beta, prior_mu, prior_nu)
+        q_alpha, q_beta, q_mu, q_nu = posterior_eta(self.ob(ob_z) , self.gamma(ob_z), prior_alpha, prior_beta, prior_mu, prior_nu)
         if sampled == True:
             tau = Gamma(q_alpha, q_beta).sample()
             q.gamma(q_alpha,

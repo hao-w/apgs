@@ -17,7 +17,7 @@ LR = 5 * 1e-4
 CUDA = torch.cuda.is_available()
 DEVICE = torch.device('cuda:1')
 
-PATH = 'gmm-%s-%dsweeps-%dsamples-%.4flr' % (NAME, APG_SWEEPS, SAMPLE_SIZE, LR)
+MODEL_VERSION = 'gmm-%s-%dsweeps-%dsamples-%.4flr' % (NAME, APG_SWEEPS, SAMPLE_SIZE, LR)
 print('inference method:%s, apg sweeps:%s, epochs:%s, sample size:%s, batch size:%s, learning rate:%s, cuda:%s, device:%s' % (NAME, APG_SWEEPS, NUM_EPOCHS, SAMPLE_SIZE, BATCH_SIZE, LR, CUDA, DEVICE))
 
 # print('inference method:', NAME,

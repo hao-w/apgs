@@ -1,55 +1,86 @@
 import torch
 import time
-from utils import *
-from normal_gamma import *
-from kls import *
+from utils import shuffler
+from apg import apg_objective
 
-def train(models, objective, optimizer, data, mcmc_steps, Train_Params):
+def train(optimizer, models, apg_objective, apg_sweeps, data, num_epochs, sample_size, batch_size, CUDA, DEVICE, MODEL_VERSION):
     """
-    generic training function
-    data is a list of datasets
+    training function of apg objective
     """
-    (NUM_EPOCHS, K, D, S, B, CUDA, device, path) = Train_Params
-    # GROUP_SIZE = len(data)
-    NUM_DATASETS = data.shape[0]
-    NUM_BATCHES = int((NUM_DATASETS / B))
-    # annealed_coefficient = (torch.arange(mcmc_steps+1) + 1).float() / (mcmc_steps+1)
-    EPS = torch.FloatTensor([1e-15]).log() ## EPS for KL between categorial distributions
-    if CUDA:
-        EPS = EPS.cuda().to(device) ## EPS for KL between categorial distributions
-    for epoch in range(NUM_EPOCHS):
-        Metrics = dict()
+    loss_required = True
+    ess_required = True
+    density_required = True
+    kl_required = True
+
+    num_datasets = data.shape[0]
+    num_batches = int((num_datasets / batch_size))
+    for epoch in range(num_epochs):
         time_start = time.time()
-        indices = torch.randperm(NUM_DATASETS)
-        for step in range(NUM_BATCHES):
+        metrics = dict()
+        indices = torch.randperm(num_datasets)
+        for b in range(num_batches):
             optimizer.zero_grad()
-            batch_indices = indices[step*B : (step+1)*B]
-            ob = data[batch_indices]
-            ob = shuffler(ob).repeat(S, 1, 1, 1)
+            batch_indices = indices[b*batch_size : (b+1)*batch_size]
+            ob = shuffler(data[batch_indices]).repeat(sample_size, 1, 1, 1)
             if CUDA:
-                with torch.cuda.device(device):
-                    ob = ob.cuda()
-            metrics, reused = objective(models, ob, mcmc_steps)
-            # loss = (torch.cat(metrics['loss'], 0) * annealed_coefficient).sum()
-            loss = torch.cat(metrics['loss'], 0).sum()
+                ob = ob.cuda().to(DEVICE)
+            trace = apg_objective(models=models,
+                                  apg_sweeps=apg_sweeps,
+                                  ob=ob,
+                                  loss_required=loss_required,
+                                  ess_required=ess_required,
+                                  mode_required=False, # no need to track modes during training, since modes are only for visualization purpose at test time
+                                  density_required=density_required,
+                                  kl_required=kl_required)
+            loss = trace['loss'].sum()
             ## gradient step
             loss.backward()
             optimizer.step()
-            for key in metrics.keys():
-                if key in Metrics:
-                    Metrics[key] += metrics[key][-1].detach().item()
+            if loss_required:
+                assert trace['loss'].shape == (1+apg_sweeps*2, ), 'ERROR! loss has unexpected shape.'
+                if 'loss' in metrics:
+                    metrics['loss'] += trace['loss'][-1].item()
                 else:
-                    Metrics[key] = metrics[key][-1].detach().item()
-            ## compute KL
-            kl_step = kl_train(models, ob, reused, EPS)
-            for key in kl_step.keys():
-                if key in Metrics:
-                    Metrics[key] += kl_step[key]
+                    metrics['loss'] = trace['loss'][-1].item()
+            if ess_required:
+                assert trace['ess_rws'][0].shape == (batch_size, ), 'ERROR! ess_rws has unexpected shape.'
+                assert trace['ess_eta'].shape == (apg_sweeps, batch_size), 'ERROR! ess_eta has unexpected shape.'
+                assert trace['ess_z'].shape == (apg_sweeps, batch_size), 'ERROR! ess_z has unexpected shape.'
+                if 'ess_rws' in metrics:
+                    metrics['ess_rws'] += trace['ess_rws'][0].mean().item()
                 else:
-                    Metrics[key] = kl_step[key]
+                    metrics['ess_rws'] = trace['ess_rws'][0].mean().item()
+
+                if 'ess_eta' in metrics:
+                    metrics['ess_eta'] += trace['ess_eta'].mean(-1)[-1].item()
+                else:
+                    metrics['ess_eta'] = trace['ess_eta'].mean(-1)[-1].item()
+
+                if 'ess_z' in metrics:
+                    metrics['ess_z'] += trace['ess_z'].mean(-1)[-1].item()
+                else:
+                    metrics['ess_z'] = trace['ess_z'].mean(-1)[-1].item()
+            if density_required:
+                assert trace['density'].shape == (1+apg_sweeps, batch_size), 'ERROR! density has unexpected shape.'
+                if 'density' in metrics:
+                    metrics['density'] += trace['density'].mean(-1)[-1].item()
+                else:
+                    metrics['density'] = trace['density'].mean(-1)[-1].item()
+            if kl_required:
+                assert trace['inckl_eta'].shape == (batch_size,), 'ERROR! inckl_eta has unexpected shape.'
+                assert trace['inckl_z'].shape == (batch_size,), 'ERROR! inckl_z has unexpected shape.'
+                if 'inckl_eta' in metrics:
+                    metrics['inckl_eta'] += trace['inckl_eta'].mean().item()
+                else:
+                    metrics['inckl_eta'] = trace['inckl_eta'].mean().item()
+
+                if 'inckl_z' in metrics:
+                    metrics['inckl_z'] += trace['inckl_z'].mean().item()
+                else:
+                    metrics['inckl_z'] = trace['inckl_z'].mean().item()
+        metrics_print = ",  ".join(['%s: %.6f' % (k, v/num_batches) for k, v in metrics.items()])
+        log_file = open('../results/log-' + MODEL_VERSION + '.txt', 'a+')
         time_end = time.time()
-        metrics_print = ",  ".join(['%s: %.6f' % (k, v/(GROUP_SIZE*NUM_BATCHES)) for k, v in Metrics.items()])
-        flog = open('../results/log-' + path + '.txt', 'a+')
-        print("(%ds) " % (time_end - time_start) + metrics_print, file=flog)
-        flog.close()
-        print("Completed  in (%ds),  " % (time_end - time_start) + metrics_print)
+        print("(%ds) " % (time_end - time_start) + metrics_print, file=log_file)
+        log_file.close()
+        print("Completed  in (%ds),  " % (time_end - time_start))

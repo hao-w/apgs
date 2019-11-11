@@ -1,5 +1,6 @@
 import torch
 from torch.distributions.one_hot_categorical import OneHotCategorical as cat
+from torch.distributions.normal import Normal
 import probtorch
 
 class Generative():
@@ -20,7 +21,9 @@ class Generative():
                 self.prior_beta = self.prior_beta.cuda()
                 self.prior_pi = self.prior_pi.cuda()
 
-    def prior_eta(self, q):
+        self.prior_ng = (self.prior_alpha, self.prior_beta, self.prior_mu, self.prior_nu) ## this tuple is needed as parameter in enc_eta as enc_rws
+        # self.prior_all = (self.prior_alpha, self.prior_beta, self.prior_mu, self.prior_nu, self.prior_pi)
+    def eta_prior(self, q):
         p = probtorch.Trace()
         ## prior distributions
         p.gamma(self.prior_alpha,
@@ -33,14 +36,15 @@ class Generative():
                  name='means')
         return p
 
-    def prior_z(self, q):
+    def z_prior(self, q):
+        p = probtorch.Trace()
         _ = p.variable(cat, probs=self.prior_pi, value=q['states'], name='states')
         return p
 
-    def log_prob(self, ob, z , tau, mu, cluster_flag=False):
+    def log_prob(self, ob, z , tau, mu, aggregate=False):
         """
-        cluster_flag = False : return S * B * N
-        cluster_flag = True : return S * B * K
+        aggregate = False : return S * B * N
+        aggregate = True : return S * B * K
         """
         sigma = 1. / tau.sqrt()
         labels = z.argmax(-1)
@@ -48,6 +52,6 @@ class Generative():
         mu_expand = torch.gather(mu, 2, labels_flat)
         sigma_expand = torch.gather(sigma, 2, labels_flat)
         ll = Normal(mu_expand, sigma_expand).log_prob(ob).sum(-1) # S * B * N
-        if cluster_flag:
+        if aggregate:
             ll = torch.cat([((labels==k).float() * ll).sum(-1).unsqueeze(-1) for k in range(z.shape[-1])], -1) # S * B * K
         return ll
