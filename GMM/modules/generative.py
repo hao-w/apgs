@@ -6,7 +6,7 @@ import probtorch
 class Generative():
     def __init__(self, K, D, CUDA, DEVICE):
         super().__init__()
-
+        self.K = K
         self.prior_mu = torch.zeros((K, D))
         self.prior_nu = torch.ones((K, D)) * 0.3
         self.prior_alpha = torch.ones((K, D)) * 4

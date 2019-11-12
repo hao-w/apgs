@@ -1,11 +1,11 @@
 import os
-import matplotlib.pyplot as plt
-from plot_ellipse import plot_cov_ellipse
-import numpy as np
 import torch
-from torch.distributions.one_hot_categorical import OneHotCategorical as cat
+import numpy as np
+import matplotlib.pyplot as plt
+from viz import plot_cov_ellipse
 from torch.distributions.gamma import Gamma
 from torch.distributions.normal import Normal
+from torch.distributions.one_hot_categorical import OneHotCategorical as cat
 
 
 class Sim_GMM():
@@ -36,7 +36,7 @@ class Sim_GMM():
         ob = Normal(mean[labels], sigma[labels]).sample()
         return ob.data.numpy(), precision.data.numpy(), mean.data.numpy(), assignment.data.numpy()
 
-    def viz_data(self, num_seqs, fs, bound, colors):
+    def viz_data(self, num_seqs=20, bound=15, fs=6, colors=['#AA3377', '#EE7733', '#0077BB', '#009988', '#555555', '#999933']):
         for s in range(num_seqs):
             ob, precision, mean, assignment = self.sim_one_gmm()
             fig, ax = plt.subplots(figsize=(fs, fs))

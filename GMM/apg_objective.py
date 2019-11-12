@@ -29,7 +29,7 @@ sampling scheme:
     resample
 ==========
 """
-def apg_objective(models, apg_sweeps, ob, loss_required=True, ess_required=True, mode_required=False, density_required=False, kl_required=True):
+def apg_objective(model, apg_sweeps, ob, loss_required=True, ess_required=True, mode_required=False, density_required=False, kl_required=True):
     trace = dict() ## a dictionary that tracks variables needed during the sweeping
     if loss_required:
         trace['loss'] = []
@@ -47,7 +47,7 @@ def apg_objective(models, apg_sweeps, ob, loss_required=True, ess_required=True,
     if density_required:
         trace['density'] = []
 
-    (enc_rws_eta, enc_apg_z, enc_apg_eta, generative) = models
+    (enc_rws_eta, enc_apg_z, enc_apg_eta, generative) = model
     w, tau, mu, z, trace = rws(enc_rws_eta=enc_rws_eta,
                                enc_rws_z=enc_apg_z,
                                generative=generative,
@@ -137,7 +137,7 @@ def rws(enc_rws_eta, enc_rws_z, generative, ob, trace, loss_required, ess_requir
     if mode_required:
         E_tau = (q_eta['precisions'].dist.concentration / q_eta['precisions'].dist.rate).mean(0).detach()
         E_mu = q_eta['means'].dist.loc.mean(0).detach()
-        E_z = q_z['zs'].dist.probs.mean(0).detach()
+        E_z = q_z['states'].dist.probs.mean(0).detach()
         trace['E_tau'].append(E_tau.unsqueeze(0))
         trace['E_mu'].append(E_mu.unsqueeze(0))
         trace['E_z'].append(E_z.unsqueeze(0))

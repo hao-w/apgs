@@ -4,10 +4,15 @@ from enc_apg_eta import Enc_apg_eta
 from enc_apg_z import Enc_apg_z
 from generative import Generative
 
-def init_models(model_params, CUDA, DEVICE, LOAD_VERSION=None, LR=None):
-    (K, D, num_hidden_local) = model_params
+def init_model(model_params, CUDA, DEVICE, LOAD_VERSION=None, LR=None):
+    """
+    ==========
+    initialization function for APG samplers
+    ==========
+    """
+    (K, D, num_hidden_z) = model_params
     enc_rws_eta = Enc_rws_eta(K, D)
-    enc_apg_z = Enc_apg_z(K, D, num_hidden_local)
+    enc_apg_z = Enc_apg_z(K, D, num_hidden_z)
     enc_apg_eta = Enc_apg_eta(K, D)
     generative = Generative(K, D, CUDA, DEVICE)
     if CUDA:
@@ -24,10 +29,21 @@ def init_models(model_params, CUDA, DEVICE, LOAD_VERSION=None, LR=None):
         optimizer =  torch.optim.Adam(list(enc_rws_eta.parameters())+list(enc_apg_z.parameters())+list(enc_apg_eta.parameters()),lr=LR, betas=(0.9, 0.99))
         return (enc_rws_eta, enc_apg_z, enc_apg_eta, generative), optimizer
     else: # testing
+        for p in enc_rws_eta.parameters():
+            p.requires_grad = False
+        for p in enc_apg_z.parameters():
+            p.requires_grad = False
+        for p in enc_apg_eta.parameters():
+            p.requires_grad = False
         return (enc_rws_eta, enc_apg_z, enc_apg_eta, generative)
 
-def save_models(models, SAVE_VERSION):
-    (enc_rws_eta, enc_apg_z, enc_apg_eta, generative) = models
+def save_model(modules, SAVE_VERSION):
+    """
+    ==========
+    saving function for APG samplers
+    ==========
+    """
+    (enc_rws_eta, enc_apg_z, enc_apg_eta, generative) = modules
     torch.save(enc_rws_eta.state_dict(), "../weights/enc-rws-eta-%s" % SAVE_VERSION)
     torch.save(enc_apg_z.state_dict(), "../weights/enc-apg-z-%s" % SAVE_VERSION)
     torch.save(enc_apg_eta.state_dict(), "../weights/enc-apg-eta-%s" % SAVE_VERSION)

@@ -1,11 +1,13 @@
 import torch
 import time
 from utils import shuffler
-from apg import apg_objective
+from apg_modeling import save_model
 
-def train(optimizer, models, apg_objective, apg_sweeps, data, num_epochs, sample_size, batch_size, CUDA, DEVICE, MODEL_VERSION):
+def train(optimizer, model, apg_objective, apg_sweeps, data, num_epochs, sample_size, batch_size, CUDA, DEVICE, MODEL_VERSION):
     """
-    training function of apg objective
+    ==========
+    training function for apg samplers
+    ==========
     """
     loss_required = True
     ess_required = True
@@ -13,6 +15,7 @@ def train(optimizer, models, apg_objective, apg_sweeps, data, num_epochs, sample
     kl_required = True
 
     num_datasets = data.shape[0]
+    N = data.shape[1]
     num_batches = int((num_datasets / batch_size))
     for epoch in range(num_epochs):
         time_start = time.time()
@@ -24,7 +27,7 @@ def train(optimizer, models, apg_objective, apg_sweeps, data, num_epochs, sample
             ob = shuffler(data[batch_indices]).repeat(sample_size, 1, 1, 1)
             if CUDA:
                 ob = ob.cuda().to(DEVICE)
-            trace = apg_objective(models=models,
+            trace = apg_objective(model=model,
                                   apg_sweeps=apg_sweeps,
                                   ob=ob,
                                   loss_required=loss_required,
@@ -78,9 +81,10 @@ def train(optimizer, models, apg_objective, apg_sweeps, data, num_epochs, sample
                     metrics['inckl_z'] += trace['inckl_z'].mean().item()
                 else:
                     metrics['inckl_z'] = trace['inckl_z'].mean().item()
+        save_model(model, MODEL_VERSION)
         metrics_print = ",  ".join(['%s: %.6f' % (k, v/num_batches) for k, v in metrics.items()])
         log_file = open('../results/log-' + MODEL_VERSION + '.txt', 'a+')
         time_end = time.time()
         print("(%ds) " % (time_end - time_start) + metrics_print, file=log_file)
         log_file.close()
-        print("Completed  in (%ds),  " % (time_end - time_start))
+        print("Epoch=%d completed  in (%ds),  " % (epoch, time_end - time_start))
