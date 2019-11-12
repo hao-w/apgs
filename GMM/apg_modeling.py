@@ -37,13 +37,13 @@ def init_model(model_params, CUDA, DEVICE, LOAD_VERSION=None, LR=None):
             p.requires_grad = False
         return (enc_rws_eta, enc_apg_z, enc_apg_eta, generative)
 
-def save_model(modules, SAVE_VERSION):
+def save_model(model, SAVE_VERSION):
     """
     ==========
     saving function for APG samplers
     ==========
     """
-    (enc_rws_eta, enc_apg_z, enc_apg_eta, generative) = modules
+    (enc_rws_eta, enc_apg_z, enc_apg_eta, generative) = model
     torch.save(enc_rws_eta.state_dict(), "../weights/enc-rws-eta-%s" % SAVE_VERSION)
     torch.save(enc_apg_z.state_dict(), "../weights/enc-apg-z-%s" % SAVE_VERSION)
     torch.save(enc_apg_eta.state_dict(), "../weights/enc-apg-eta-%s" % SAVE_VERSION)
