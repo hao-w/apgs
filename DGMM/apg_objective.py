@@ -41,7 +41,7 @@ def apg_objective(model, apg_sweeps, ob, K, loss_required=True, ess_required=Tru
     if mode_required:
         trace['E_mu'] = []
         trace['E_z'] = []
-        trace['E_beta'] = []
+        trace['E_recon'] = []
 
     if density_required:
         trace['density'] = []
@@ -122,10 +122,10 @@ def rws(enc_rws_mu, enc_rws_local, dec, ob, K, trace, loss_required, ess_require
     if loss_required:
         loss_phi = (w * (- log_q)).sum(0).mean()
         loss_theta = (w * (- log_p)).sum(0).mean()
-        trace['loss_phi'].append(loss_theta.unsqueeze(0))
-        trace['loss_theta'].append(loss_phi.unsqueeze(0))
+        trace['loss_phi'].append(loss_phi.unsqueeze(0))
+        trace['loss_theta'].append(loss_theta.unsqueeze(0))
     if ess_required:
-        ess = (1. / w**2).sum(0)
+        ess = (1. /(w**2).sum(0))
         trace['ess_rws'].append(ess)
     if mode_required:
         E_mu =  q_mu['means'].dist.loc.mean(0).detach()
@@ -145,8 +145,8 @@ def apg_mu(enc_apg_mu, dec, ob, z, beta, mu_old, K, trace, loss_required, ess_re
     """
     q_f = enc_apg_mu(ob=ob, z=z, beta=beta, K=K, priors=(dec.prior_mu_mu, dec.prior_mu_sigma), sampled=True) ## forward kernel
     mu = q_f['means'].value
-    p_f = dec(ob=ob, mu=mu, z=z, beta=beta)
     log_q_f = q_f['means'].log_prob.sum(-1)
+    p_f = dec(ob=ob, mu=mu, z=z, beta=beta)
     ll_f = p_f['likelihood'].log_prob.sum(-1)
     ll_f_collapsed = torch.cat([((z.argmax(-1)==k).float() * ll_f).sum(-1).unsqueeze(-1) for k in range(K)], -1) # S * B * K
     log_priors_f = p_f['means'].log_prob.sum(-1)
@@ -154,9 +154,9 @@ def apg_mu(enc_apg_mu, dec, ob, z, beta, mu_old, K, trace, loss_required, ess_re
     log_w_f =  log_p_f - log_q_f
     ## backward
     q_b = enc_apg_mu(ob=ob, z=z, beta=beta, K=K, priors=(dec.prior_mu_mu, dec.prior_mu_sigma), sampled=False, mu_old=mu_old)
-    p_b = dec(ob=ob, mu=mu_old, z=z, beta=beta)
     log_q_b = q_b['means'].log_prob.sum(-1)
-    ll_b = p_b['likelihood'].log_prob.sum(-1)
+    p_b = dec(ob=ob, mu=mu_old, z=z, beta=beta)
+    ll_b = p_b['likelihood'].log_prob.sum(-1).detach()
     ll_b_collapsed = torch.cat([((z.argmax(-1)==k).float() * ll_b).sum(-1).unsqueeze(-1) for k in range(K)], -1) # S * B * K
     log_p_b = p_b['means'].log_prob.sum(-1) + ll_b_collapsed
     log_w_b =  log_p_b - log_q_b
@@ -170,7 +170,7 @@ def apg_mu(enc_apg_mu, dec, ob, z, beta, mu_old, K, trace, loss_required, ess_re
         ess = (1. / (w**2).sum(0)).mean(-1)
         trace['ess_mu'].append(ess.unsqueeze(0)) # 1-by-B tensor
     if mode_required:
-        E_mu =  q_mu['means'].dist.loc.mean(0).detach()
+        E_mu =  q_f['means'].dist.loc.mean(0).detach()
         trace['E_mu'].append(E_mu.unsqueeze(0))
     if density_required:
         trace['density'].append(log_priors_f.sum(-1).mean(0).unsqueeze(0)) # 1-by-B-length vector
@@ -205,8 +205,8 @@ def apg_local(enc_apg_local, dec, ob, mu, z_old, beta_old, K, trace, loss_requir
         ess = (1. / (w**2).sum(0)).mean(-1)
         trace['ess_local'].append(ess.unsqueeze(0))
     if mode_required:
-        E_z = q_local['states'].dist.probs.mean(0).detach()
-        E_recon = p['likelihood'].dist.loc.mean(0).detach()
+        E_z = q_f['states'].dist.probs.mean(0).detach()
+        E_recon = p_f['likelihood'].dist.loc.mean(0).detach()
         trace['E_z'].append(E_z.unsqueeze(0))
         trace['E_recon'].append(E_recon.unsqueeze(0))
     if density_required:

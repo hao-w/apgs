@@ -87,10 +87,10 @@ def rws(enc_rws_mu, enc_rws_local, dec, ob, K, trace, architecture, loss_require
     if loss_required:
         loss_phi = (w * (- log_q)).sum(0).mean()
         loss_theta = (w * (- log_p)).sum(0).mean()
-        trace['loss_phi'].append(loss_theta.unsqueeze(0))
-        trace['loss_theta'].append(loss_phi.unsqueeze(0))
+        trace['loss_phi'].append(loss_phi.unsqueeze(0))
+        trace['loss_theta'].append(loss_theta.unsqueeze(0))
     if ess_required:
-        ess = (1. / w**2).sum(0)
+        ess = (1. /(w**2).sum(0))
         trace['ess_rws'].append(ess)
     if mode_required:
         E_mu =  q_mu['means'].dist.loc.mean(0).detach()

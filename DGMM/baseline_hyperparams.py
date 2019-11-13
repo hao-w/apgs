@@ -21,10 +21,6 @@ else:
     NUM_NSS = 8
     model_params = (K, D, NUM_HIDDEN_GLOBAL, NUM_NSS, NUM_HIDDEN_STATE, NUM_HIDDEN_ANGLE, NUM_HIDDEN_DEC, RECON_SIGMA)
 MODEL_NAME = 'baseline-%s' % ARCHITECTURE
-MODEL_VERSION = 'ncmm-%s-%dsamples-%.4flr' % (MODEL_NAME, SAMPLE_SIZE, LR)
-# LOAD_VERSION = 'ncmm-10samples-0.0005lr'
+MODEL_VERSION = 'dgmm-%s-%dsamples-%.4flr' % (MODEL_NAME, SAMPLE_SIZE, LR)
+# LOAD_VERSION = 'dgmm-10samples-0.0005lr'
 print('inference method:%s, epochs:%s, sample size:%s, batch size:%s, learning rate:%s' % (MODEL_NAME, NUM_EPOCHS, SAMPLE_SIZE, BATCH_SIZE, LR))
-
-# data_path = data_dir + "ncmm/rings_%d" % N*K
-#
-# Data = torch.from_numpy(np.load(data_path + '/ob_%d.npy' % (N * K))).float()
