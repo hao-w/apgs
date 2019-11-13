@@ -53,7 +53,7 @@ class Sim_GMM():
 
     def sim_save_data(self, num_seqs, PATH):
         if not os.path.exists(PATH):
-            os.mkdir(PATH)
+            os.makedirs(PATH)
         OB = np.zeros((num_seqs, self.N, self.D))
         # ASSIGNMENT = np.zeros((num_seqs, self.N. self.K))
         # MEAN = np.zeros((num_seqs, self.K, self.D))

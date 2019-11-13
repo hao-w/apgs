@@ -1,7 +1,16 @@
-import matplotlib.gridspec as gridspec
 import matplotlib.pyplot as plt
 import torch
 import numpy as np
+
+def viz_ncmm(obs, z, K, bound, colors):
+    assignments = z.argmax(-1)
+    fig = plt.figure(figsize=(fs,fs))
+    ax = fig.add_subplot(1,1,1)
+    for k in range(K):
+        obs_k = obs[np.where(assignments==k)]
+        ax.scatter(obs_k[:,0], obs_k[:, 1], s=5, alpha=0.8)
+    ax.set_xlim([-bound, bound])
+    ax.set_ylim([-bound, bound])
 
 class Viz_MC:
     """

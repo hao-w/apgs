@@ -21,7 +21,7 @@ eta := {tau, mu} global block
 z : S * B * N * K, cluster assignments, as local variables
 ==========
 sampling scheme:
-1. start with 'one-shot' predicting eta by encoder os_eta
+1. start with 'one-shot' predicting eta and z
 2. For m = 1 : apg_sweeps:
     update eta given z
     resample
