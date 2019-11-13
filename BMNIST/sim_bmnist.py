@@ -128,6 +128,7 @@ class Sim_BMNIST():
         mnist_indices = consecutive[torch.randperm(N*self.num_digits)].view(N, self.num_digits) ## generate random indices
         num_seqs_left = num_seqs
         print('Start to simulate bouncing mnist sequences...')
+        counter = 1
         while(num_seqs_left > 0):
             time_start = time.time()
             num_this_round = min(self.chunk_size, num_seqs_left)
@@ -141,10 +142,12 @@ class Sim_BMNIST():
             mnist_indices = mnist_indices[num_this_round:]
             bmnists = torch.cat(bmnists, 0)
             assert bmnists.shape == (num_this_round, self.timesteps, self.frame_size, self.frame_size), "ERROR! unexpected chunk shape."
-            np.save(PATH + 'ob', bmnists)
+            incremental_PATH = PATH + 'ob-%d' % counter
+            np.save(incremental_PATH, bmnists)
+            counter += 1
             num_seqs_left = max(num_seqs_left - num_this_round, 0)
             time_end = time.time()
-            print('(%ds) Simulated %d sequences, %d sequences left.' % ((time_end - time_start), num_this_round, num_seqs_left))
+            print('(%ds) Simulated %d sequences, saved to \'%s\', %d sequences left.' % ((time_end - time_start), num_this_round, incremental_PATH, num_seqs_left))
 
     def viz_data(self, MNIST_DIR, num_seqs=5, fs=15):
         mnist = self.load_mnist(MNIST_DIR=MNIST_DIR)
