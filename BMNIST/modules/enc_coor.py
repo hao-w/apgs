@@ -1,12 +1,10 @@
 import torch
 import torch.nn as nn
-import  torch.nn.functional as F
 from torch.distributions.normal import Normal
 import probtorch
-import math
 
 class Enc_coor(nn.Module):
-    def __init__(self, D, num_pixels, num_hidden):
+    def __init__(self, num_pixels, num_hidden, z_where_dim):
         super(self.__class__, self).__init__()
         self.enc_hidden = nn.Sequential(
                             nn.Linear(num_pixels, num_hidden),
@@ -14,21 +12,14 @@ class Enc_coor(nn.Module):
         self.where_mean = nn.Sequential(
                             nn.Linear(num_hidden, int(0.5*num_hidden)),
                             nn.ReLU(),
-                            nn.Linear(int(0.5*num_hidden), D),
+                            nn.Linear(int(0.5*num_hidden), z_where_dim),
                             nn.Tanh())
 
         self.where_log_std = nn.Sequential(
                             nn.Linear(num_hidden, int(0.5*num_hidden)),
                             nn.ReLU(),
-                            nn.Linear(int(0.5*num_hidden), D))
-        #
-        # self.enc = nn.Sequential(
-        #                     nn.Linear(num_pixels, num_hidden),
-        #                     nn.ReLU(),
-        #                     nn.Linear(num_hidden, int(0.5*num_hidden)),
-        #                     nn.ReLU(),
-        #                     nn.Linear(int(0.5*num_hidden), D),
-        #                     nn.Tanh())
+                            nn.Linear(int(0.5*num_hidden), z_where_dim))
+
 
     def forward(self, conved, sampled=True, z_where_old=None):
         q = probtorch.Trace()

@@ -2,7 +2,6 @@ import torch
 import torch.nn as nn
 from torch.distributions.normal import Normal
 import probtorch
-import math
 
 class Dec_coor():
     """
@@ -11,12 +10,12 @@ class Dec_coor():
     z_t | z_t-1 ~ N (A z_t-1, Sigma_t)
     where A is the transformation matrix
     """
-    def __init__(self, D, CUDA, DEVICE):
+    def __init__(self, z_where_dim, CUDA, DEVICE):
         super(self.__class__, self)
 
-        self.prior_mu0 = torch.zeros(D)
-        self.prior_Sigma0 = torch.ones(D) * 1.0
-        self.prior_Sigmat = torch.ones(D) * 0.2
+        self.prior_mu0 = torch.zeros(z_where_dim)
+        self.prior_Sigma0 = torch.ones(z_where_dim) * 1.0
+        self.prior_Sigmat = torch.ones(z_where_dim) * 0.2
         if CUDA:
             with torch.cuda.device(DEVICE):
                 self.prior_mu0  = self.prior_mu0.cuda()
