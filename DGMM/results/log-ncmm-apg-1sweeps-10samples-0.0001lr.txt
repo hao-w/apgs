@@ -1,0 +1,7 @@
+(60s) loss_phi: 60.690547,  loss_theta: 6510.764006,  ess_rws: inf,  ess_mu: 1.011130,  ess_local: 1.683061,  density: -11827.307381
+(57s) loss_phi: -43.905537,  loss_theta: 2765.006368,  ess_rws: inf,  ess_mu: 1.055782,  ess_local: 2.132700,  density: -6382.041422
+(57s) loss_phi: -174.004401,  loss_theta: 1933.896437,  ess_rws: inf,  ess_mu: 1.090994,  ess_local: 2.900419,  density: -3857.119280
+(57s) loss_phi: -264.199359,  loss_theta: 1479.640653,  ess_rws: inf,  ess_mu: 1.108693,  ess_local: 3.624193,  density: -2541.091587
+(57s) loss_phi: -284.671735,  loss_theta: 1211.619880,  ess_rws: inf,  ess_mu: 1.144093,  ess_local: 3.790477,  density: -2073.479925
+(56s) loss_phi: -205.075015,  loss_theta: 1155.989853,  ess_rws: inf,  ess_mu: 1.254079,  ess_local: 3.967438,  density: -1845.786211
+(57s) loss_phi: -290.809304,  loss_theta: 1064.319036,  ess_rws: inf,  ess_mu: 1.327365,  ess_local: 3.159785,  density: -2300.820589
