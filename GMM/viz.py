@@ -41,7 +41,7 @@ def viz_gmm(ax, ob, K, marker_size, opacity, bound, colors, latents=None):
     ax.set_xticks([])
     ax.set_yticks([])
 
-def viz_samples(datas, metrics, apg_sweeps, viz_interval, figure_size, title_fontsize, K, marker_size, opacity, bound, colors, save_name=None):
+def viz_samples(datas, metrics, apg_sweeps, K, viz_interval, figure_size, title_fontsize, marker_size, opacity, bound, colors, save_name=None):
     """
     ==========
     visualize the samples along the sweeps
@@ -87,7 +87,7 @@ def viz_samples(datas, metrics, apg_sweeps, viz_interval, figure_size, title_fon
                     ax.set_title('sweep %d' % sweep, fontsize=title_fontsize)
     if save_name is not None:
         plt.savefig(save_name + '.svg', dpi=300)
-# 
+#
 # def viz_metrics(metrics, figure_size, title_fontsize, save_name=None):
 #     num_cols = len(metrics)
 #     gs = gridspec.GridSpec(2, num_cols)
