@@ -1,1 +1,0 @@
-(27s) loss_phi: 12463.826128,  loss_theta: 143.321237,  ess_rws: inf,  density: -14784.350828

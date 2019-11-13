@@ -52,8 +52,9 @@ class Dec(nn.Module):
                value=beta,
                name='angles')
         hidden = self.recon_mu(beta * 2 * math.pi)
+        hidden2 = hidden / (hidden**2).sum(-1).unsqueeze(-1).sqrt()
         mu_expand = torch.gather(mu, -2, z.argmax(-1).unsqueeze(-1).repeat(1, 1, 1, D))
-        recon_mu = (hidden / (hidden**2).sum(-1).unsqueeze(-1).sqrt()) * mu_expand
+        recon_mu = hidden2 * self.radi + mu_expand
         p.normal(recon_mu,
                  self.recon_sigma.repeat(S, B, N, D),
                  value=ob,

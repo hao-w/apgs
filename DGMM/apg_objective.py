@@ -116,12 +116,12 @@ def rws(enc_rws_mu, enc_rws_local, dec, ob, K, trace, loss_required, ess_require
     z = q_local['states'].value
     p = dec(ob=ob, mu=mu, z=z, beta=beta)
     log_q = q_mu['means'].log_prob.sum(-1).sum(-1) + q_local['states'].log_prob.sum(-1) + q_local['angles'].log_prob.sum(-1).sum(-1)
-
-    log_p = p['likelihood'].log_prob.sum(-1).sum(-1) + p['means'].log_prob.sum(-1).sum(-1) + p['states'].log_prob.sum(-1) + p['angles'].log_prob.sum(-1).sum(-1)
+    ll = p['likelihood'].log_prob.sum(-1).sum(-1)
+    log_p = ll + p['means'].log_prob.sum(-1).sum(-1) + p['states'].log_prob.sum(-1) + p['angles'].log_prob.sum(-1).sum(-1)
     w = F.softmax(log_p - log_q, 0).detach()
     if loss_required:
         loss_phi = (w * (- log_q)).sum(0).mean()
-        loss_theta = (w * (- log_p)).sum(0).mean()
+        loss_theta = (w * (- ll)).sum(0).mean()
         trace['loss_phi'].append(loss_phi.unsqueeze(0))
         trace['loss_theta'].append(loss_theta.unsqueeze(0))
     if ess_required:
@@ -154,7 +154,7 @@ def apg_mu(enc_apg_mu, dec, ob, z, beta, mu_old, K, trace, loss_required, ess_re
     log_w_f =  log_p_f - log_q_f
     ## backward
     q_b = enc_apg_mu(ob=ob, z=z, beta=beta, K=K, priors=(dec.prior_mu_mu, dec.prior_mu_sigma), sampled=False, mu_old=mu_old)
-    log_q_b = q_b['means'].log_prob.sum(-1)
+    log_q_b = q_b['means'].log_prob.sum(-1).detach()
     p_b = dec(ob=ob, mu=mu_old, z=z, beta=beta)
     ll_b = p_b['likelihood'].log_prob.sum(-1).detach()
     ll_b_collapsed = torch.cat([((z.argmax(-1)==k).float() * ll_b).sum(-1).unsqueeze(-1) for k in range(K)], -1) # S * B * K
@@ -163,7 +163,7 @@ def apg_mu(enc_apg_mu, dec, ob, z, beta, mu_old, K, trace, loss_required, ess_re
     w = F.softmax(log_w_f - log_w_b, 0).detach()
     if loss_required:
         loss_phi = (w * (- log_q_f)).sum(0).sum(-1).mean()
-        loss_theta = (w * (- log_p_f)).sum(0).sum(-1).mean()
+        loss_theta = (w * (- ll_f_collapsed)).sum(0).sum(-1).mean()
         trace['loss_phi'].append(loss_phi.unsqueeze(0))
         trace['loss_theta'].append(loss_theta.unsqueeze(0))
     if ess_required:
@@ -187,18 +187,20 @@ def apg_local(enc_apg_local, dec, ob, mu, z_old, beta_old, K, trace, loss_requir
     z = q_f['states'].value
     p_f = dec(ob=ob, mu=mu, z=z, beta=beta)
     log_q_f = q_f['states'].log_prob + q_f['angles'].log_prob.sum(-1)
-    log_p_f = p_f['likelihood'].log_prob.sum(-1) + p_f['states'].log_prob + p_f['angles'].log_prob.sum(-1)
+    ll_f = p_f['likelihood'].log_prob.sum(-1)
+    log_p_f = ll_f + p_f['states'].log_prob + p_f['angles'].log_prob.sum(-1)
     log_w_f = log_p_f - log_q_f
     ## backward
     q_b = enc_apg_local(ob=ob, mu=mu, K=K, sampled=False, z_old=z_old, beta_old=beta_old)
     p_b = dec(ob=ob, mu=mu, z=z_old, beta=beta_old)
-    log_q_b = q_b['states'].log_prob + q_b['angles'].log_prob.sum(-1)
-    log_p_b = p_b['likelihood'].log_prob.sum(-1) + p_b['states'].log_prob + p_b['angles'].log_prob.sum(-1)
+    log_q_b = q_b['states'].log_prob.detach() + q_b['angles'].log_prob.sum(-1).detach()
+    ll_b = p_b['likelihood'].log_prob.sum(-1).detach()
+    log_p_b = ll_b + p_b['states'].log_prob + p_b['angles'].log_prob.sum(-1)
     log_w_b = log_p_b - log_q_b
     w = F.softmax(log_w_f - log_w_b, 0).detach()
     if loss_required:
         loss_phi = (w * (- log_q_f)).sum(0).sum(-1).mean()
-        loss_theta = (w * (- log_p_f)).sum(0).sum(-1).mean()
+        loss_theta = (w * (- ll_f)).sum(0).sum(-1).mean()
         trace['loss_phi'].append(loss_phi.unsqueeze(0))
         trace['loss_theta'].append(loss_theta.unsqueeze(0))
     if ess_required:

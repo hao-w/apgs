@@ -1,2 +1,0 @@
-(286s) loss_phi: -253.762502,  loss_theta: 1275.733465,  ess_rws: inf,  ess_mu: 1.395947,  ess_local: 2.221522,  density: -5725.200865
-(276s) loss_phi: -279.840675,  loss_theta: 1070.280843,  ess_rws: inf,  ess_mu: 1.418989,  ess_local: 2.234768,  density: -5656.895129
