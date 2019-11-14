@@ -1,6 +1,5 @@
 import torch
 import torch.nn.functional as F
-import probtorch
 from  resampling import resample
 """
 Reweighed Wake-Sleep objective in NCMM problem

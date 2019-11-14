@@ -1,6 +1,5 @@
 import torch
 import torch.nn.functional as F
-import probtorch
 from resampling import resample
 from kls_gmm import kl_gmm
 """

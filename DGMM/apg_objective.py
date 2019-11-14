@@ -1,6 +1,5 @@
 import torch
 import torch.nn.functional as F
-import probtorch
 from  resampling import resample
 """
 Amortized Population Gibbs objective in NCMM problem
