@@ -6,5 +6,5 @@ DATA_DIR = '/home/hao/Research/apg_data/'
 import torch
 import numpy as np
 import probtorch
-print('probtorch:', probtorch.__version__, 
+print('probtorch:', probtorch.__version__,
       'torch:', torch.__version__)
