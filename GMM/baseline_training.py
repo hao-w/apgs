@@ -11,6 +11,7 @@ def train(optimizer, model, baseline_objective, architecture, data, num_epochs, 
     """
     loss_required = True
     ess_required = True
+    mode_required = False
     density_required = True
 
     num_datasets = data.shape[0]
@@ -30,7 +31,7 @@ def train(optimizer, model, baseline_objective, architecture, data, num_epochs, 
                                        architecture=architecture,
                                        loss_required=loss_required,
                                        ess_required=ess_required,
-                                       mode_required=False, # no need to track modes during training, since modes are only for visualization purpose at test time
+                                       mode_required=mode_required, 
                                        density_required=density_required)
             loss = trace['loss'].sum()
             ## gradient step

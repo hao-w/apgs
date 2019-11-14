@@ -11,6 +11,7 @@ def train(optimizer, model, apg_objective, apg_sweeps, data, num_epochs, sample_
     """
     loss_required = True
     ess_required = True
+    mode_required = False
     density_required = True
     kl_required = True
 
@@ -32,7 +33,7 @@ def train(optimizer, model, apg_objective, apg_sweeps, data, num_epochs, sample_
                                   ob=ob,
                                   loss_required=loss_required,
                                   ess_required=ess_required,
-                                  mode_required=False, # no need to track modes during training, since modes are only for visualization purpose at test time
+                                  mode_required=mode_required, 
                                   density_required=density_required,
                                   kl_required=kl_required)
             loss = trace['loss'].sum()

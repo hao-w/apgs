@@ -11,6 +11,7 @@ def train(optimizer, model, apg_objective, apg_sweeps, data, K, num_epochs, samp
     """
     loss_required = True
     ess_required = True
+    mode_required = False
     density_required = True
 
     num_datasets = data.shape[0]
@@ -33,7 +34,7 @@ def train(optimizer, model, apg_objective, apg_sweeps, data, K, num_epochs, samp
                                   K=K,
                                   loss_required=loss_required,
                                   ess_required=ess_required,
-                                  mode_required=False,
+                                  mode_required=mode_required, 
                                   density_required=density_required)
 
             loss_phi = trace['loss_phi'].sum()
