@@ -1,29 +1,33 @@
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
-import probtorch
 from torch.distributions.normal import Normal
-from torch.distributions.one_hot_categorical import OneHotCategorical as cat
-from torch.distributions.categorical import Categorical
-
-class APG():
-    """
-    Update z_where_t^k step by step and apply resampling after each single time step
-    ========================
-    conv2d usage : input 1 * SB * H * W
-                 : kernels (SB) * 1 * H_k * W_k
-
-    frames  : S * B * T * 96 * 96
-    frame_t : S * B * 96 * 96
-    digit : step 0  = z_what = mnist_mean                       : S * B * K * 28 * 28
-            step 1:M  = dec_digit(z_what) = reconstructed mnist : S * B * K * 28 * 28
-    z_where : S * B * T * K * D
-    z_what : S * B * K * D
-    ========================
-    10.03 update : To change the sampling strategy, we merge two coor encoders because
-    1. we jointly predict K*D thing even we have individual templates in the subsequent steps
-    2. we break down the trajectory into each single step
-    """
+from  resampling import resample
+"""
+Amortized Population Gibbs objective in Bouncing MNIST problem
+==========
+abbreviations:
+K -- number of digits
+T -- timesteps in one bmnist sequence
+S -- sample size
+B -- batch size
+ZD -- z_what_dim (ZD=10 in the paper)
+FP -- square root of frame pixels (FP=96 in the paper)
+DP -- square root of mnist digit pixels (DP=28 by default)
+AT -- affine transformer
+==========
+variables:
+frames : S * B * T * FP * FP, sequences of frames in bmnist, as data points
+frame_t : S * B * FP * FP, frame at timestep t
+z_where : S * B * T * K * 2, latent representaions of the trajectory, as local variables
+z_what : S * B * K * ZD, latent representaions of the digits, as global variables
+digit :  S * B * K * DP * DP, mnist digit templates used in convolution
+mnist_mean : DP * DP,  mean of all the mnist images
+===========
+conv2d usage https://pytorch.org/docs/1.3.0/nn.functional.html?highlight=conv2d#torch.nn.functional.conv2d
+    images: 1 * (SB) * FP * FP, kernels: (SB) * 1 * DP * DP, groups=(SB)
+    ===> convoved: 1 * (SB) * (FP-DP+1) * (FP-DP+1)
+===========
+"""
     def __init__(self, models, AT, K, T, mnist_mean, frame_size, training=True):
         super().__init__()
         self.models = models
@@ -137,7 +141,7 @@ class APG():
             else:
                 log_p_f_k = self.dec_coor.forward(z_where_k)
             trace_t['log_p'].append(log_p_f_k.unsqueeze(-1))  # S * B * 1 --> K after loop
-            recon_frame_t_k = self.AT.digit_to_frame_vec(digit_k.unsqueeze(2), z_where_k.unsqueeze(2).unsqueeze(2)).squeeze(2).squeeze(2) ## S * B * 64 * 64
+            recon_frame_t_k = self.AT.digit_to_frame(digit_k.unsqueeze(2), z_where_k.unsqueeze(2).unsqueeze(2)).squeeze(2).squeeze(2) ## S * B * 64 * 64
             frame_left = frame_left - recon_frame_t_k
         trace_t['log_p'] = torch.cat(trace_t['log_p'], -1).sum(-1) # S * B
         trace_t['log_q'] = torch.cat(trace_t['log_q'], -1).sum(-1) # S * B
@@ -173,7 +177,7 @@ class APG():
 
             trace_t['log_p_f'].append(log_p_f_k.unsqueeze(-1))
             trace_t['log_p_b'].append(log_p_b_k.unsqueeze(-1))  # S * B * 1 --> K after loop
-            recon_frame_t_k = self.AT.digit_to_frame_vec(digit_k.unsqueeze(2), z_where_k.unsqueeze(2).unsqueeze(2)).squeeze(2).squeeze(2) ## S * B * 64 * 64
+            recon_frame_t_k = self.AT.digit_to_frame(digit_k.unsqueeze(2), z_where_k.unsqueeze(2).unsqueeze(2)).squeeze(2).squeeze(2) ## S * B * 64 * 64
             frame_left = frame_left - recon_frame_t_k
         trace_t['log_p_f'] = torch.cat(trace_t['log_p_f'], -1).sum(-1) # S * B
         trace_t['log_p_b'] = torch.cat(trace_t['log_p_b'], -1).sum(-1) # S * B
@@ -246,14 +250,3 @@ class APG():
             return phi_loss, theta_loss, trace
         else:
             return trace
-
-
-    def Resample_what(self, z_what, weights):
-        S, B, K, dim4 = z_what.shape
-        ancesters = Categorical(weights.transpose(0, 1)).sample((S, )).unsqueeze(-1).unsqueeze(-1).repeat(1, 1, K, dim4)
-        return torch.gather(z_what, 0, ancesters)
-
-    def Resample_where(self, z_where, weights):
-        S, B, K, dim4 = z_where.shape
-        ancesters = Categorical(weights.transpose(0, 1)).sample((S, )).unsqueeze(-1).unsqueeze(-1).repeat(1, 1, K, dim4) ## S * B * K * 2
-        return torch.gather(z_where, 0, ancesters)
