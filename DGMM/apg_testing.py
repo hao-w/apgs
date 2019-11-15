@@ -1,6 +1,9 @@
+import sys
+sys.path.append('../')
 import torch
 from utils import shuffler
-
+from resample import resample
+from apg_objective import apg_objective
 """
 ==========
 evaluation functions for apg samplers
@@ -18,7 +21,7 @@ def sample_data_uniform(DATAs, data_ptr):
         datas.append(DATA[data_ptr])
     return datas
 
-def test_single(model, apg_objective, apg_sweeps, datas, K, sample_size, CUDA, DEVICE):
+def test_single(model, apg_sweeps, datas, K, sample_size, CUDA, DEVICE):
     """
     ==========
     run apg sampler for each of the selected datasets
@@ -36,6 +39,7 @@ def test_single(model, apg_objective, apg_sweeps, datas, K, sample_size, CUDA, D
         if CUDA:
             ob = data.cuda().to(DEVICE)
         trace = apg_objective(model=model,
+                              resample=resample,
                               apg_sweeps=apg_sweeps,
                               ob=ob,
                               K=K,

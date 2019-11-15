@@ -1,9 +1,12 @@
+import sys
+sys.path.append('../')
 import torch
 import time
 from utils import shuffler
 from baseline_modeling import save_model
+from baseline_objective import rws_objective
 
-def train(optimizer, model, baseline_objective, architecture, data, K, num_epochs, sample_size, batch_size, CUDA, DEVICE, MODEL_VERSION):
+def train(optimizer, model, architecture, data, K, num_epochs, sample_size, batch_size, CUDA, DEVICE, MODEL_VERSION):
     """
     ==========
     training function of baselines
@@ -28,7 +31,7 @@ def train(optimizer, model, baseline_objective, architecture, data, K, num_epoch
             ob = shuffler(data[batch_indices]).repeat(sample_size, 1, 1, 1)
             if CUDA:
                     ob = ob.cuda().to(DEVICE)
-            trace = baseline_objective(model=model,
+            trace = rws_objective(model=model,
                                        ob=ob,
                                        K=K,
                                        architecture=architecture,

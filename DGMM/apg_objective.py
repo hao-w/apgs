@@ -1,6 +1,5 @@
 import torch
 import torch.nn.functional as F
-from  resampling import resample
 """
 Amortized Population Gibbs objective in NCMM problem
 ==========
@@ -27,7 +26,7 @@ sampling scheme:
     resample
 ==========
 """
-def apg_objective(model, apg_sweeps, ob, K, loss_required=True, ess_required=True, mode_required=False, density_required=False):
+def apg_objective(model, resample, apg_sweeps, ob, K, loss_required=True, ess_required=True, mode_required=False, density_required=False):
     trace = dict()
     if loss_required:
         trace['loss_phi'] = []
@@ -200,8 +199,8 @@ def apg_local(enc_apg_local, dec, ob, mu, z_old, beta_old, K, trace, loss_requir
     if loss_required:
         loss_phi = (w * (- log_q_f)).sum(0).sum(-1).mean()
         loss_theta = (w * (- ll_f)).sum(0).sum(-1).mean()
-        trace['loss_phi'].append(loss_phi.unsqueeze(0))
-        trace['loss_theta'].append(loss_theta.unsqueeze(0))
+        trace['loss_phi'][-1] = trace['loss_phi'][-1] + loss_phi.unsqueeze(0)
+        trace['loss_theta'][-1] = trace['loss_theta'][-1] + loss_theta.unsqueeze(0)
     if ess_required:
         ess = (1. / (w**2).sum(0)).mean(-1)
         trace['ess_local'].append(ess.unsqueeze(0))

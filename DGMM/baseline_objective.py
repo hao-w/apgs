@@ -1,6 +1,5 @@
 import torch
 import torch.nn.functional as F
-from  resampling import resample
 """
 Reweighed Wake-Sleep objective in NCMM problem
 ==========
@@ -19,7 +18,7 @@ beta : S * B * N * 1 angle, as local variables
 local : {z, beta} is block of local variables
 ==========
 """
-def baseline_objective(model, ob, K, architecture, loss_required=True, ess_required=True, mode_required=False, density_required=False):
+def rws_objective(model, ob, K, architecture, loss_required=True, ess_required=True, mode_required=False, density_required=False):
     trace = dict()
     if loss_required:
         trace['loss_phi'] = []
@@ -48,9 +47,6 @@ def baseline_objective(model, ob, K, architecture, loss_required=True, ess_requi
                                 ess_required=ess_required,
                                 mode_required=mode_required,
                                 density_required=density_required)
-    mu = resample(var=mu, weights=w, dim_expand=False)
-    z = resample(var=z, weights=w, dim_expand=False)
-    beta = resample(var=beta, weights=w, dim_expand=False)
 
     if loss_required:
         trace['loss_phi'] = torch.cat(trace['loss_phi'], 0) # (1+apg_sweeps) * 1

@@ -1,9 +1,13 @@
+import sys
+sys.path.append('../')
 import torch
 import time
 from utils import shuffler
+from resample import resample
 from apg_modeling import save_model
+from apg_objective import apg_objective
 
-def train(optimizer, model, apg_objective, apg_sweeps, data, K, num_epochs, sample_size, batch_size, CUDA, DEVICE, MODEL_VERSION):
+def train(optimizer, model, apg_sweeps, data, K, num_epochs, sample_size, batch_size, CUDA, DEVICE, MODEL_VERSION):
     """
     ==========
     training function of apg samplers
@@ -29,12 +33,13 @@ def train(optimizer, model, apg_objective, apg_sweeps, data, K, num_epochs, samp
             if CUDA:
                     ob = ob.cuda().to(DEVICE)
             trace = apg_objective(model=model,
+                                  resample=resample,
                                   apg_sweeps=apg_sweeps,
                                   ob=ob,
                                   K=K,
                                   loss_required=loss_required,
                                   ess_required=ess_required,
-                                  mode_required=mode_required, 
+                                  mode_required=mode_required,
                                   density_required=density_required)
 
             loss_phi = trace['loss_phi'].sum()
@@ -43,8 +48,8 @@ def train(optimizer, model, apg_objective, apg_sweeps, data, K, num_epochs, samp
             loss_theta.backward()
             optimizer.step()
             if loss_required:
-                assert trace['loss_phi'].shape == (1+apg_sweeps*2, ), 'ERROR! loss_phi has unexpected shape.'
-                assert trace['loss_theta'].shape == (1+apg_sweeps*2, ), 'ERROR! loss_theta has unexpected shape.'
+                assert trace['loss_phi'].shape == (1+apg_sweeps, ), 'ERROR! loss_phi has unexpected shape.'
+                assert trace['loss_theta'].shape == (1+apg_sweeps, ), 'ERROR! loss_theta has unexpected shape.'
                 if 'loss_phi' in metrics:
                     metrics['loss_phi'] += trace['loss_phi'][-1].item()
                 else:
