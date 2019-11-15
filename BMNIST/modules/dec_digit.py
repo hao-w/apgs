@@ -1,12 +1,11 @@
+import math
 import torch
 import torch.nn as nn
-import probtorch
+from torch.distributions.normal import Normal
 
 class Dec_digit(nn.Module):
     """
-    reconstruct the video
-    z_what S * B * K * z_what_dim
-    z_where S * B * K * D
+    reconstruct the sequence
     """
     def __init__(self, num_pixels, num_hidden, z_what_dim, CUDA, DEVICE):
         super(self.__class__, self).__init__()
@@ -27,21 +26,22 @@ class Dec_digit(nn.Module):
 
     def forward(self, frames, z_what, z_where=None, AT=None):
         digit_mean = self.digit_mean(z_what)  # S * B * K * (28*28)
-        S, B, K, _ = digit_mean.shape
-        digit_mean = digit_mean.view(S, B, K, 28, 28)
-        if z_where is None:
+        S, B, K, DP2 = digit_mean.shape
+        DP = int(math.sqrt(DP2))
+        digit_mean = digit_mean.view(S, B, K, DP, DP)
+        if z_where is None: ## return the recnostruction of mnist image
             return digit_mean.detach()
-        else:
-            recon_mean = AT.digit_to_frame(digit_mean, z_where)
-            recon_frame = torch.clamp(recon_mean.sum(-3), min=0.0, max=1.0) # S * B * T * 64 * 64
+        else: # return the reconstruction of the frame
+            assert AT is not None, "ERROR! NoneType variable AT found."
+            assert frames is not None, "ERROR! NoneType variable frames found."
+            _, _, T, FP, _ = frames.shape
+            recon_frames = torch.clamp(AT.digit_to_frame(digit=digit_mean, z_where=z_where).sum(-3), min=0.0, max=1.0) # S * B * T * FP * FP
+            assert recon_frames.shape == (S, B, T, FP, FP), "ERROR! unexpected reconstruction shape"
+            log_prior = Normal(loc=self.prior_mu, scale=self.prior_std).log_prob(z_what).sum(-1) # S * B * K
+            assert log_prior.shape == (S, B, K), "ERROR! unexpected prior shape"
+            ll = MBern_log_prob(recon_frames, frames) # S * B * T, log likelihood log p(x | z)
 
-            p = probtorch.Trace()
-            p.normal(loc=self.prior_mu,
-                     scale=self.prior_std,
-                     value=z_what_old,
-                     name='z_what')
-            log_recon = MBern_log_prob(recon_frame, frames) # S * B * T
-            return recon_frame, log_recon, p # both S * B * T
+            return log_prior, ll, recon_frames
 
 def MBern_log_prob(x_mean, x, EPS=1e-9):
     """

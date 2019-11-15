@@ -1,0 +1,7 @@
+(92s) Epoch=0, Group=0loss_phi: 0.999560,  loss_theta: 1342.863458,  ess_rws: 0.016690,  ess_what: 0.016810,  ess_where: 0.016701,  density: -775.522912
+(93s) Epoch=0, Group=0loss_phi: 61.358474,  loss_theta: 81041.715508,  ess_rws: 1.000000,  ess_what: 1.017955,  ess_where: 1.001722,  density: -45905.739531
+(93s) Epoch=0, Group=1loss_phi: 76.527722,  loss_theta: 66075.397227,  ess_rws: 1.000000,  ess_what: 1.002427,  ess_where: 1.001617,  density: -36557.129434
+(93s) Epoch=0, Group=2loss_phi: 63.733173,  loss_theta: 56106.450742,  ess_rws: 1.000305,  ess_what: 1.021843,  ess_where: 1.001988,  density: -29262.119258
+(93s) Epoch=0, Group=3loss_phi: 52.570275,  loss_theta: 53847.103711,  ess_rws: 1.000665,  ess_what: 1.018005,  ess_where: 1.002181,  density: -27517.219727
+(93s) Epoch=0, Group=4loss_phi: -92.450885,  loss_theta: 58291.161641,  ess_rws: 1.000483,  ess_what: 1.029555,  ess_where: 1.015536,  density: -29518.477520
+(93s) Epoch=0, Group=5loss_phi: -348173.428176,  loss_theta: 107907.860391,  ess_rws: 1.044117,  ess_what: 1.054311,  ess_where: 1.940419,  density: -54249.582305
