@@ -1,6 +1,5 @@
 import torch
 import torch.nn.functional as F
-from resampling import resample
 """
 Reweighed Wake-Sleep objective in GMM problem
 ==========

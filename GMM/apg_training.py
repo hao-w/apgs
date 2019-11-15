@@ -1,9 +1,13 @@
+import sys
+sys.path.append('../')
 import torch
 import time
 from utils import shuffler
+from resample import resample
 from apg_modeling import save_model
+from apg_objective import apg_objective
 
-def train(optimizer, model, apg_objective, apg_sweeps, data, num_epochs, sample_size, batch_size, CUDA, DEVICE, MODEL_VERSION):
+def train(optimizer, model, apg_sweeps, data, num_epochs, sample_size, batch_size, CUDA, DEVICE, MODEL_VERSION):
     """
     ==========
     training function for apg samplers
@@ -29,11 +33,12 @@ def train(optimizer, model, apg_objective, apg_sweeps, data, num_epochs, sample_
             if CUDA:
                 ob = ob.cuda().to(DEVICE)
             trace = apg_objective(model=model,
+                                  resample=resample,
                                   apg_sweeps=apg_sweeps,
                                   ob=ob,
                                   loss_required=loss_required,
                                   ess_required=ess_required,
-                                  mode_required=mode_required, 
+                                  mode_required=mode_required,
                                   density_required=density_required,
                                   kl_required=kl_required)
             loss = trace['loss'].sum()
@@ -41,7 +46,7 @@ def train(optimizer, model, apg_objective, apg_sweeps, data, num_epochs, sample_
             loss.backward()
             optimizer.step()
             if loss_required:
-                assert trace['loss'].shape == (1+apg_sweeps*2, ), 'ERROR! loss has unexpected shape.'
+                assert trace['loss'].shape == (1+apg_sweeps, ), 'ERROR! loss has unexpected shape.'
                 if 'loss' in metrics:
                     metrics['loss'] += trace['loss'][-1].item()
                 else:

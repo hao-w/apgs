@@ -1,6 +1,6 @@
 import torch
 import torch.nn.functional as F
-from resampling import resample
+# from resampling import resample
 from kls_gmm import kl_gmm
 """
 Amortized Population Gibbs objective in GMM problem
@@ -28,7 +28,7 @@ sampling scheme:
     resample
 ==========
 """
-def apg_objective(model, apg_sweeps, ob, loss_required=True, ess_required=True, mode_required=False, density_required=False, kl_required=True):
+def apg_objective(model, resample, apg_sweeps, ob, loss_required=True, ess_required=True, mode_required=False, density_required=False, kl_required=True):
     trace = dict() ## a dictionary that tracks variables needed during the sweeping
     if loss_required:
         trace['loss'] = []
@@ -202,7 +202,7 @@ def apg_z(enc_apg_z, generative, ob, tau, mu, z_old, trace, loss_required, ess_r
     w = F.softmax(log_w_f - log_w_b, 0).detach()
     if loss_required:
         loss = (w * (- log_q_f)).sum(0).sum(-1).mean()
-        trace['loss'].append(loss.unsqueeze(0))
+        trace['loss'][-1] = trace['loss'][-1] + loss.unsqueeze(0)
     if ess_required:
         ess = (1. / (w**2).sum(0)).mean(-1)
         trace['ess_z'].append(ess.unsqueeze(0))

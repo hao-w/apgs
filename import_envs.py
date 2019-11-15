@@ -1,5 +1,6 @@
 import sys
 sys.path.append("../")
+sys.path.append('../../')
 sys.path.append('../modules/')
 sys.path.append('/home/hao/Research/probtorch/')
 DATA_DIR = '/home/hao/Research/apg_data/'

@@ -1,9 +1,12 @@
+import sys
+sys.path.append('../')
 import torch
 import time
 from utils import shuffler
 from baseline_modeling import save_model
+from baseline_objective import rws_objective
 
-def train(optimizer, model, baseline_objective, architecture, data, num_epochs, sample_size, batch_size, CUDA, DEVICE, MODEL_VERSION):
+def train(optimizer, model, architecture, data, num_epochs, sample_size, batch_size, CUDA, DEVICE, MODEL_VERSION):
     """
     ==========
     training function for baselines
@@ -26,12 +29,12 @@ def train(optimizer, model, baseline_objective, architecture, data, num_epochs, 
             ob = shuffler(data[batch_indices]).repeat(sample_size, 1, 1, 1)
             if CUDA:
                 ob = ob.cuda().to(DEVICE)
-            trace = baseline_objective(model=model,
+            trace = rws_objective(model=model,
                                        ob=ob,
                                        architecture=architecture,
                                        loss_required=loss_required,
                                        ess_required=ess_required,
-                                       mode_required=mode_required, 
+                                       mode_required=mode_required,
                                        density_required=density_required)
             loss = trace['loss'].sum()
             ## gradient step

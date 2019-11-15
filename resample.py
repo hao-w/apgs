@@ -28,7 +28,7 @@ def systematic_resample(var, weights, DEVICE, dim_expand=True):
     systematic resampling implemented by Tuan-Anh Le
     https://github.com/tuananhle7/aesmc/blob/09a824254a5eeae72669c6ac4effae810851cde2/aesmc/inference.py#L234-L269
     """
-    dim1, dim2 dim3, dim4 = var.shape
+    dim1, dim2, dim3, dim4 = var.shape
     if dim_expand :
         indices = sample_ancestral_index(weights.view(dim1, dim2*dim3).transpose(0,1), DEVICE)
         ancesters = indices.transpose(0,1).view(dim1, dim2, dim3).unsqueeze(-1).repeat(1, 1, 1, dim4)
