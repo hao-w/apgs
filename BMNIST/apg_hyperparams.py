@@ -5,7 +5,7 @@ import os
 K = 3 # number of digits
 T = 10 # timesteps
 NUM_EPOCHS = 500
-APG_SWEEPS = 1
+APG_SWEEPS = 6
 SAMPLE_SIZE = 10
 BATCH_SIZE = 10
 LR = 1e-4
@@ -20,7 +20,7 @@ Z_WHAT_DIM = 10
 
 MODEL_NAME = 'apg'
 MODEL_VERSION = 'bmnist-%ddigits-%s-%dsweeps-%dsamples-%.4flr' % (K, MODEL_NAME, APG_SWEEPS, SAMPLE_SIZE, LR)
-LOAD_VERSION = 'bmnist-3digits-apg-8sweeps-10samples-0.0001lr'
+LOAD_VERSION = 'bmnist-3digits-apg-1sweeps-10samples-0.0001lr'
 LOAD_VERSION_GALILEO = 'bmnist-3digits-apg-10sweeps-10samples-0.0001lr-galileo'
 print('inference method:%s, apg sweeps:%s, epochs:%s, sample size:%s, batch size:%s, learning rate:%s' % (MODEL_NAME, APG_SWEEPS, NUM_EPOCHS, SAMPLE_SIZE, BATCH_SIZE, LR))
 

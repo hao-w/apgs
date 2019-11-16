@@ -113,12 +113,11 @@ def propose_one_movement(enc_coor, dec_coor, AT, frame, template, z_where_t_1, z
     S, B, K, DP, _ = template.shape
     z_where = []
     E_where = []
-    log_q_f = 0.0
-    log_p_f = 0.0
+    log_q_f = []
+    log_p_f = []
     frame_left = frame
-
-    log_q_b = 0.0 ## unused if z_where_old_t is None
-    log_p_b = 0.0
+    log_q_b = [] ## unused if z_where_old_t is None
+    log_p_b = []
     for k in range(K):
         template_k = template[:,:,k,:,:]
         conved_k = F.conv2d(frame_left.view(S*B, FP, FP).unsqueeze(0), template_k.view(S*B, DP, DP).unsqueeze(1), groups=int(S*B))
@@ -128,46 +127,70 @@ def propose_one_movement(enc_coor, dec_coor, AT, frame, template, z_where_t_1, z
         z_where_k = q_k_f['z_where'].value
         z_where.append(z_where_k.unsqueeze(2)) ## expand to S * B * 1 * 2
         E_where.append(q_k_f['z_where'].dist.loc.unsqueeze(2).detach())
-        log_q_f = log_q_f + q_k_f['z_where'].log_prob.sum(-1) # S * B
+        log_q_f.append(q_k_f['z_where'].log_prob.sum(-1).unsqueeze(-1)) # S * B * 1 --> K after loop
+        assert q_k_f['z_where'].log_prob.sum(-1).shape == (S, B), 'expected shape.'
         if z_where_t_1 is not None:
-            log_p_f = log_p_f + dec_coor.forward(z_where_t=z_where_k, z_where_t_1=z_where_t_1[:,:,k,:]) # S * B
+            log_p_f.append(dec_coor.forward(z_where_t=z_where_k, z_where_t_1=z_where_t_1[:,:,k,:]).unsqueeze(-1)) 
+            assert dec_coor.forward(z_where_t=z_where_k, z_where_t_1=z_where_t_1[:,:,k,:]).shape ==(S,B), 'unexpected shape.'# S * B
         else:
-            log_p_f = log_p_f + dec_coor.forward(z_where_t=z_where_k, z_where_t_1=None) # S * B
+            log_p_f.append(dec_coor.forward(z_where_t=z_where_k, z_where_t_1=None).unsqueeze(-1))  # S * B
+            assert dec_coor.forward(z_where_t=z_where_k, z_where_t_1=None).shape ==(S,B), 'unexpected shape.'
         recon_k = AT.digit_to_frame(template_k.unsqueeze(2), z_where_k.unsqueeze(2).unsqueeze(2)).squeeze(2).squeeze(2) ## S * B * 64 * 64
+        assert recon_k.shape ==(S,B,96,96), 'unexpected shape.'
         frame_left = frame_left - recon_k
         if z_where_old_t is not None:
-            q_k_b = enc_coor(conved=conved_k, sampled=False, z_where_old=z_where_old_t[:,:,k,:])
-            log_q_b = log_q_b + q_k_b['z_where'].log_prob.sum(-1) # S * B
+            log_q_b_k = Normal(q_k_f['z_where'].dist.loc, q_k_f['z_where'].dist.scale).log_prob(z_where_old_t[:,:,k,:]).sum(-1).detach()
+#             q_k_b = enc_coor(conved=conved_k, sampled=False, z_where_old=z_where_old_t[:,:,k,:])
+            
             if z_where_old_t_1 is not None:
-                log_p_b = log_p_b + dec_coor.forward(z_where_t=z_where_old_t[:,:,k,:], z_where_t_1=z_where_old_t_1[:,:,k,:]) # S * B
+                log_p_b_k = dec_coor.forward(z_where_t=z_where_old_t[:,:,k,:], z_where_t_1=z_where_old_t_1[:,:,k,:]) # S * B
             else:
-                log_p_b = log_p_b + dec_coor.forward(z_where_t=z_where_old_t[:,:,k,:], z_where_t_1=None) # S * B
+                log_p_b_k = dec_coor.forward(z_where_t=z_where_old_t[:,:,k,:], z_where_t_1=None) # S * B
+            log_q_b.append(log_q_b_k.unsqueeze(-1)) # S * B * 1 --> K
+            log_p_b.append(log_p_b_k.unsqueeze(-1))
     z_where = torch.cat(z_where, 2) # S * B * K * 2
     E_where = torch.cat(E_where, 2) # S * B * K * 2
-    log_p = log_p_f - log_p_b
-    log_q = log_q_f - log_q_b
-    return log_p_f, log_p, log_q, z_where, E_where
+    log_p_f = torch.cat(log_p_f, -1).sum(-1)
+    log_q_f = torch.cat(log_q_f, -1).sum(-1)
+    if z_where_old_t is not None:
+        log_p_b = torch.cat(log_p_b, -1).sum(-1)
+        log_q_b = torch.cat(log_q_b, -1).sum(-1)
+        return log_p_f, log_q_f, log_p_b, log_q_b, z_where, E_where
+    else:                      
+        return log_p_f, log_q_f, z_where, E_where
 
 def rws(enc_coor, dec_coor, enc_digit, dec_digit, resample, AT, frames, digit, trace, loss_required, ess_required, mode_required, density_required):
     T = frames.shape[2]
     S, B, K, DP, DP = digit.shape
-    z_where_t_1 = None
-    log_q = 0.0
-    log_p = 0.0
+#     z_where_t_1 = None
+#     log_q = []
+#     log_p = []
     z_where = []
     E_where = []
     for t in range(T):
-        _, log_p_where_t, log_q_where_t, z_where_t, E_where_t = propose_one_movement(enc_coor=enc_coor,
-                                                                                     dec_coor=dec_coor,
-                                                                                     AT=AT,
-                                                                                     frame=frames[:,:,t, :,:],
-                                                                                     template=digit,
-                                                                                     z_where_t_1=z_where_t_1,
-                                                                                     z_where_old_t=None,
-                                                                                     z_where_old_t_1=None)
-        log_q = log_q + log_q_where_t
-        log_p = log_p + log_p_where_t
-        z_where_t_1 = z_where_t
+        if t == 0:
+            log_p_where_t, log_q_where_t, z_where_t, E_where_t = propose_one_movement(enc_coor=enc_coor,
+                                                                                      dec_coor=dec_coor,
+                                                                                      AT=AT,
+                                                                                      frame=frames[:,:,t, :,:],
+                                                                                      template=digit,
+                                                                                      z_where_t_1=None,
+                                                                                      z_where_old_t=None,
+                                                                                      z_where_old_t_1=None)
+            log_p_where = log_p_where_t
+            log_q_where = log_q_where_t
+        else:
+            log_p_where_t, log_q_where_t, z_where_t, E_where_t = propose_one_movement(enc_coor=enc_coor,
+                                                                                      dec_coor=dec_coor,
+                                                                                      AT=AT,
+                                                                                      frame=frames[:,:,t, :,:],
+                                                                                      template=digit,
+                                                                                      z_where_t_1=z_where_t,
+                                                                                      z_where_old_t=None,
+                                                                                      z_where_old_t_1=None)            
+        log_q_where = log_q_where + log_q_where_t
+        log_p_where = log_p_where + log_p_where_t
+#         z_where_t_1 = z_where_t
         z_where.append(z_where_t.unsqueeze(2)) ## S * B * 1 * K * 2
         E_where.append(E_where_t.unsqueeze(2)) ## S * B * 1 * K * 2
     z_where = torch.cat(z_where, 2)
@@ -179,9 +202,11 @@ def rws(enc_coor, dec_coor, enc_digit, dec_digit, resample, AT, frames, digit, t
     E_what = q_what['z_what'].dist.loc
     log_q_what = q_what['z_what'].log_prob.sum(-1).sum(-1) # S * B
     log_p_what, ll, recon = dec_digit(frames=frames, z_what=z_what, z_where=z_where, AT=AT)
-
-    log_p = log_p + log_p_what.sum(-1) + ll.sum(-1)
-    log_q = log_q + log_q_what
+    assert log_q_what.shape == (S, B), "unexpected shape."
+    assert log_p_what.shape == (S, B, K), 'unexpected shape.'
+    assert ll.shape == (S, B, T), 'unexpected shape.'
+    log_p = log_p_where + log_p_what.sum(-1) + ll.sum(-1)
+    log_q = log_q_where + log_q_what
     w = F.softmax(log_p - log_q, 0).detach()
     if loss_required:
         loss_phi = (w * (- log_q)).sum(0).mean()
@@ -205,51 +230,64 @@ def apg_where(enc_coor, dec_coor, dec_digit, resample, AT, frames, z_what, z_whe
     template = dec_digit(frames=None, z_what=z_what, z_where=None, AT=None)
     S, B, K, DP, DP = template.shape
 
-    z_where_t_1 = None
-    z_where_old_t_1 = None
+#     z_where_t_1 = None
+#     z_where_old_t_1 = None
     z_where = []
     E_where = []
-    loss_phi = 0.0
-    loss_theta = 0.0
+    LOSS_phi = []
+    LOSS_theta = []
     ESS = []
     log_prior = 0.0
     for t in range(T):
+        
         frame_t = frames[:,:,t, :,:]
-        z_where_old_t = z_where_old[:,:,t,:,:].clone()
-        log_prior_t, log_p_t, log_q_t, z_where_t, E_where_t = propose_one_movement(enc_coor=enc_coor,
-                                                                                   dec_coor=dec_coor,
-                                                                                   AT=AT,
-                                                                                   frame=frame_t,
-                                                                                   template=template,
-                                                                                   z_where_t_1=z_where_t_1,
-                                                                                   z_where_old_t=z_where_old_t,
-                                                                                   z_where_old_t_1=z_where_old_t_1)
-
-        z_where_t_1 = z_where_t
-        z_where_old_t_1 = z_where_old_t
+        if t == 0:
+            log_p_f, log_q_f, log_p_b, log_q_b, z_where_t, E_where_t = propose_one_movement(enc_coor=enc_coor,
+                                                                                            dec_coor=dec_coor,
+                                                                                            AT=AT,
+                                                                                            frame=frame_t,
+                                                                                            template=template,
+                                                                                            z_where_t_1=None,
+                                                                                            z_where_old_t=z_where_old[:,:,t,:,:],
+                                                                                            z_where_old_t_1=None)
+        else:
+            
+            log_p_f, log_q_f, log_p_b, log_q_b, z_where_t, E_where_t = propose_one_movement(enc_coor=enc_coor,
+                                                                                            dec_coor=dec_coor,
+                                                                                            AT=AT,
+                                                                                            frame=frame_t,
+                                                                                            template=template,
+                                                                                            z_where_t_1=z_where_t,
+                                                                                            z_where_old_t=z_where_old[:,:,t,:,:],
+                                                                                            z_where_old_t_1=z_where_old[:,:,t-1,:,:])
+#         z_where_t_1 = z_where_t
+#         z_where_old_t_1 = z_where_old_t
+        log_w_f = log_p_f - log_q_f
+        log_w_b = log_p_b - log_q_b
         if density_required:
-            log_prior = log_prior + log_prior_t
+            log_prior = log_prior + log_p_f
         if mode_required:
             E_where.append(E_where_t.unsqueeze(2)) ## S * B * 1 * K * 2
-        _, ll_f_t, _ = dec_digit(frame_t.unsqueeze(2), z_what, z_where=z_where_t.unsqueeze(2), AT=AT)
-        _, ll_b_t, _ = dec_digit(frame_t.unsqueeze(2), z_what, z_where=z_where_old_t.unsqueeze(2), AT=AT)
-        assert ll_f_t.shape == (S, B, 1), "ERROR! unexpected likelihood shape"
-        assert ll_b_t.shape == (S, B, 1), "ERROR! unexpected likelihood shape"
-        w = F.softmax(log_p_t - log_q_t + ll_f_t.sum(-1) - ll_b_t.sum(-1), 0).detach()
+        _, ll_f, _ = dec_digit(frames=frame_t.unsqueeze(2), z_what=z_what, z_where=z_where_t.unsqueeze(2), AT=AT)
+        _, ll_b, _ = dec_digit(frames=frame_t.unsqueeze(2), z_what=z_what, z_where=z_where_old[:,:,t,:,:].unsqueeze(2), AT=AT)
+        assert ll_f.shape == (S, B, 1), "ERROR! unexpected likelihood shape"
+        assert ll_b.shape == (S, B, 1), "ERROR! unexpected likelihood shape"
+        w = F.softmax(log_w_f - log_w_b  + ll_f.squeeze(-1) - ll_b.squeeze(-1), 0).detach()
         z_where_t = resample(var=z_where_t, weights=w, dim_expand=False)
         z_where.append(z_where_t.unsqueeze(2)) ## S * B * 1 * K * 2
 
         if loss_required:
-            loss_phi = loss_phi + (w * (- log_q_t)).sum(0).mean()
-            loss_theta = loss_theta + (w * (- ll_f_t.sum(-1))).sum(0).mean()
+            LOSS_phi.append((w * (- log_q_f)).sum(0).mean().unsqueeze(-1))
+            LOSS_theta.append((w * (- ll_f.squeeze(-1))).sum(0).mean().unsqueeze(-1))
         if ess_required:
             ESS.append((1. / (w**2).sum(0)).unsqueeze(-1)) # B vector
     z_where = torch.cat(z_where, 2)
     if mode_required:
         E_where = torch.cat(E_where, 2)
     if loss_required:
-        trace['loss_phi'].append(loss_phi.unsqueeze(0))
-        trace['loss_theta'].append(loss_theta.unsqueeze(0))
+        
+        trace['loss_phi'].append(torch.cat(LOSS_phi, -1).sum(-1).unsqueeze(0))
+        trace['loss_theta'].append(torch.cat(LOSS_theta, -1).sum(-1).unsqueeze(0))
     if ess_required:
         ESS = torch.cat(ESS, -1).mean(-1)
         trace['ess_where'].append(ESS.unsqueeze(0))
