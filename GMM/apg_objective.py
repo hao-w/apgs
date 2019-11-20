@@ -5,6 +5,14 @@ from kls_gmm import kl_gmm
 """
 Amortized Population Gibbs objective in GMM problem
 ==========
+sampling scheme:
+1. start with 'one-shot' predicting eta and z, resample
+2. For m = 1 : apg_sweeps:
+    update eta given z
+    resample
+    update z given eta
+    resample
+==========
 abbreviations:
 K -- number of clusters
 D -- data dimensions (D=2 in GMM)
@@ -18,14 +26,6 @@ tau: S * B * K * D, cluster precisions, as global variables
 mu: S * B * K * D, cluster means, as global variables
 eta := {tau, mu} global block
 z : S * B * N * K, cluster assignments, as local variables
-==========
-sampling scheme:
-1. start with 'one-shot' predicting eta and z
-2. For m = 1 : apg_sweeps:
-    update eta given z
-    resample
-    update z given eta
-    resample
 ==========
 """
 def apg_objective(model, resample, apg_sweeps, ob, loss_required=True, ess_required=True, mode_required=False, density_required=False, kl_required=True):
