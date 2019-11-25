@@ -6,7 +6,7 @@ K = 3 # number of digits
 T = 10 # timesteps
 NUM_EPOCHS = 500
 # APG_SWEEPS = 6
-SAMPLE_SIZE = 10
+SAMPLE_SIZE = 60
 BATCH_SIZE = 10
 LR = 1e-4
 
