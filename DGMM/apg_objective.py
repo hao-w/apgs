@@ -1,7 +1,7 @@
 import torch
 import torch.nn.functional as F
 """
-Amortized Population Gibbs objective in NCMM problem
+Amortized Population Gibbs objective in DGMM problem
 ==========
 abbreviations:
 K -- number of clusters
