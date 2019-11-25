@@ -178,7 +178,7 @@ def apg_eta(enc_apg_eta, generative, ob, z, tau_old, mu_old, trace, loss_require
         trace['E_mu'].append(E_mu.unsqueeze(0))
     if density_required:
         trace['density'].append(log_p_f.sum(-1).mean(0).unsqueeze(0)) # 1-by-B-length vector
-        return w, tau, mu, trace
+    return w, tau, mu, trace
 
 def apg_z(enc_apg_z, generative, ob, tau, mu, z_old, trace, loss_required, ess_required, mode_required, density_required):
     """
