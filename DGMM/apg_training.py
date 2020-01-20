@@ -3,11 +3,10 @@ sys.path.append('../')
 import torch
 import time
 from utils import shuffler
-from resample import resample
 from apg_modeling import save_model
 from apg_objective import apg_objective
 
-def train(optimizer, model, apg_sweeps, data, K, num_epochs, sample_size, batch_size, CUDA, DEVICE, MODEL_VERSION):
+def train(optimizer, model, resampler, apg_sweeps, data, K, num_epochs, sample_size, batch_size, CUDA, DEVICE, MODEL_VERSION):
     """
     ==========
     training function of apg samplers
@@ -31,9 +30,9 @@ def train(optimizer, model, apg_sweeps, data, K, num_epochs, sample_size, batch_
             batch_indices = indices[b*batch_size : (b+1)*batch_size]
             ob = shuffler(data[batch_indices]).repeat(sample_size, 1, 1, 1)
             if CUDA:
-                    ob = ob.cuda().to(DEVICE)
+                ob = ob.cuda().to(DEVICE)
             trace = apg_objective(model=model,
-                                  resample=resample,
+                                  resampler=resampler,
                                   apg_sweeps=apg_sweeps,
                                   ob=ob,
                                   K=K,
