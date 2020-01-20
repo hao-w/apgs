@@ -5,6 +5,7 @@ import time
 from utils import shuffler
 from baseline_modeling import save_model
 from baseline_objective import rws_objective
+from snr import *
 
 def train(optimizer, model, architecture, data, num_epochs, sample_size, batch_size, CUDA, DEVICE, MODEL_VERSION):
     """
@@ -19,11 +20,16 @@ def train(optimizer, model, architecture, data, num_epochs, sample_size, batch_s
 
     num_datasets = data.shape[0]
     num_batches = int((num_datasets / batch_size))
+
+    iteration = 0
+    fst_mmt = None
+    sec_mmt = None
     for epoch in range(num_epochs):
         time_start = time.time()
         metrics = dict()
         indices = torch.randperm(num_datasets)
         for b in range(num_batches):
+            iteration += 1
             optimizer.zero_grad()
             batch_indices = indices[b*batch_size : (b+1)*batch_size]
             ob = shuffler(data[batch_indices]).repeat(sample_size, 1, 1, 1)
@@ -39,6 +45,13 @@ def train(optimizer, model, architecture, data, num_epochs, sample_size, batch_s
             loss = trace['loss'].sum()
             ## gradient step
             loss.backward()
+            ## compute the EMA of SNR and variance of gradient estimations
+            fst_mmt, sec_mmt = mmt_grad(model, iteration=iteration, fst_mmt_old=fst_mmt, sec_mmt_old=sec_mmt)
+            if iteration % 100 == 0:
+                snr, var = snr_grad(fst_mmt, sec_mmt)
+                converge_file = open('../results/converge-' + MODEL_VERSION + '.txt', 'a+')
+                print("snr: %.6f, var: %.6f" % (snr.item(), var.item()), file=converge_file)
+                converge_file.close()
             optimizer.step()
             if loss_required:
                 assert trace['loss'].shape == (1, ), 'ERROR! loss has unexpected shape.'

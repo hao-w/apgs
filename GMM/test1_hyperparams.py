@@ -11,5 +11,5 @@ D = 2 # data point dimensions
 NUM_HIDDEN_APG_Z = 32
 model_params = (K, D, NUM_HIDDEN_APG_Z)
 MODEL_VERSION = 'gmm-%s-%dsweeps-%dsamples-%.4flr' % (MODEL_NAME, APG_SWEEPS, SAMPLE_SIZE, LR)
-LOAD_VERSION = 'gmm-test1-10sweeps-10samples-0.0001lr'
+LOAD_VERSION = 'gmm-test1-10sweeps-10samples-0.0005lr'
 print('inference method:%s, apg sweeps:%s, epochs:%s, sample size:%s, batch size:%s, learning rate:%s' % (MODEL_NAME, APG_SWEEPS, NUM_EPOCHS, SAMPLE_SIZE, BATCH_SIZE, LR))

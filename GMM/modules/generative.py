@@ -53,5 +53,6 @@ class Generative():
         sigma_expand = torch.gather(sigma, 2, labels_flat)
         ll = Normal(mu_expand, sigma_expand).log_prob(ob).sum(-1) # S * B * N
         if aggregate:
-            ll = torch.cat([((labels==k).float() * ll).sum(-1).unsqueeze(-1) for k in range(z.shape[-1])], -1) # S * B * K
+            ll = ll.sum(-1)
+            # ll = torch.cat([((labels==k).float() * ll).sum(-1).unsqueeze(-1) for k in range(z.shape[-1])], -1) # S * B * K
         return ll

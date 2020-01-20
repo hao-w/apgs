@@ -2,8 +2,8 @@ import torch
 import sys
 sys.path.append('../')
 from utils import shuffler
-from resample import resample_all
-from apg_objective import apg_objective
+from resample import resample
+from test1_objective import test1_objective
 """
 ==========
 evaluation functions for apg samplers
@@ -39,8 +39,8 @@ def test_single(model, apg_sweeps, datas, sample_size, CUDA, DEVICE):
         data = data.unsqueeze(0).repeat(sample_size, 1, 1, 1)
         if CUDA:
             ob = data.cuda().to(DEVICE)
-        trace = apg_objective(model=model,
-                              resample=resample_all,
+        trace = test1_objective(model=model,
+                              resample=resample,
                               apg_sweeps=apg_sweeps,
                               ob=ob,
                               loss_required=loss_required,

@@ -1,9 +1,9 @@
-ARCHITECTURE = 'lstm'
+ARCHITECTURE = 'mlp'
 # training parameters
-NUM_EPOCHS = 300
-SAMPLE_SIZE = 10
-BATCH_SIZE = 40
-LR = 1e-4
+NUM_EPOCHS = 30
+SAMPLE_SIZE = 50
+BATCH_SIZE = 10
+LR =  5 * 1e-4
 ## Model Parameters
 K = 3 # number of clusters
 D = 2 # data point dimensions

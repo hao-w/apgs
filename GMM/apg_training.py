@@ -3,11 +3,12 @@ sys.path.append('../')
 import torch
 import time
 from utils import shuffler
-from resample import resample
 from apg_modeling import save_model
 from apg_objective import apg_objective
+# from snr import *
+from kls_gmm import kl_gmm
 
-def train(optimizer, model, apg_sweeps, data, num_epochs, sample_size, batch_size, CUDA, DEVICE, MODEL_VERSION):
+def train(optimizer, model, resampler, apg_sweeps, data, num_epochs, sample_size, batch_size, CUDA, DEVICE, MODEL_VERSION):
     """
     ==========
     training function for apg samplers
@@ -22,18 +23,27 @@ def train(optimizer, model, apg_sweeps, data, num_epochs, sample_size, batch_siz
     num_datasets = data.shape[0]
     N = data.shape[1]
     num_batches = int((num_datasets / batch_size))
+
+    # iteration = 0
+    # fst_mmt = None
+    # sec_mmt = None
+    (_, _, enc_apg_eta, generative) = model
     for epoch in range(num_epochs):
         time_start = time.time()
         metrics = dict()
         indices = torch.randperm(num_datasets)
         for b in range(num_batches):
+            # iteration += 1
             optimizer.zero_grad()
             batch_indices = indices[b*batch_size : (b+1)*batch_size]
+            # concat_var = torch.cat((data[batch_indices], assignemnt_true[batch_indices]), -1)
             ob = shuffler(data[batch_indices]).repeat(sample_size, 1, 1, 1)
             if CUDA:
+                # ob = concat_var[:,:,:,:2].cuda().to(DEVICE)
+                # z_true = concat_var[:,:,:,2:].cuda().to(DEVICE)
                 ob = ob.cuda().to(DEVICE)
             trace = apg_objective(model=model,
-                                  resample=resample,
+                                  resampler=resampler,
                                   apg_sweeps=apg_sweeps,
                                   ob=ob,
                                   loss_required=loss_required,
@@ -45,6 +55,7 @@ def train(optimizer, model, apg_sweeps, data, num_epochs, sample_size, batch_siz
             ## gradient step
             loss.backward()
             optimizer.step()
+
             if loss_required:
                 assert trace['loss'].shape == (1+apg_sweeps, ), 'ERROR! loss has unexpected shape.'
                 if 'loss' in metrics:
