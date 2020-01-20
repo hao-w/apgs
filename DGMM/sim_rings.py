@@ -29,10 +29,16 @@ class Sim_Rings():
     def sim_one_ring(self):
         pts_edge = int(self.Nk / self.period)
         angles = np.linspace(0, 2 * math.pi, pts_edge, endpoint=True)
-        angles = np.tile(angles, self.period)
-        N = angles.shape[0]
-        radis = np.ones(N) * self.radi
-        noise = np.random.normal(0.0, self.noise_std, (N, 2))
+        pointwise_interval = angles[1] - angles[0]
+        rand_shift = np.random.uniform(low=0.0, high=pointwise_interval, size=self.period)
+        angles_list = []
+        for i in range(self.period):
+            angles_list.append(angles+rand_shift[i])
+        angles = np.concatenate(angles_list, 0)
+        assert angles.shape == (self.Nk,), "ERROR! angle variable has unexpected shape."
+        # N = angles.shape[0]
+        radis = np.ones(self.Nk) * self.radi
+        noise = np.random.normal(0.0, self.noise_std, (self.Nk, 2))
         x = np.cos(angles) * radis
         y = np.sin(angles) * radis
         pos = np.concatenate((x[:, None], y[:, None]), -1)

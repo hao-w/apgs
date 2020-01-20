@@ -2,6 +2,37 @@ import torch
 import torch.nn.functional as F
 from torch.distributions.normal import Normal
 
+def kl_gmm_training(enc_apg_eta, generative, ob, z):
+    # (prior_alpha, prior_beta, prior_mu, prior_nu, prior_pi) = generative.prior_all
+    q_f_eta = enc_apg_eta(ob=ob, z=z, prior_ng=generative.prior_ng, sampled=True)
+    mu = q_f_eta['means'].value
+    tau = q_f_eta['precisions'].value
+    ## KLs for mu and sigma based on Normal-Gamma prior
+    q_alpha = q_f_eta['precisions'].dist.concentration
+    q_beta = q_f_eta['precisions'].dist.rate
+    q_mu = q_f_eta['means'].dist.loc
+    q_std = q_f_eta['means'].dist.scale
+    q_nu = 1. / (tau * (q_std**2)) # nu*tau = 1 / std**2
+
+    posterior_alpha, posterior_beta, posterior_mu, posterior_nu = posterior_eta(ob=ob,
+                                                                                z=z,
+                                                                                prior_alpha=generative.prior_alpha,
+                                                                                prior_beta=generative.prior_beta,
+                                                                                prior_mu=generative.prior_mu,
+                                                                                prior_nu=generative.prior_nu)
+    kl_eta_ex, kl_eta_in = kls_NGs(q_alpha=q_alpha,
+                                   q_beta=q_beta,
+                                   q_mu=q_mu,
+                                   q_nu=q_nu,
+                                   p_alpha=posterior_alpha,
+                                   p_beta=posterior_beta,
+                                   p_mu=posterior_mu,
+                                   p_nu=posterior_nu)
+
+    inckl = kl_eta_in.mean(-1).mean(0).mean().cpu().detach()
+    # exckl = kl_eta_ex.mean(-1).mean(0).detach()
+    return inckl
+
 def kl_gmm(enc_apg_eta, enc_apg_z, generative, ob, z):
     # (prior_alpha, prior_beta, prior_mu, prior_nu, prior_pi) = generative.prior_all
     q_f_eta = enc_apg_eta(ob=ob, z=z, prior_ng=generative.prior_ng, sampled=True)
@@ -69,6 +100,22 @@ def data_to_stats(ob, z):
     stat2 = (z_expand * ob_expand).sum(2)
     stat3 = (z_expand * (ob_expand**2)).sum(2)
     return stat1, stat2, stat3
+
+def data_to_stats_neural(ob, z):
+    """
+    z should be the actual assignments!
+    pointwise sufficient statstics
+    stat1 : sum of I[z_n=k], S * B * K
+    stat2 : sum of I[z_n=k]*x_n, S * B * K * D
+    stat3 : sum of I[z_n=k]*x_n^2, S * B * K * D
+    """
+    stat1 = z.sum(2)
+    z_expand = z.unsqueeze(-1).repeat(1, 1, 1, 1, ob.shape[-1])
+    ob_expand = ob.unsqueeze(-1).repeat(1, 1, 1, 1, z.shape[-1]).transpose(-1, -2)
+    stat2 = (z_expand * ob_expand).sum(2)
+    stat3 = (z_expand * (ob_expand**2)).sum(2)
+    return stat1, stat2, stat3
+
 
 def posterior_eta(ob, z, prior_alpha, prior_beta, prior_mu, prior_nu):
     """
