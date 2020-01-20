@@ -1,0 +1,6 @@
+(47s) loss: 20.688857,  ess_rws: 3.389955,  density: -302.229350
+(39s) loss: 20.697664,  ess_rws: 3.412600,  density: -302.259387
+(39s) loss: 20.757788,  ess_rws: 3.413178,  density: -302.273094
+(40s) loss: 20.743070,  ess_rws: 3.423214,  density: -302.301004
+(52s) loss: 20.638861,  ess_rws: 3.399101,  density: -302.179153
+(60s) loss: 20.668151,  ess_rws: 3.409530,  density: -302.210781
