@@ -6,6 +6,9 @@ sys.path.append('/home/hao/Research/probtorch/')
 DATA_DIR = '/home/hao/Research/apg_data/'
 import torch
 import numpy as np
+import os
+os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
+
 import probtorch
 print('probtorch:', probtorch.__version__,
       'torch:', torch.__version__)
