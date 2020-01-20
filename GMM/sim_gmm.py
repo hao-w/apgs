@@ -55,10 +55,13 @@ class Sim_GMM():
         if not os.path.exists(PATH):
             os.makedirs(PATH)
         OB = np.zeros((num_seqs, self.N, self.D))
-        # ASSIGNMENT = np.zeros((num_seqs, self.N. self.K))
+        ASSIGNMENT = np.zeros((num_seqs, self.N, self.K))
         # MEAN = np.zeros((num_seqs, self.K, self.D))
         # SIGMA = np.zeros((num_seqs, self.K, self.D))
         for s in range(num_seqs):
             ob, precision, mean, assignment = self.sim_one_gmm()
             OB[s] = ob
+            ASSIGNMENT[s] = assignment
         np.save(PATH + 'ob', OB)
+        np.save(PATH + 'assignment', ASSIGNMENT)
+        

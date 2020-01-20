@@ -45,41 +45,46 @@ def sis_objective(model, apg_sweeps, ob, loss_required=True, ess_required=True, 
         trace['density'] = []
 
     (enc_rws_eta, enc_apg_z, enc_apg_eta, generative) = model
-    log_w, w, tau, mu, z, trace = rws(enc_rws_eta=enc_rws_eta,
-                                      enc_rws_z=enc_apg_z,
-                                      generative=generative,
-                                      ob=ob,
-                                      trace=trace,
-                                      loss_required=loss_required,
-                                      ess_required=ess_required,
-                                      mode_required=mode_required,
-                                      density_required=density_required)
+    log_w, log_q, w, tau, mu, z, trace = rws(enc_rws_eta=enc_rws_eta,
+                                             enc_rws_z=enc_apg_z,
+                                             generative=generative,
+                                             ob=ob,
+                                             trace=trace,
+                                             loss_required=loss_required,
+                                             ess_required=ess_required,
+                                             mode_required=mode_required,
+                                             density_required=density_required)
     for m in range(apg_sweeps):
-        log_w, w, tau, mu, trace = apg_eta(enc_apg_eta=enc_apg_eta,
-                                           generative=generative,
-                                           log_w=log_w,
-                                           ob=ob,
-                                           z=z,
-                                           tau_old=tau,
-                                           mu_old=mu,
-                                           trace=trace,
-                                           loss_required=loss_required,
-                                           ess_required=ess_required,
-                                           mode_required=mode_required,
-                                           density_required=density_required)
-        log_w, w, z, trace = apg_z(enc_apg_z=enc_apg_z,
-                                   generative=generative,
-                                   log_w=log_w,
-                                   ob=ob,
-                                   tau=tau,
-                                   mu=mu,
-                                   z_old=z,
-                                   trace=trace,
-                                   loss_required=loss_required,
-                                   ess_required=ess_required,
-                                   mode_required=mode_required,
-                                   density_required=density_required)
-
+        log_w, log_q, w, tau, mu, trace = apg_eta(enc_apg_eta=enc_apg_eta,
+                                                  generative=generative,
+                                                  log_w_old=log_w,
+                                                  log_q_old=log_q,
+                                                  ob=ob,
+                                                  z=z,
+                                                  tau_old=tau,
+                                                  mu_old=mu,
+                                                  trace=trace,
+                                                  loss_required=loss_required,
+                                                  ess_required=ess_required,
+                                                  mode_required=mode_required,
+                                                  density_required=density_required)
+        log_w, log_q, w, z, trace = apg_z(enc_apg_z=enc_apg_z,
+                                          generative=generative,
+                                          log_w_old=log_w,
+                                          log_q_old=log_q,
+                                          ob=ob,
+                                          tau=tau,
+                                          mu=mu,
+                                          z_old=z,
+                                          trace=trace,
+                                          loss_required=loss_required,
+                                          ess_required=ess_required,
+                                          mode_required=mode_required,
+                                          density_required=density_required)
+    if loss_required:
+        w = F.softmax(log_w, 0).detach()
+        loss = (w * (- log_q)).sum(0).mean()
+        trace['loss'] = loss.unsqueeze(0)
     if kl_required:
         inckls = kl_gmm(enc_apg_eta=enc_apg_eta,
                         enc_apg_z=enc_apg_z,
@@ -88,9 +93,6 @@ def sis_objective(model, apg_sweeps, ob, loss_required=True, ess_required=True, 
                         z=z)
         trace['inckl_eta'] = inckls['inckl_eta']
         trace['inckl_z'] = inckls['inckl_z'] # B-length vector
-
-    if loss_required:
-        trace['loss'] = torch.cat(trace['loss'], 0) # (1+apg_sweeps) * 1
     if ess_required:
         trace['ess_sis'] = torch.cat(trace['ess_sis'], 0) # 1 + 2*apg_sweeps * B
     if mode_required:
@@ -121,9 +123,9 @@ def rws(enc_rws_eta, enc_rws_z, generative, ob, trace, loss_required, ess_requir
     log_q =  log_q_eta.sum(-1) + log_q_z.sum(-1)
     log_w = (log_p - log_q).detach()
     w = F.softmax(log_w, 0).detach()
-    if loss_required :
-        loss = (w * (- log_q)).sum(0).mean() # 1-by-1 scalar
-        trace['loss'].append(loss.unsqueeze(0))
+    # if loss_required :
+    #     loss = (w * (- log_q)).sum(0).mean() # 1-by-1 scalar
+    #     trace['loss'].append(loss.unsqueeze(0))
     if ess_required:
         ess = (1. / (w**2).sum(0)) # B-length tensor
         trace['ess_sis'].append(ess.unsqueeze(0))
@@ -137,9 +139,9 @@ def rws(enc_rws_eta, enc_rws_z, generative, ob, trace, loss_required, ess_requir
     if density_required:
         log_joint = log_p.mean(0).detach()
         trace['density'].append(log_joint.unsqueeze(0)) # 1-by-B-length vector
-    return log_w, w, tau, mu, z, trace
+    return log_w, log_q, w, tau, mu, z, trace
 
-def apg_eta(enc_apg_eta, generative, log_w, ob, z, tau_old, mu_old, trace, loss_required, ess_required, mode_required, density_required):
+def apg_eta(enc_apg_eta, generative, log_w_old, log_q_old, ob, z, tau_old, mu_old, trace, loss_required, ess_required, mode_required, density_required):
     """
     Given local variable z, update global variables eta := {mu, tau}.
     """
@@ -158,11 +160,12 @@ def apg_eta(enc_apg_eta, generative, log_w, ob, z, tau_old, mu_old, trace, loss_
     log_p_b = p_b['means'].log_prob.sum(-1) + p_b['precisions'].log_prob.sum(-1)
     ll_b = generative.log_prob(ob=ob, z=z, tau=tau_old, mu=mu_old, aggregate=True)
     log_w_b = ll_b + log_p_b - log_q_b
-    log_w = log_w + (log_w_f - log_w_b).sum(-1).detach()
+    log_q = log_q_old + log_q_f.sum(-1)
+    log_w = log_w_old + (log_w_f - log_w_b).sum(-1).detach()
     w = F.softmax(log_w, 0).detach()
-    if loss_required:
-        loss = (w * (- log_q_f.sum(-1))).sum(0).mean()
-        trace['loss'].append(loss.unsqueeze(0))
+    # if loss_required:
+    #     loss = (w * (- log_q_f.sum(-1))).sum(0).mean()
+    #     trace['loss'].append(loss.unsqueeze(0))
     if ess_required:
         ess = (1. / (w**2).sum(0))
         trace['ess_sis'].append(ess.unsqueeze(0)) # 1-by-B tensor
@@ -173,9 +176,9 @@ def apg_eta(enc_apg_eta, generative, log_w, ob, z, tau_old, mu_old, trace, loss_
         trace['E_mu'].append(E_mu.unsqueeze(0))
     if density_required:
         trace['density'].append(log_p_f.sum(-1).mean(0).unsqueeze(0)) # 1-by-B-length vector
-    return log_w, w, tau, mu, trace
+    return log_w, log_q, w, tau, mu, trace
 
-def apg_z(enc_apg_z, generative, log_w, ob, tau, mu, z_old, trace, loss_required, ess_required, mode_required, density_required):
+def apg_z(enc_apg_z, generative, log_w_old, log_q_old, ob, tau, mu, z_old, trace, loss_required, ess_required, mode_required, density_required):
     """
     Given the current samples of global variable (eta = mu + tau),
     update local variable (state).
@@ -194,11 +197,12 @@ def apg_z(enc_apg_z, generative, log_w, ob, tau, mu, z_old, trace, loss_required
     log_p_b = p_b['states'].log_prob
     ll_b = generative.log_prob(ob=ob, z=z_old, tau=tau, mu=mu, aggregate=False)
     log_w_b = ll_b + log_p_b - log_q_b
-    log_w = log_w + (log_w_f - log_w_b).sum(-1).detach()
+    log_q = log_q_old + log_q_f.sum(-1)
+    log_w = log_w_old + (log_w_f - log_w_b).sum(-1).detach()
     w = F.softmax(log_w, 0).detach()
-    if loss_required:
-        loss = (w * (- log_q_f.sum(-1))).sum(0).mean()
-        trace['loss'][-1] = trace['loss'][-1] + loss.unsqueeze(0)
+    # if loss_required:
+    #     loss = (w * (- log_q_f.sum(-1))).sum(0).mean()
+    #     trace['loss'][-1] = trace['loss'][-1] + loss.unsqueeze(0)
     if ess_required:
         ess = (1. / (w**2).sum(0))
         trace['ess_sis'].append(ess.unsqueeze(0))
@@ -207,4 +211,4 @@ def apg_z(enc_apg_z, generative, log_w, ob, tau, mu, z_old, trace, loss_required
         trace['E_z'].append(E_z.unsqueeze(0))
     if density_required:
         trace['density'][-1] = trace['density'][-1] + (ll_f + log_p_f).sum(-1).mean(0).unsqueeze(0)
-    return log_w, w, z, trace
+    return log_w, log_q, w, z, trace
