@@ -99,7 +99,6 @@ def apg_objective(model, resampler, apg_sweeps, ob, loss_required=True, ess_requ
                         z=z)
         trace['inckl_eta'] = inckls['inckl_eta']
         trace['inckl_z'] = inckls['inckl_z'] # B-length vector
-
     if loss_required:
         trace['loss'] = torch.cat(trace['loss'], 0) # (1+apg_sweeps) * 1
     if ess_required:

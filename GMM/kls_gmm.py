@@ -63,9 +63,9 @@ def kl_gmm(enc_apg_eta, enc_apg_z, generative, ob, z):
                                    p_mu=posterior_mu,
                                    p_nu=posterior_nu)
     posterior_logits = posterior_z(ob=ob,
-                              tau=tau,
-                              mu=mu,
-                              prior_pi=generative.prior_pi)
+                                   tau=tau,
+                                   mu=mu,
+                                   prior_pi=generative.prior_pi)
     kl_z_ex, kl_z_in = kls_cats(q_logits=q_pi.log(),
                                 p_logits=posterior_logits)
     inckls = {"inckl_eta" : kl_eta_in.mean(-1).mean(0).detach(),"inckl_z" : kl_z_in.mean(-1).mean(0).detach() }
@@ -100,22 +100,6 @@ def data_to_stats(ob, z):
     stat2 = (z_expand * ob_expand).sum(2)
     stat3 = (z_expand * (ob_expand**2)).sum(2)
     return stat1, stat2, stat3
-
-def data_to_stats_neural(ob, z):
-    """
-    z should be the actual assignments!
-    pointwise sufficient statstics
-    stat1 : sum of I[z_n=k], S * B * K
-    stat2 : sum of I[z_n=k]*x_n, S * B * K * D
-    stat3 : sum of I[z_n=k]*x_n^2, S * B * K * D
-    """
-    stat1 = z.sum(2)
-    z_expand = z.unsqueeze(-1).repeat(1, 1, 1, 1, ob.shape[-1])
-    ob_expand = ob.unsqueeze(-1).repeat(1, 1, 1, 1, z.shape[-1]).transpose(-1, -2)
-    stat2 = (z_expand * ob_expand).sum(2)
-    stat3 = (z_expand * (ob_expand**2)).sum(2)
-    return stat1, stat2, stat3
-
 
 def posterior_eta(ob, z, prior_alpha, prior_beta, prior_mu, prior_nu):
     """
@@ -184,7 +168,7 @@ def kls_NGs(q_alpha, q_beta, q_mu, q_nu, p_alpha, p_beta, p_mu, p_nu):
 
 from torch._six import inf
 
-def kl_cat_cat(p_logits, q_logits, EPS=1e-15):
+def kl_cat_cat(p_logits, q_logits, EPS=-1e14):
     p_probs= p_logits.exp()
     ## To prevent from infinite KL due to ill-defined support of q
     q_logits[q_logits == -inf] = EPS

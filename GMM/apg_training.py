@@ -98,6 +98,8 @@ def train(optimizer, model, resampler, apg_sweeps, data, num_epochs, sample_size
                     metrics['inckl_z'] += trace['inckl_z'].mean().item()
                 else:
                     metrics['inckl_z'] = trace['inckl_z'].mean().item()
+
+
         save_model(model, MODEL_VERSION)
         metrics_print = ",  ".join(['%s: %.6f' % (k, v/num_batches) for k, v in metrics.items()])
         log_file = open('../results/log-' + MODEL_VERSION + '.txt', 'a+')
