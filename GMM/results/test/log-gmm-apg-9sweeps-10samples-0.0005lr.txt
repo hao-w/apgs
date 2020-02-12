@@ -1,6 +1,0 @@
-(2286s) inckl_eta: 56.588737,  inckl_z: 0.276350,  loss: 59.578259,  ess_rws: 1.159689,  ess_eta: 1.348660,  ess_z: 6.949574,  density: -653.713752
-(2278s) inckl_eta: 86.052567,  inckl_z: 0.126656,  loss: 45.606850,  ess_rws: 1.448360,  ess_eta: 1.499601,  ess_z: 8.300305,  density: -442.974473
-(2283s) inckl_eta: 76.127557,  inckl_z: 0.098382,  loss: 32.195650,  ess_rws: 1.530714,  ess_eta: 1.577261,  ess_z: 8.959058,  density: -391.748492
-(2296s) inckl_eta: 16.324649,  inckl_z: 0.178768,  loss: 17.795899,  ess_rws: 1.708149,  ess_eta: 2.084373,  ess_z: 9.573035,  density: -300.077753
-(2288s) inckl_eta: 5.348939,  inckl_z: 0.276624,  loss: 13.177212,  ess_rws: 1.775626,  ess_eta: 2.973087,  ess_z: 9.761174,  density: -278.898925
-(2284s) inckl_eta: 0.401971,  inckl_z: 0.408768,  loss: 11.307110,  ess_rws: 1.803169,  ess_eta: 7.163585,  ess_z: 9.800092,  density: -271.976126

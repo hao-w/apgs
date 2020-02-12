@@ -1,3 +1,0 @@
-254s, loss: 64.251801,  ess_rws: 1.096656,  ess_eta: 1.189019,  ess_z: 1.606929,  inckl_eta: 28.859996,  inckl_z: 10.839884
-256s, loss: 36.656155,  ess_rws: 1.104155,  ess_eta: 1.288558,  ess_z: 1.795664,  inckl_eta: 37.551118,  inckl_z: 3.174342
-257s, loss: 17.505903,  ess_rws: 1.172901,  ess_eta: 1.373726,  ess_z: 2.368532,  inckl_eta: 23.029036,  inckl_z: 1.612144
