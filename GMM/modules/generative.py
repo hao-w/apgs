@@ -1,6 +1,8 @@
 import torch
 from torch.distributions.one_hot_categorical import OneHotCategorical as cat
 from torch.distributions.normal import Normal
+from torch.distributions.gamma import Gamma
+
 import probtorch
 
 class Generative():
@@ -8,7 +10,7 @@ class Generative():
         super().__init__()
         self.K = K
         self.prior_mu = torch.zeros((K, D))
-        self.prior_nu = torch.ones((K, D)) * 0.3
+        self.prior_nu = torch.ones((K, D)) * 0.1
         self.prior_alpha = torch.ones((K, D)) * 2
         self.prior_beta = torch.ones((K, D)) * 2
         self.prior_pi = torch.ones(K) * (1./ K)
@@ -33,6 +35,23 @@ class Generative():
         p.normal(self.prior_mu,
                  1. / (self.prior_nu * p['precisions'].value).sqrt(),
                  value=q['means'],
+                 name='means')
+        return p
+
+    def eta_sample_prior(self, S, B):
+        p = probtorch.Trace()
+        ## sample from prior distributions
+
+        tau = Gamma(self.prior_alpha.unsqueeze(0).unsqueeze(0).repeat(S, B, 1, 1), self.prior_beta.unsqueeze(0).unsqueeze(0).repeat(S, B, 1, 1)).sample()
+        mu = Normal(self.prior_mu.unsqueeze(0).unsqueeze(0).repeat(S, B, 1, 1), 1. / (self.prior_nu * tau).sqrt()).sample()
+
+        p.gamma(self.prior_alpha,
+                self.prior_beta,
+                value=tau,
+                name='precisions')
+        p.normal(self.prior_mu,
+                 1. / (self.prior_nu * tau).sqrt(),
+                 value=mu,
                  name='means')
         return p
 
