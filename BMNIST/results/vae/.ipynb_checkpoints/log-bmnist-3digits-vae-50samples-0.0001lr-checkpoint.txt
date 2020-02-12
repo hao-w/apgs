@@ -1,0 +1,7 @@
+(363s) Epoch=0, Group=0loss: 65167.994551,  ess_vae: 1.001633,  density: -65286.894844
+(366s) Epoch=0, Group=1loss: 53931.445938,  ess_vae: 1.001116,  density: -53992.107617
+(366s) Epoch=0, Group=2loss: 51867.989395,  ess_vae: 1.003202,  density: -51902.422031
+(364s) Epoch=0, Group=3loss: 51145.815391,  ess_vae: 1.001202,  density: -51177.139941
+(363s) Epoch=0, Group=4loss: 51194.081738,  ess_vae: 1.003306,  density: -51220.477441
+(344s) Epoch=0, Group=5loss: 49769.811309,  ess_vae: 1.000281,  density: -49790.766895
+(342s) Epoch=0, Group=6loss: 50661.050195,  ess_vae: 1.000463,  density: -50676.149160

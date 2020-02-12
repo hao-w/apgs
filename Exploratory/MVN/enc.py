@@ -3,7 +3,7 @@ import torch.nn as nn
 from torch.distributions.normal import Normal
 
 class Kernel(nn.Module):
-    def __init__(self, num_hiddens, prior_mu, prior_sigma, CUDA, device):
+    def __init__(self, num_hiddens, prior_mu, prior_sigma, CUDA, DEVICE):
         super(self.__class__, self).__init__()
 
         self.q_mu = nn.Sequential(
@@ -16,15 +16,15 @@ class Kernel(nn.Module):
             # nn.Tanh(),
             nn.Linear(num_hiddens, 1))
 
-        self.p_mu = prior_mu
-        self.p_sigma = prior_sigma
+        self.p_mu = torch.zeros(1)
+        self.p_sigma = torch.ones(1) * 10
 
         if CUDA:
-             with torch.cuda.device(device):
+             with torch.cuda.device(DEVICE):
                 self.p_mu = self.p_mu.cuda()
                 self.p_sigma = self.p_sigma.cuda()
 
-    def forward(self, cond_var, sampled):
+    def forward(self, cond_var, sampled=True, value_old=None):
         ## input size S * 1
         mu = self.q_mu(cond_var)
         sigma = self.q_log_sigma(cond_var).exp()
@@ -32,18 +32,6 @@ class Kernel(nn.Module):
         if sampled:
             value = q.sample()
         else:
-            value = mu.detach()
+            value = value_old
         log_pdf = q.log_prob(value)
         return value, log_pdf, mu, sigma
-
-    def backward(self, cond_var, value):
-        mu = self.q_mu(cond_var)
-        sigma = self.q_log_sigma(cond_var).exp()
-        q = Normal(mu, sigma)
-        return q.log_prob(value)
-
-    def sample_prior(self, num_samples):
-        p = Normal(self.p_mu, self.p_sigma)
-        sampled_var = p.sample((num_samples,))
-        log_pdf = p.log_prob(sampled_var)
-        return sampled_var, log_pdf

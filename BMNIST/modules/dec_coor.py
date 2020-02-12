@@ -31,14 +31,11 @@ class Dec_coor():
             p0 = Normal(z_where_t_1, self.prior_Sigmat)
             return p0.log_prob(z_where_t).sum(-1) # S * B
 
-        # else:
-        #     ...
-        #     pt = Normal(new_z_where, self.prior_Sigmat)
-        #     log_pt = pt.log_prob(z_where_t)# S * B * K * D
-        #     return log_pt
-        #
-        # new_z_where = z_where[:,:,:T-1,:, :] + disp
-        # new_disp = torch.where(new_z_where > 1, - disp, disp)
-        # new_disp = torch.where(new_z_where < -1, - new_disp, new_disp)
-        # new_z_where = torch.where(new_z_where > 1, 2.0 - new_z_where, new_z_where)
-        # new_z_where = torch.where(new_z_where < -1, - 2.0 - new_z_where, new_z_where)
+    def log_prior(self, z_where_t, z_where_t_1=None, disp=None):
+        S, B, K, D = z_where_t.shape
+        if z_where_t_1 is None:
+            p0 = Normal(self.prior_mu0, self.prior_Sigma0)
+            return p0.log_prob(z_where_t).sum(-1).sum(-1)#)# S * B
+        else:
+            p0 = Normal(z_where_t_1, self.prior_Sigmat)
+            return p0.log_prob(z_where_t).sum(-1).sum(-1)# # S * B

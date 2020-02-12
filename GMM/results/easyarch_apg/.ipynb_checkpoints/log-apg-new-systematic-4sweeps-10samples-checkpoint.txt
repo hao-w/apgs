@@ -1,0 +1,201 @@
+302s, 670.262306, loss: 61.476322,  ess_rws: 1.063708,  ess_eta: 1.023137,  ess_z: 1.105198,  inckl_eta: 165.791615,  inckl_z: 34.501313
+608s, 843.370045, loss: 59.881031,  ess_rws: 1.172771,  ess_eta: 1.125917,  ess_z: 1.560299,  inckl_eta: 109.886463,  inckl_z: 15.123550
+915s, 900.540549, loss: 59.444213,  ess_rws: 1.286723,  ess_eta: 1.310838,  ess_z: 2.278856,  inckl_eta: 72.226937,  inckl_z: 5.689468
+1223s, 809.500054, loss: 58.484187,  ess_rws: 1.329338,  ess_eta: 1.629019,  ess_z: 2.597345,  inckl_eta: 27.547946,  inckl_z: 2.891466
+1529s, 676.991445, loss: 55.217009,  ess_rws: 1.353372,  ess_eta: 2.027823,  ess_z: 2.464930,  inckl_eta: 19.448568,  inckl_z: 2.329286
+1838s, 522.347454, loss: 47.552542,  ess_rws: 1.355545,  ess_eta: 2.026833,  ess_z: 2.251306,  inckl_eta: 31.663742,  inckl_z: 2.587786
+2146s, 385.180101, loss: 41.081165,  ess_rws: 1.361114,  ess_eta: 2.059601,  ess_z: 2.255304,  inckl_eta: 36.980172,  inckl_z: 2.477524
+2454s, 235.506215, loss: 35.885397,  ess_rws: 1.364200,  ess_eta: 2.137030,  ess_z: 2.308261,  inckl_eta: 38.353883,  inckl_z: 2.295181
+2764s, 133.149547, loss: 30.950001,  ess_rws: 1.367750,  ess_eta: 2.234015,  ess_z: 2.408289,  inckl_eta: 32.886313,  inckl_z: 2.074783
+3071s, 69.438970, loss: 27.355171,  ess_rws: 1.377308,  ess_eta: 2.388378,  ess_z: 2.510503,  inckl_eta: 25.038130,  inckl_z: 1.878102
+3379s, 36.858921, loss: 24.837655,  ess_rws: 1.381255,  ess_eta: 2.679897,  ess_z: 2.624382,  inckl_eta: 16.359757,  inckl_z: 1.701665
+3687s, 19.852140, loss: 23.498526,  ess_rws: 1.376671,  ess_eta: 3.079000,  ess_z: 2.674509,  inckl_eta: 9.582643,  inckl_z: 1.569909
+3996s, 10.764980, loss: 22.802821,  ess_rws: 1.359220,  ess_eta: 3.655343,  ess_z: 2.687683,  inckl_eta: 5.399649,  inckl_z: 1.477174
+4304s, 6.106150, loss: 22.631282,  ess_rws: 1.365777,  ess_eta: 4.380157,  ess_z: 2.622328,  inckl_eta: 2.892846,  inckl_z: 1.408774
+4611s, 3.162291, loss: 22.763878,  ess_rws: 1.356337,  ess_eta: 5.234678,  ess_z: 2.577165,  inckl_eta: 1.551389,  inckl_z: 1.348707
+4919s, 1.482047, loss: 23.195585,  ess_rws: 1.362221,  ess_eta: 6.136170,  ess_z: 2.439959,  inckl_eta: 0.828384,  inckl_z: 1.303613
+5227s, 0.769262, loss: 23.646150,  ess_rws: 1.343366,  ess_eta: 6.976476,  ess_z: 2.352575,  inckl_eta: 0.432718,  inckl_z: 1.260204
+5533s, 0.647075, loss: 23.962267,  ess_rws: 1.327401,  ess_eta: 7.727447,  ess_z: 2.279098,  inckl_eta: 0.227135,  inckl_z: 1.213315
+5841s, 0.721285, loss: 24.105907,  ess_rws: 1.322792,  ess_eta: 8.313247,  ess_z: 2.239168,  inckl_eta: 0.129035,  inckl_z: 1.169154
+6147s, 0.267342, loss: 24.276003,  ess_rws: 1.306548,  ess_eta: 8.783500,  ess_z: 2.185112,  inckl_eta: 0.074755,  inckl_z: 1.123300
+6454s, 0.079005, loss: 24.159829,  ess_rws: 1.288640,  ess_eta: 9.126569,  ess_z: 2.193802,  inckl_eta: 0.046803,  inckl_z: 1.074388
+6760s, 0.081125, loss: 24.119864,  ess_rws: 1.282754,  ess_eta: 9.360628,  ess_z: 2.190059,  inckl_eta: 0.099208,  inckl_z: 1.036955
+7067s, 0.043584, loss: 23.813961,  ess_rws: 1.262850,  ess_eta: 9.525430,  ess_z: 2.202312,  inckl_eta: 0.020899,  inckl_z: 0.988361
+7376s, 0.023433, loss: 23.654646,  ess_rws: 1.258612,  ess_eta: 9.642811,  ess_z: 2.242996,  inckl_eta: 0.014398,  inckl_z: 0.948182
+7684s, 0.019668, loss: 23.390305,  ess_rws: 1.245632,  ess_eta: 9.728361,  ess_z: 2.273950,  inckl_eta: 0.009212,  inckl_z: 0.916298
+7992s, 0.019678, loss: 23.216976,  ess_rws: 1.230801,  ess_eta: 9.791163,  ess_z: 2.301795,  inckl_eta: 0.006322,  inckl_z: 0.887641
+8298s, 0.024633, loss: 22.961419,  ess_rws: 1.225902,  ess_eta: 9.833930,  ess_z: 2.360363,  inckl_eta: 0.006954,  inckl_z: 0.856075
+8605s, 0.016074, loss: 22.765224,  ess_rws: 1.220138,  ess_eta: 9.869022,  ess_z: 2.363430,  inckl_eta: 0.004970,  inckl_z: 0.826720
+8912s, 0.025849, loss: 22.516706,  ess_rws: 1.210254,  ess_eta: 9.891632,  ess_z: 2.414714,  inckl_eta: 0.003274,  inckl_z: 0.805799
+9221s, 0.013749, loss: 22.267910,  ess_rws: 1.205623,  ess_eta: 9.911803,  ess_z: 2.446984,  inckl_eta: 0.002837,  inckl_z: 0.773582
+9528s, 0.036134, loss: 21.984955,  ess_rws: 1.199551,  ess_eta: 9.923153,  ess_z: 2.510727,  inckl_eta: 0.002532,  inckl_z: 0.745141
+9835s, 0.032073, loss: 21.843550,  ess_rws: 1.191035,  ess_eta: 9.932334,  ess_z: 2.542996,  inckl_eta: 0.002190,  inckl_z: 0.726832
+10143s, 0.025291, loss: 21.543181,  ess_rws: 1.181252,  ess_eta: 9.940183,  ess_z: 2.583438,  inckl_eta: 0.001989,  inckl_z: 0.699458
+10451s, 0.070693, loss: 21.361434,  ess_rws: 1.175735,  ess_eta: 9.947802,  ess_z: 2.631200,  inckl_eta: 0.002068,  inckl_z: 0.677042
+10759s, 0.015282, loss: 21.118755,  ess_rws: 1.176123,  ess_eta: 9.954676,  ess_z: 2.693217,  inckl_eta: 0.001899,  inckl_z: 0.654803
+11067s, 0.010952, loss: 21.003322,  ess_rws: 1.179433,  ess_eta: 9.958631,  ess_z: 2.704580,  inckl_eta: 0.002071,  inckl_z: 0.639000
+11374s, 0.024386, loss: 20.747572,  ess_rws: 1.168316,  ess_eta: 9.961646,  ess_z: 2.788581,  inckl_eta: 0.001637,  inckl_z: 0.616038
+11683s, 0.017535, loss: 20.593957,  ess_rws: 1.163981,  ess_eta: 9.963853,  ess_z: 2.802358,  inckl_eta: 0.001870,  inckl_z: 0.596999
+11990s, 0.030237, loss: 20.380552,  ess_rws: 1.159991,  ess_eta: 9.966279,  ess_z: 2.859050,  inckl_eta: 0.002209,  inckl_z: 0.583585
+12297s, 0.005872, loss: 20.215431,  ess_rws: 1.162930,  ess_eta: 9.966889,  ess_z: 2.915889,  inckl_eta: 0.001838,  inckl_z: 0.566685
+12605s, 0.039287, loss: 20.005226,  ess_rws: 1.155467,  ess_eta: 9.967844,  ess_z: 2.988825,  inckl_eta: 0.001798,  inckl_z: 0.546150
+12914s, 0.034664, loss: 19.826077,  ess_rws: 1.152530,  ess_eta: 9.967460,  ess_z: 3.014181,  inckl_eta: 0.001942,  inckl_z: 0.534759
+13221s, 0.008261, loss: 19.734050,  ess_rws: 1.150907,  ess_eta: 9.968184,  ess_z: 3.041499,  inckl_eta: 0.002007,  inckl_z: 0.523858
+13530s, 0.010397, loss: 19.628768,  ess_rws: 1.148354,  ess_eta: 9.970170,  ess_z: 3.095288,  inckl_eta: 0.001952,  inckl_z: 0.512448
+13840s, 0.011864, loss: 19.459927,  ess_rws: 1.144693,  ess_eta: 9.970854,  ess_z: 3.137952,  inckl_eta: 0.002410,  inckl_z: 0.502329
+14149s, 0.036905, loss: 19.394356,  ess_rws: 1.147640,  ess_eta: 9.973240,  ess_z: 3.160851,  inckl_eta: 0.002144,  inckl_z: 0.498708
+14457s, 0.002271, loss: 19.291441,  ess_rws: 1.146640,  ess_eta: 9.974077,  ess_z: 3.178062,  inckl_eta: 0.002042,  inckl_z: 0.489524
+14765s, 0.001824, loss: 19.113911,  ess_rws: 1.136974,  ess_eta: 9.972978,  ess_z: 3.245931,  inckl_eta: 0.002596,  inckl_z: 0.473657
+15073s, 0.015946, loss: 19.227171,  ess_rws: 1.143224,  ess_eta: 9.975311,  ess_z: 3.258649,  inckl_eta: 0.002837,  inckl_z: 0.468303
+15382s, 0.005736, loss: 19.067092,  ess_rws: 1.144305,  ess_eta: 9.974681,  ess_z: 3.293368,  inckl_eta: 0.002408,  inckl_z: 0.459345
+15689s, 0.005076, loss: 19.099798,  ess_rws: 1.140334,  ess_eta: 9.973877,  ess_z: 3.322560,  inckl_eta: 0.002354,  inckl_z: 0.453377
+15998s, 0.002478, loss: 19.025714,  ess_rws: 1.138016,  ess_eta: 9.974606,  ess_z: 3.329042,  inckl_eta: 0.002854,  inckl_z: 0.448663
+16307s, 0.003489, loss: 18.903666,  ess_rws: 1.141190,  ess_eta: 9.975131,  ess_z: 3.379419,  inckl_eta: 0.002490,  inckl_z: 0.436511
+16615s, 0.011845, loss: 18.738482,  ess_rws: 1.131114,  ess_eta: 9.974584,  ess_z: 3.410540,  inckl_eta: 0.002901,  inckl_z: 0.432558
+16922s, 0.008053, loss: 18.773369,  ess_rws: 1.133082,  ess_eta: 9.974208,  ess_z: 3.420263,  inckl_eta: 0.002852,  inckl_z: 0.428176
+17229s, 0.009748, loss: 18.710717,  ess_rws: 1.131212,  ess_eta: 9.976034,  ess_z: 3.440521,  inckl_eta: 0.002979,  inckl_z: 0.423564
+17539s, 0.012503, loss: 18.595303,  ess_rws: 1.134646,  ess_eta: 9.976235,  ess_z: 3.460771,  inckl_eta: 0.002878,  inckl_z: 0.414213
+17848s, 0.006816, loss: 18.568858,  ess_rws: 1.136328,  ess_eta: 9.974666,  ess_z: 3.486356,  inckl_eta: 0.002931,  inckl_z: 0.405017
+18156s, 0.003878, loss: 18.633364,  ess_rws: 1.129740,  ess_eta: 9.975586,  ess_z: 3.500113,  inckl_eta: 0.004492,  inckl_z: 0.400138
+18463s, 0.003194, loss: 18.532507,  ess_rws: 1.134451,  ess_eta: 9.976034,  ess_z: 3.520278,  inckl_eta: 0.007412,  inckl_z: 0.396935
+18771s, 0.002468, loss: 18.571724,  ess_rws: 1.133352,  ess_eta: 9.975856,  ess_z: 3.545403,  inckl_eta: 0.002858,  inckl_z: 0.392639
+19080s, 0.004459, loss: 18.544176,  ess_rws: 1.134203,  ess_eta: 9.976891,  ess_z: 3.560676,  inckl_eta: 0.002864,  inckl_z: 0.387709
+19388s, 0.001443, loss: 18.441038,  ess_rws: 1.136128,  ess_eta: 9.976571,  ess_z: 3.594438,  inckl_eta: 0.003347,  inckl_z: 0.384923
+19696s, 0.002089, loss: 18.440820,  ess_rws: 1.131040,  ess_eta: 9.976048,  ess_z: 3.589837,  inckl_eta: 0.003118,  inckl_z: 0.383659
+20003s, 0.002983, loss: 18.441629,  ess_rws: 1.136569,  ess_eta: 9.974516,  ess_z: 3.617106,  inckl_eta: 0.003139,  inckl_z: 0.376673
+20310s, 0.001783, loss: 18.396441,  ess_rws: 1.133694,  ess_eta: 9.976161,  ess_z: 3.622206,  inckl_eta: 0.003257,  inckl_z: 0.371013
+20617s, 0.002368, loss: 18.374978,  ess_rws: 1.134226,  ess_eta: 9.977940,  ess_z: 3.650088,  inckl_eta: 0.002981,  inckl_z: 0.371509
+20925s, 0.002296, loss: 18.373427,  ess_rws: 1.132326,  ess_eta: 9.974957,  ess_z: 3.659855,  inckl_eta: 0.003251,  inckl_z: 0.363220
+21234s, 0.002416, loss: 18.328389,  ess_rws: 1.132201,  ess_eta: 9.977915,  ess_z: 3.678548,  inckl_eta: 0.003509,  inckl_z: 0.361316
+21543s, 0.015589, loss: 18.302595,  ess_rws: 1.133994,  ess_eta: 9.974870,  ess_z: 3.708253,  inckl_eta: 0.003577,  inckl_z: 0.356848
+21852s, 0.002764, loss: 18.202790,  ess_rws: 1.129367,  ess_eta: 9.976812,  ess_z: 3.713370,  inckl_eta: 0.003505,  inckl_z: 0.352427
+22159s, 0.000757, loss: 18.272044,  ess_rws: 1.131674,  ess_eta: 9.977544,  ess_z: 3.730287,  inckl_eta: 0.003702,  inckl_z: 0.351880
+22466s, 0.008096, loss: 18.185261,  ess_rws: 1.127474,  ess_eta: 9.976347,  ess_z: 3.770366,  inckl_eta: 0.007480,  inckl_z: 0.343085
+22772s, 0.003368, loss: 18.211493,  ess_rws: 1.129131,  ess_eta: 9.978215,  ess_z: 3.763186,  inckl_eta: 0.003684,  inckl_z: 0.344199
+23080s, 0.000989, loss: 18.096355,  ess_rws: 1.127380,  ess_eta: 9.975141,  ess_z: 3.808911,  inckl_eta: 0.003662,  inckl_z: 0.336142
+23388s, 0.001447, loss: 18.150303,  ess_rws: 1.130853,  ess_eta: 9.977148,  ess_z: 3.819514,  inckl_eta: 0.038969,  inckl_z: 0.333641
+23696s, 0.004825, loss: 18.265197,  ess_rws: 1.129793,  ess_eta: 9.979635,  ess_z: 3.804696,  inckl_eta: 0.003178,  inckl_z: 0.337823
+24004s, 0.003982, loss: 18.077897,  ess_rws: 1.130294,  ess_eta: 9.976019,  ess_z: 3.867484,  inckl_eta: 0.003889,  inckl_z: 0.326237
+24311s, 0.004917, loss: 18.211742,  ess_rws: 1.133556,  ess_eta: 9.977578,  ess_z: 3.858479,  inckl_eta: 0.003631,  inckl_z: 0.325254
+24619s, 0.002979, loss: 18.041677,  ess_rws: 1.125879,  ess_eta: 9.974825,  ess_z: 3.911722,  inckl_eta: 0.003968,  inckl_z: 0.316726
+24925s, 0.003515, loss: 18.058877,  ess_rws: 1.130416,  ess_eta: 9.976014,  ess_z: 3.903118,  inckl_eta: 0.003987,  inckl_z: 0.319330
+25234s, 0.001341, loss: 18.036744,  ess_rws: 1.131415,  ess_eta: 9.977784,  ess_z: 3.925353,  inckl_eta: 0.004030,  inckl_z: 0.314614
+25541s, 0.002161, loss: 17.972538,  ess_rws: 1.127648,  ess_eta: 9.975811,  ess_z: 3.969319,  inckl_eta: 0.003863,  inckl_z: 0.312593
+25851s, 0.002604, loss: 18.079437,  ess_rws: 1.126015,  ess_eta: 9.976656,  ess_z: 3.932544,  inckl_eta: 0.120722,  inckl_z: 0.312605
+26159s, 0.001477, loss: 18.041331,  ess_rws: 1.123407,  ess_eta: 9.977205,  ess_z: 3.915744,  inckl_eta: 0.004027,  inckl_z: 0.312762
+26468s, 0.001616, loss: 17.968396,  ess_rws: 1.129018,  ess_eta: 9.973543,  ess_z: 3.993033,  inckl_eta: 0.004845,  inckl_z: 0.309670
+26778s, 0.002919, loss: 18.044620,  ess_rws: 1.128340,  ess_eta: 9.977880,  ess_z: 3.951480,  inckl_eta: 0.004156,  inckl_z: 0.306880
+27089s, 0.001584, loss: 17.977198,  ess_rws: 1.125418,  ess_eta: 9.979689,  ess_z: 3.974186,  inckl_eta: 0.004034,  inckl_z: 0.304619
+27400s, 0.002007, loss: 18.002301,  ess_rws: 1.125856,  ess_eta: 9.978519,  ess_z: 3.996904,  inckl_eta: 0.004015,  inckl_z: 0.301644
+27710s, 0.001421, loss: 18.053248,  ess_rws: 1.122689,  ess_eta: 9.977410,  ess_z: 4.032228,  inckl_eta: 0.003945,  inckl_z: 0.302127
+28021s, 0.000708, loss: 17.992941,  ess_rws: 1.123209,  ess_eta: 9.976986,  ess_z: 4.047899,  inckl_eta: 0.004201,  inckl_z: 0.297129
+28332s, 0.004761, loss: 17.966735,  ess_rws: 1.120680,  ess_eta: 9.977521,  ess_z: 4.030223,  inckl_eta: 0.004275,  inckl_z: 0.295916
+28642s, 0.000719, loss: 18.014198,  ess_rws: 1.127616,  ess_eta: 9.978446,  ess_z: 4.057656,  inckl_eta: 0.004306,  inckl_z: 0.297101
+28951s, 0.000478, loss: 17.981878,  ess_rws: 1.125060,  ess_eta: 9.980067,  ess_z: 4.043284,  inckl_eta: 0.004895,  inckl_z: 0.291215
+21425s, 0.001188, loss: 12.952293,  ess_rws: 1.171943,  ess_eta: 4.988894,  ess_z: 3.545968,  inckl_eta: 0.000525,  inckl_z: 0.163959
+21753s, 0.000900, loss: 12.997833,  ess_rws: 1.172602,  ess_eta: 4.988970,  ess_z: 3.546639,  inckl_eta: 0.000711,  inckl_z: 0.160427
+22084s, 0.001802, loss: 12.859072,  ess_rws: 1.167386,  ess_eta: 4.989146,  ess_z: 3.568138,  inckl_eta: 0.000591,  inckl_z: 0.157681
+22413s, 0.000654, loss: 12.866709,  ess_rws: 1.164804,  ess_eta: 4.986848,  ess_z: 3.584498,  inckl_eta: 0.000710,  inckl_z: 0.155007
+22744s, 0.000545, loss: 12.913943,  ess_rws: 1.168984,  ess_eta: 4.988284,  ess_z: 3.586937,  inckl_eta: 0.000736,  inckl_z: 0.152848
+23075s, 0.000469, loss: 12.819278,  ess_rws: 1.164898,  ess_eta: 4.989625,  ess_z: 3.604131,  inckl_eta: 0.000603,  inckl_z: 0.151484
+8245s, 0.006806, loss: 14.307562,  ess_rws: 1.289914,  ess_eta: 4.937757,  ess_z: 2.603864,  inckl_eta: 0.030292,  inckl_z: 0.468504
+8579s, 0.004895, loss: 14.340413,  ess_rws: 1.298928,  ess_eta: 4.950043,  ess_z: 2.626599,  inckl_eta: 0.003959,  inckl_z: 0.444362
+8908s, 0.006893, loss: 14.286587,  ess_rws: 1.294857,  ess_eta: 4.959189,  ess_z: 2.661717,  inckl_eta: 0.003129,  inckl_z: 0.427811
+9237s, 0.002745, loss: 14.296427,  ess_rws: 1.294214,  ess_eta: 4.966374,  ess_z: 2.683895,  inckl_eta: 0.002287,  inckl_z: 0.403681
+9567s, 0.006274, loss: 14.271341,  ess_rws: 1.286268,  ess_eta: 4.971059,  ess_z: 2.715594,  inckl_eta: 0.006844,  inckl_z: 0.392048
+9897s, 0.002446, loss: 14.229321,  ess_rws: 1.293027,  ess_eta: 4.974564,  ess_z: 2.735455,  inckl_eta: 0.002155,  inckl_z: 0.376654
+10226s, 0.001646, loss: 14.146261,  ess_rws: 1.294505,  ess_eta: 4.976966,  ess_z: 2.787574,  inckl_eta: 0.001406,  inckl_z: 0.355068
+10558s, 0.001430, loss: 14.096076,  ess_rws: 1.284242,  ess_eta: 4.979109,  ess_z: 2.814870,  inckl_eta: 0.001354,  inckl_z: 0.340130
+10891s, 0.001517, loss: 14.089699,  ess_rws: 1.283850,  ess_eta: 4.981096,  ess_z: 2.862320,  inckl_eta: 0.001086,  inckl_z: 0.331725
+11219s, 0.002279, loss: 14.023324,  ess_rws: 1.281855,  ess_eta: 4.981482,  ess_z: 2.876330,  inckl_eta: 0.001944,  inckl_z: 0.313299
+11548s, 0.001116, loss: 13.941765,  ess_rws: 1.276061,  ess_eta: 4.983895,  ess_z: 2.908994,  inckl_eta: 0.000845,  inckl_z: 0.305401
+11879s, 0.002527, loss: 13.961342,  ess_rws: 1.265722,  ess_eta: 4.983478,  ess_z: 2.952722,  inckl_eta: 0.000924,  inckl_z: 0.292223
+12206s, 0.001198, loss: 13.812715,  ess_rws: 1.266455,  ess_eta: 4.984927,  ess_z: 2.999861,  inckl_eta: 0.000845,  inckl_z: 0.284205
+12538s, 0.002902, loss: 13.805791,  ess_rws: 1.260284,  ess_eta: 4.985637,  ess_z: 3.019638,  inckl_eta: 0.000913,  inckl_z: 0.275450
+12869s, 0.000865, loss: 13.781281,  ess_rws: 1.259672,  ess_eta: 4.986033,  ess_z: 3.051699,  inckl_eta: 0.000726,  inckl_z: 0.267761
+13202s, 0.001035, loss: 13.759873,  ess_rws: 1.247245,  ess_eta: 4.986164,  ess_z: 3.072990,  inckl_eta: 0.000793,  inckl_z: 0.255751
+13530s, 0.000778, loss: 13.690536,  ess_rws: 1.242832,  ess_eta: 4.985766,  ess_z: 3.102463,  inckl_eta: 0.000697,  inckl_z: 0.250577
+13862s, 0.001920, loss: 13.627077,  ess_rws: 1.229989,  ess_eta: 4.985876,  ess_z: 3.144561,  inckl_eta: 0.000777,  inckl_z: 0.243952
+14193s, 0.001075, loss: 13.575578,  ess_rws: 1.232655,  ess_eta: 4.986278,  ess_z: 3.171800,  inckl_eta: 0.000769,  inckl_z: 0.235901
+14521s, 0.001025, loss: 13.543488,  ess_rws: 1.222400,  ess_eta: 4.987839,  ess_z: 3.185230,  inckl_eta: 0.000651,  inckl_z: 0.234432
+14848s, 0.001003, loss: 13.495526,  ess_rws: 1.219902,  ess_eta: 4.987229,  ess_z: 3.217887,  inckl_eta: 0.000708,  inckl_z: 0.228675
+15179s, 0.004491, loss: 13.418917,  ess_rws: 1.211775,  ess_eta: 4.987022,  ess_z: 3.244883,  inckl_eta: 0.000750,  inckl_z: 0.222582
+15511s, 0.016126, loss: 13.394461,  ess_rws: 1.211680,  ess_eta: 4.988536,  ess_z: 3.263109,  inckl_eta: 0.000597,  inckl_z: 0.219272
+15841s, 0.001201, loss: 13.346264,  ess_rws: 1.204251,  ess_eta: 4.987754,  ess_z: 3.297433,  inckl_eta: 0.000592,  inckl_z: 0.213482
+16166s, 0.000749, loss: 13.308729,  ess_rws: 1.201919,  ess_eta: 4.987971,  ess_z: 3.304605,  inckl_eta: 0.000625,  inckl_z: 0.205539
+16496s, 0.001696, loss: 13.244413,  ess_rws: 1.197581,  ess_eta: 4.987527,  ess_z: 3.321967,  inckl_eta: 0.000661,  inckl_z: 0.208703
+16821s, 0.000723, loss: 13.250400,  ess_rws: 1.193935,  ess_eta: 4.986898,  ess_z: 3.337258,  inckl_eta: 0.000672,  inckl_z: 0.205970
+17147s, 0.000510, loss: 13.255339,  ess_rws: 1.193013,  ess_eta: 4.989382,  ess_z: 3.358097,  inckl_eta: 0.000541,  inckl_z: 0.197937
+17475s, 0.000931, loss: 13.219172,  ess_rws: 1.184698,  ess_eta: 4.988383,  ess_z: 3.380210,  inckl_eta: 0.000716,  inckl_z: 0.200683
+17804s, 0.000581, loss: 13.091380,  ess_rws: 1.186258,  ess_eta: 4.988322,  ess_z: 3.403572,  inckl_eta: 0.000654,  inckl_z: 0.190322
+18136s, 0.000563, loss: 13.168012,  ess_rws: 1.182294,  ess_eta: 4.988292,  ess_z: 3.390490,  inckl_eta: 0.000617,  inckl_z: 0.190034
+18466s, 0.000573, loss: 13.082117,  ess_rws: 1.179940,  ess_eta: 4.987987,  ess_z: 3.436051,  inckl_eta: 0.001103,  inckl_z: 0.185537
+18793s, 0.000553, loss: 13.012873,  ess_rws: 1.178049,  ess_eta: 4.988185,  ess_z: 3.450272,  inckl_eta: 0.000757,  inckl_z: 0.183028
+19122s, 0.000496, loss: 13.046218,  ess_rws: 1.176461,  ess_eta: 4.989288,  ess_z: 3.448665,  inckl_eta: 0.000593,  inckl_z: 0.178238
+19451s, 0.003571, loss: 13.062194,  ess_rws: 1.170204,  ess_eta: 4.986704,  ess_z: 3.471413,  inckl_eta: 0.000718,  inckl_z: 0.178413
+19784s, 0.008273, loss: 12.979264,  ess_rws: 1.171284,  ess_eta: 4.988141,  ess_z: 3.493260,  inckl_eta: 0.000765,  inckl_z: 0.173442
+(743s) inckl_eta: 0.001020,  inckl_z: 0.592718,  loss: 10.919313,  ess_rws: 1.542017,  ess_eta: 4.942845,  ess_z: 4.954700,  density: -271.826052
+(769s) inckl_eta: 0.001040,  inckl_z: 0.602258,  loss: 10.920703,  ess_rws: 1.545949,  ess_eta: 4.943390,  ess_z: 4.960161,  density: -271.732188
+(768s) inckl_eta: 0.001040,  inckl_z: 0.611888,  loss: 10.972121,  ess_rws: 1.554681,  ess_eta: 4.943147,  ess_z: 4.963695,  density: -271.812782
+(785s) inckl_eta: 0.000964,  inckl_z: 0.624371,  loss: 10.936211,  ess_rws: 1.559049,  ess_eta: 4.943770,  ess_z: 4.966912,  density: -271.691508
+(772s) inckl_eta: 0.000914,  inckl_z: 0.636910,  loss: 10.970306,  ess_rws: 1.560948,  ess_eta: 4.943374,  ess_z: 4.969114,  density: -271.684760
+(762s) inckl_eta: 0.000979,  inckl_z: 0.642635,  loss: 10.976005,  ess_rws: 1.561670,  ess_eta: 4.943723,  ess_z: 4.970420,  density: -271.623730
+(734s) inckl_eta: 0.001002,  inckl_z: 0.637589,  loss: 10.965171,  ess_rws: 1.562673,  ess_eta: 4.943861,  ess_z: 4.971607,  density: -271.635524
+(945s) inckl_eta: 0.000980,  inckl_z: 0.641408,  loss: 10.986110,  ess_rws: 1.563743,  ess_eta: 4.943891,  ess_z: 4.972684,  density: -271.639840
+(1039s) inckl_eta: 0.000949,  inckl_z: 0.639102,  loss: 10.975851,  ess_rws: 1.560808,  ess_eta: 4.943870,  ess_z: 4.973482,  density: -271.538450
+(1034s) inckl_eta: 0.000943,  inckl_z: 0.649415,  loss: 10.936114,  ess_rws: 1.557916,  ess_eta: 4.944072,  ess_z: 4.974731,  density: -271.485761
+(1035s) inckl_eta: 0.001073,  inckl_z: 0.649960,  loss: 10.984764,  ess_rws: 1.575456,  ess_eta: 4.942916,  ess_z: 4.975735,  density: -271.508593
+(1040s) inckl_eta: 0.000885,  inckl_z: 0.662867,  loss: 11.007230,  ess_rws: 1.573021,  ess_eta: 4.943946,  ess_z: 4.976427,  density: -271.576235
+(1035s) inckl_eta: 0.001009,  inckl_z: 0.664977,  loss: 10.956464,  ess_rws: 1.566700,  ess_eta: 4.942905,  ess_z: 4.977060,  density: -271.482201
+(1029s) inckl_eta: 0.000993,  inckl_z: 0.670295,  loss: 10.966049,  ess_rws: 1.575507,  ess_eta: 4.943532,  ess_z: 4.977459,  density: -271.514126
+(1031s) inckl_eta: 0.000928,  inckl_z: 0.676366,  loss: 10.970099,  ess_rws: 1.563889,  ess_eta: 4.943096,  ess_z: 4.978558,  density: -271.506022
+(1029s) inckl_eta: 0.000991,  inckl_z: 0.680122,  loss: 10.947826,  ess_rws: 1.573740,  ess_eta: 4.943340,  ess_z: 4.978895,  density: -271.470532
+(1029s) inckl_eta: 0.000913,  inckl_z: 0.686501,  loss: 10.954178,  ess_rws: 1.573860,  ess_eta: 4.943835,  ess_z: 4.980144,  density: -271.434839
+(1029s) inckl_eta: 0.000926,  inckl_z: 0.689134,  loss: 10.963272,  ess_rws: 1.575566,  ess_eta: 4.944742,  ess_z: 4.980501,  density: -271.478056
+(1027s) inckl_eta: 0.000883,  inckl_z: 0.697990,  loss: 11.006798,  ess_rws: 1.566868,  ess_eta: 4.943257,  ess_z: 4.981234,  density: -271.549182
+(1024s) inckl_eta: 0.000973,  inckl_z: 0.699534,  loss: 10.930807,  ess_rws: 1.576365,  ess_eta: 4.944067,  ess_z: 4.981737,  density: -271.439841
+(1028s) inckl_eta: 0.000905,  inckl_z: 0.717800,  loss: 10.957239,  ess_rws: 1.567361,  ess_eta: 4.944020,  ess_z: 4.982191,  density: -271.422111
+(1027s) inckl_eta: 0.000911,  inckl_z: 0.720383,  loss: 10.984442,  ess_rws: 1.582037,  ess_eta: 4.943600,  ess_z: 4.982546,  density: -271.464982
+(526s) inckl_eta: 0.006846,  inckl_z: 0.527192,  loss: 12.254668,  ess_rws: 1.857236,  ess_eta: 9.751112,  ess_z: 9.794768,  density: -274.914464
+(524s) inckl_eta: 0.002308,  inckl_z: 0.539667,  loss: 12.230754,  ess_rws: 1.862955,  ess_eta: 9.834501,  ess_z: 9.806657,  density: -274.903418
+(525s) inckl_eta: 0.001327,  inckl_z: 0.552969,  loss: 12.240171,  ess_rws: 1.853951,  ess_eta: 9.856464,  ess_z: 9.821677,  density: -274.919298
+(526s) inckl_eta: 0.001151,  inckl_z: 0.560597,  loss: 12.256216,  ess_rws: 1.862103,  ess_eta: 9.866161,  ess_z: 9.831824,  density: -274.905099
+(524s) inckl_eta: 0.001105,  inckl_z: 0.568753,  loss: 12.177104,  ess_rws: 1.871151,  ess_eta: 9.867387,  ess_z: 9.839125,  density: -274.685040
+(526s) inckl_eta: 0.001058,  inckl_z: 0.582938,  loss: 12.195717,  ess_rws: 1.864472,  ess_eta: 9.869233,  ess_z: 9.848914,  density: -274.825310
+(527s) inckl_eta: 0.001032,  inckl_z: 0.584982,  loss: 12.217014,  ess_rws: 1.880539,  ess_eta: 9.869295,  ess_z: 9.853557,  density: -274.746528
+(525s) inckl_eta: 0.000940,  inckl_z: 0.597448,  loss: 12.150699,  ess_rws: 1.883634,  ess_eta: 9.871228,  ess_z: 9.862153,  density: -274.631489
+(524s) inckl_eta: 0.000947,  inckl_z: 0.609554,  loss: 12.178772,  ess_rws: 1.873757,  ess_eta: 9.871263,  ess_z: 9.866862,  density: -274.672290
+(523s) inckl_eta: 0.000942,  inckl_z: 0.614981,  loss: 12.218946,  ess_rws: 1.872476,  ess_eta: 9.869841,  ess_z: 9.871172,  density: -274.713906
+(525s) inckl_eta: 0.000975,  inckl_z: 0.624563,  loss: 12.158767,  ess_rws: 1.876196,  ess_eta: 9.870871,  ess_z: 9.872760,  density: -274.623613
+(525s) inckl_eta: 0.001026,  inckl_z: 0.625607,  loss: 12.200968,  ess_rws: 1.880864,  ess_eta: 9.869420,  ess_z: 9.875256,  density: -274.733080
+(526s) inckl_eta: 0.000942,  inckl_z: 0.636874,  loss: 12.225807,  ess_rws: 1.874177,  ess_eta: 9.871638,  ess_z: 9.879411,  density: -274.770703
+(525s) inckl_eta: 0.001079,  inckl_z: 0.646412,  loss: 12.158498,  ess_rws: 1.891591,  ess_eta: 9.871013,  ess_z: 9.882013,  density: -274.580912
+(525s) inckl_eta: 0.000987,  inckl_z: 0.645151,  loss: 12.171069,  ess_rws: 1.888276,  ess_eta: 9.871360,  ess_z: 9.883651,  density: -274.576829
+(527s) inckl_eta: 0.000998,  inckl_z: 0.655383,  loss: 12.192723,  ess_rws: 1.876736,  ess_eta: 9.870497,  ess_z: 9.884473,  density: -274.634181
+(526s) inckl_eta: 0.000994,  inckl_z: 0.663236,  loss: 12.141971,  ess_rws: 1.875928,  ess_eta: 9.870383,  ess_z: 9.887585,  density: -274.531014
+(524s) inckl_eta: 0.000967,  inckl_z: 0.661472,  loss: 12.161022,  ess_rws: 1.879393,  ess_eta: 9.870695,  ess_z: 9.891604,  density: -274.502455
+(1476s) inckl_eta: 0.000622,  inckl_z: 0.480470,  loss: 14.268475,  ess_rws: 1.270776,  ess_eta: 4.936278,  ess_z: 4.906767,  density: -277.738730
+(1473s) inckl_eta: 0.000497,  inckl_z: 0.498919,  loss: 14.214625,  ess_rws: 1.263587,  ess_eta: 4.937921,  ess_z: 4.914511,  density: -277.514429
+(1484s) inckl_eta: 0.000480,  inckl_z: 0.526450,  loss: 14.108462,  ess_rws: 1.264760,  ess_eta: 4.937846,  ess_z: 4.921376,  density: -277.170504
+(1459s) inckl_eta: 0.000468,  inckl_z: 0.547993,  loss: 14.090921,  ess_rws: 1.255525,  ess_eta: 4.937912,  ess_z: 4.928454,  density: -277.042164
+(1472s) inckl_eta: 0.000457,  inckl_z: 0.560881,  loss: 14.037113,  ess_rws: 1.245159,  ess_eta: 4.938106,  ess_z: 4.934832,  density: -276.687977
+(1464s) inckl_eta: 0.000445,  inckl_z: 0.586216,  loss: 13.892226,  ess_rws: 1.236360,  ess_eta: 4.938438,  ess_z: 4.937523,  density: -276.418610
+(1470s) inckl_eta: 0.000473,  inckl_z: 0.599722,  loss: 13.746403,  ess_rws: 1.220367,  ess_eta: 4.937742,  ess_z: 4.942007,  density: -276.055040
+(1478s) inckl_eta: 0.000443,  inckl_z: 0.603328,  loss: 13.719576,  ess_rws: 1.213271,  ess_eta: 4.938014,  ess_z: 4.944317,  density: -276.038198
+(1473s) inckl_eta: 0.000454,  inckl_z: 0.616960,  loss: 13.634944,  ess_rws: 1.203195,  ess_eta: 4.937949,  ess_z: 4.948826,  density: -275.729726
+(1454s) inckl_eta: 0.000450,  inckl_z: 0.624215,  loss: 13.579098,  ess_rws: 1.199666,  ess_eta: 4.938266,  ess_z: 4.951274,  density: -275.535109
+(1471s) inckl_eta: 0.000432,  inckl_z: 0.633364,  loss: 13.539172,  ess_rws: 1.192246,  ess_eta: 4.938353,  ess_z: 4.952910,  density: -275.488186
+(1457s) inckl_eta: 0.000428,  inckl_z: 0.640050,  loss: 13.491191,  ess_rws: 1.185711,  ess_eta: 4.938758,  ess_z: 4.955130,  density: -275.377450
+(1472s) inckl_eta: 0.000459,  inckl_z: 0.655558,  loss: 13.164082,  ess_rws: 1.173816,  ess_eta: 4.937973,  ess_z: 4.958320,  density: -274.590541
+(1466s) inckl_eta: 0.000469,  inckl_z: 0.675126,  loss: 13.042055,  ess_rws: 1.164386,  ess_eta: 4.937890,  ess_z: 4.961183,  density: -274.204869
+(1475s) inckl_eta: 0.000465,  inckl_z: 0.687958,  loss: 12.861020,  ess_rws: 1.153943,  ess_eta: 4.938477,  ess_z: 4.963820,  density: -273.917171
+(1471s) inckl_eta: 0.000505,  inckl_z: 0.695811,  loss: 12.831085,  ess_rws: 1.146066,  ess_eta: 4.938290,  ess_z: 4.965278,  density: -273.741264
+(1467s) inckl_eta: 0.000464,  inckl_z: 0.698277,  loss: 12.777629,  ess_rws: 1.140331,  ess_eta: 4.938629,  ess_z: 4.966620,  density: -273.668838
+(1465s) inckl_eta: 0.000493,  inckl_z: 0.709825,  loss: 12.712166,  ess_rws: 1.129640,  ess_eta: 4.939098,  ess_z: 4.967369,  density: -273.451535
+(1469s) inckl_eta: 0.000461,  inckl_z: 0.708951,  loss: 12.638717,  ess_rws: 1.128925,  ess_eta: 4.938932,  ess_z: 4.968620,  density: -273.336312
+(1467s) inckl_eta: 0.000482,  inckl_z: 0.719804,  loss: 12.520568,  ess_rws: 1.126798,  ess_eta: 4.938127,  ess_z: 4.969201,  density: -273.156435
+(1473s) inckl_eta: 0.000522,  inckl_z: 0.731481,  loss: 12.465880,  ess_rws: 1.120254,  ess_eta: 4.937986,  ess_z: 4.970514,  density: -273.059790
+(1469s) inckl_eta: 0.000506,  inckl_z: 0.736650,  loss: 12.324795,  ess_rws: 1.110267,  ess_eta: 4.938099,  ess_z: 4.971502,  density: -272.804823
+(1471s) inckl_eta: 0.000549,  inckl_z: 0.749547,  loss: 12.234192,  ess_rws: 1.105927,  ess_eta: 4.937894,  ess_z: 4.972565,  density: -272.771841
+(1472s) inckl_eta: 0.000459,  inckl_z: 0.655558,  loss: 13.164082,  ess_rws: 1.173816,  ess_eta: 4.937973,  ess_z: 4.958320,  density: -274.590541
+(525s) inckl_eta: 0.001079,  inckl_z: 0.646412,  loss: 12.158498,  ess_rws: 1.891591,  ess_eta: 9.871013,  ess_z: 9.882013,  density: -274.580912

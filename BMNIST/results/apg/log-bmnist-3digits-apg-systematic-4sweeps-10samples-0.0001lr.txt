@@ -1,0 +1,1 @@
+(632s) Epoch=0, Group=0loss_phi: 131.994810,  loss_theta: 77433.306641,  ess_rws: 1.000262,  ess_what: 1.010165,  ess_where: 1.001311,  density: -48587.496006

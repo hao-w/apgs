@@ -16,6 +16,6 @@ else:
     model_params = (K, D, NUM_HIDDEN_Z)
 MODEL_NAME = 'baseline-%s' % ARCHITECTURE # options: baseline-mlp | baesline-lstm
 MODEL_VERSION = 'gmm-%s-%dsamples-%.4flr' % (MODEL_NAME, SAMPLE_SIZE, LR)
-MODEL_VERSION = 'gmm-%s-%dsamples-%.4flr' % (MODEL_NAME, SAMPLE_SIZE, LR)
-
+# LOAD_VERSION = 'gmm-%s-%dsamples-%.4flr' % (MODEL_NAME, SAMPLE_SIZE, LR)
+LOAD_VERSION = 'apg-new-systematic-9sweeps-5samples'
 print('inference method:%s, epochs:%s, sample size:%s, batch size:%s, learning rate:%s' % (MODEL_NAME, NUM_EPOCHS, SAMPLE_SIZE, BATCH_SIZE, LR))

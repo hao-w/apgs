@@ -1,0 +1,4 @@
+211, loss: 645.077782,  ess_sis: 1.024350,  inckl_eta: 48.628664,  inckl_z: 0.519462
+423, loss: 627.858299,  ess_sis: 1.080598,  inckl_eta: 44.528330,  inckl_z: 0.316220
+633, loss: 615.360539,  ess_sis: 1.179868,  inckl_eta: 46.333589,  inckl_z: 0.211268
+843, loss: 608.951472,  ess_sis: 1.224092,  inckl_eta: 48.751136,  inckl_z: 0.170161

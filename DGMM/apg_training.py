@@ -42,7 +42,7 @@ def train(optimizer, model, resampler, apg_sweeps, data, K, num_epochs, sample_s
                                   density_required=density_required)
 
             loss_phi = trace['loss_phi'].sum()
-            loss_theta = trace['loss_theta'].sum()
+            loss_theta = trace['loss_theta'][-1] * apg_sweeps
             loss_phi.backward(retain_graph=True)
             loss_theta.backward()
             optimizer.step()

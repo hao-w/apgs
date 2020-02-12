@@ -28,8 +28,8 @@ class Sim_GMM():
 
     def sim_one_gmm(self):
         precision = Gamma(torch.ones((self.K, self.D)) * self.alpha, torch.ones((self.K, self.D)) * self.beta).sample()
+        sigma_of_mean = 1. / (precision * self.nu).sqrt()
         sigma = 1. / torch.sqrt(precision)
-        sigma_of_mean = sigma / self.nu ## nu
         mean = Normal(torch.ones((self.K, self.D)) * self.mu, sigma_of_mean).sample()
         assignment = cat(torch.ones(self.K) * (1. / self.K)).sample((self.N,))
         labels = assignment.nonzero()[:, 1]
@@ -64,4 +64,3 @@ class Sim_GMM():
             ASSIGNMENT[s] = assignment
         np.save(PATH + 'ob', OB)
         np.save(PATH + 'assignment', ASSIGNMENT)
-        

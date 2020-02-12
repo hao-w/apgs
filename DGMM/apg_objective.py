@@ -43,8 +43,18 @@ def apg_objective(model, resampler, apg_sweeps, ob, K, loss_required=True, ess_r
 
     if density_required:
         trace['density'] = []
-
+#         trace['zs'] = []
+#         trace['mus'] = []
+#         trace['elbo'] = []
+#         trace['log_qf'] = []
+#         trace['log_pf'] =[]
+#         trace['log_qb'] = []
+#         trace['log_pb'] =[]
+#         trace['ll_b'] = []
+#         trace['log_prior_b'] =[]
+#         trace['beta'] = []
     S, B, N, D = ob.shape
+
     (enc_rws_mu, enc_apg_local, enc_apg_mu, dec) = model
     log_w, mu, z, beta, trace = rws(enc_rws_mu=enc_rws_mu,
                                     enc_rws_local=enc_apg_local,
@@ -57,15 +67,11 @@ def apg_objective(model, resampler, apg_sweeps, ob, K, loss_required=True, ess_r
                                     mode_required=mode_required,
                                     density_required=density_required)
     ancestral_index = resampler.sample_ancestral_index(log_weights=log_w)
-    # ancestral_index_expand = ancestral_index.unsqueeze(-1).unsqueeze(-1).repeat(1, 1, K, D)
-    # mu_resampled = torch.gather(mu, 0, ancestral_index.unsqueeze(-1).unsqueeze(-1).repeat(1, 1, K, D))
-    # if ancestral_index.type()
     mu = resampler.resample_4dims(var=mu, ancestral_index=ancestral_index)
-    z_resampled = resampler.resample_4dims(var=z, ancestral_index=ancestral_index)
+    z = resampler.resample_4dims(var=z, ancestral_index=ancestral_index)
     beta = resampler.resample_4dims(var=beta, ancestral_index=ancestral_index)
-    # print(ancestral_index_expand.type())
     for m in range(apg_sweeps):
-        log_w, mu, trace = apg_mu(enc_apg_mu=enc_apg_mu,
+        log_w_mu, mu, trace = apg_mu(enc_apg_mu=enc_apg_mu,
                                 dec=dec,
                                 ob=ob,
                                 z=z,
@@ -77,12 +83,12 @@ def apg_objective(model, resampler, apg_sweeps, ob, K, loss_required=True, ess_r
                                 ess_required=ess_required,
                                 mode_required=mode_required,
                                 density_required=density_required)
-        ancestral_index = resampler.sample_ancestral_index(log_weights=log_w)
+        ancestral_index = resampler.sample_ancestral_index(log_weights=log_w_mu)
         mu = resampler.resample_4dims(var=mu, ancestral_index=ancestral_index)
         z = resampler.resample_4dims(var=z, ancestral_index=ancestral_index)
         beta = resampler.resample_4dims(var=beta, ancestral_index=ancestral_index)
 
-        log_w, z, beta, trace = apg_local(enc_apg_local=enc_apg_local,
+        log_w_z, z, beta, trace = apg_local(enc_apg_local=enc_apg_local,
                                           dec=dec,
                                           ob=ob,
                                           mu=mu,
@@ -94,17 +100,20 @@ def apg_objective(model, resampler, apg_sweeps, ob, K, loss_required=True, ess_r
                                           ess_required=ess_required,
                                           mode_required=mode_required,
                                           density_required=density_required)
-        ancestral_index = resampler.sample_ancestral_index(log_weights=log_w)
+
+        ancestral_index = resampler.sample_ancestral_index(log_weights=log_w_z)
         mu = resampler.resample_4dims(var=mu, ancestral_index=ancestral_index)
         z = resampler.resample_4dims(var=z, ancestral_index=ancestral_index)
         beta = resampler.resample_4dims(var=beta, ancestral_index=ancestral_index)
+
 
     if loss_required:
         trace['loss_phi'] = torch.cat(trace['loss_phi'], 0) # (1+apg_sweeps) * 1
         trace['loss_theta'] = torch.cat(trace['loss_theta'], 0) # (1+apg_sweeps) * 1
     if ess_required:
-        trace['ess_mu'] = torch.cat(trace['ess_mu'], 0) # apg_sweeps * B
-        trace['ess_local'] = torch.cat(trace['ess_local'], 0) # apg_sweeps * B
+        if apg_sweeps != 0:
+            trace['ess_mu'] = torch.cat(trace['ess_mu'], 0) # apg_sweeps * B
+            trace['ess_local'] = torch.cat(trace['ess_local'], 0) # apg_sweeps * B
     if mode_required:
         trace['E_mu'] = torch.cat(trace['E_mu'], 0)  # (1 + apg_sweeps) * B * K * D
         trace['E_z'] = torch.cat(trace['E_z'], 0) # (1 + apg_sweeps) * B * N * K
@@ -139,6 +148,7 @@ def rws(enc_rws_mu, enc_rws_local, dec, ob, K, trace, loss_required, ess_require
         trace['ess_rws'].append(ess)
     if mode_required:
         E_mu =  q_mu['means'].dist.loc.mean(0).detach()
+        E_mu_sigma = q_mu['means'].dist.scale.mean()
         E_z = q_local['states'].dist.probs.mean(0).detach()
         E_recon = p['likelihood'].dist.loc.mean(0).detach()
         trace['E_mu'].append(E_mu.unsqueeze(0))
@@ -168,7 +178,8 @@ def apg_mu(enc_apg_mu, dec, ob, z, beta, mu_old, K, trace, loss_required, ess_re
     p_b = dec(ob=ob, mu=mu_old, z=z, beta=beta)
     ll_b = p_b['likelihood'].log_prob.sum(-1).sum(-1).detach()
     # ll_b_collapsed = torch.cat([((z.argmax(-1)==k).float() * ll_b).sum(-1).unsqueeze(-1) for k in range(K)], -1) # S * B * K
-    log_p_b = p_b['means'].log_prob.sum(-1).sum(-1) + ll_b
+    log_prior_b = p_b['means'].log_prob.sum(-1).sum(-1)
+    log_p_b =  log_prior_b + ll_b
     log_w_b =  log_p_b - log_q_b
     log_w = (log_w_f - log_w_b).detach()
     w = F.softmax(log_w, 0).detach()
@@ -186,6 +197,12 @@ def apg_mu(enc_apg_mu, dec, ob, z, beta, mu_old, K, trace, loss_required, ess_re
         trace['E_mu'].append(E_mu.unsqueeze(0))
     if density_required:
         trace['density'].append(log_priors_f.mean(0).unsqueeze(0)) # 1-by-B-length vector
+#         trace['log_qf'].append(log_q_f)
+#         trace['log_pf'].append(log_p_f)
+#         trace['log_qb'].append(log_q_b)
+#         trace['log_pb'].append(log_p_b)
+#         trace['ll_b'].append(ll_b)
+#         trace['log_prior_b'].append(log_prior_b)
         return log_w, mu, trace
 
 

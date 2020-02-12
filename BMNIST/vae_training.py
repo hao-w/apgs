@@ -6,6 +6,7 @@ import numpy as np
 from random import shuffle
 from vae_modeling import save_model
 from vae_objective import vae_objective
+from snr import *
 
 def train(optimizer, model, AT, data_paths, mnist_mean_path, K, num_epochs, sample_size, batch_size, CUDA, DEVICE, MODEL_VERSION):
     """
@@ -21,6 +22,9 @@ def train(optimizer, model, AT, data_paths, mnist_mean_path, K, num_epochs, samp
     print('Start to train the VAE samplers with %d groups of datasets...' % len(data_paths))
     mnist_mean = torch.from_numpy(np.load(mnist_mean_path)).float().repeat(sample_size, batch_size, K, 1, 1)
 
+    iteration = 0
+    fst_mmt = None
+    sec_mmt = None
     for epoch in range(num_epochs):
         shuffle(data_paths)
         for group, data_path in enumerate(data_paths):
@@ -31,6 +35,7 @@ def train(optimizer, model, AT, data_paths, mnist_mean_path, K, num_epochs, samp
             num_batches = int(num_seqs / batch_size)
             seq_indices = torch.randperm(num_seqs)
             for b in range(num_batches):
+                iteration += 1
                 optimizer.zero_grad()
                 batch_index = seq_indices[b*batch_size : (b+1)*batch_size]
                 frames = data[batch_index].repeat(sample_size, 1, 1, 1, 1)
@@ -50,6 +55,13 @@ def train(optimizer, model, AT, data_paths, mnist_mean_path, K, num_epochs, samp
 
                 loss = trace['loss'].sum()
                 loss.backward()
+                ## compute the EMA of SNR and variance of gradient estimations
+                fst_mmt, sec_mmt = mmt_grad(model, iteration=iteration, fst_mmt_old=fst_mmt, sec_mmt_old=sec_mmt)
+                if iteration % 1000 == 0:
+                    snr, var = snr_grad(fst_mmt, sec_mmt)
+                    converge_file = open('../results/vae/converge-' + MODEL_VERSION + '.txt', 'a+')
+                    print("snr: %.6f, var: %.6f" % (snr.item(), var.item()), file=converge_file)
+                    converge_file.close()
                 optimizer.step()
                 if loss_required:
                     if 'loss' in metrics:
@@ -73,7 +85,7 @@ def train(optimizer, model, AT, data_paths, mnist_mean_path, K, num_epochs, samp
 
             save_model(model=model, SAVE_VERSION=MODEL_VERSION)
             metrics_print = ",  ".join(['%s: %.6f' % (k, v/num_batches) for k, v in metrics.items()])
-            log_file = open('../results/log-' + MODEL_VERSION + '.txt', 'a+')
+            log_file = open('../results/vae/log-' + MODEL_VERSION + '.txt', 'a+')
             time_end = time.time()
             print("(%ds) Epoch=%d, Group=%d" % (time_end - time_start, epoch, group) + metrics_print, file=log_file)
             log_file.close()

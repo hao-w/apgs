@@ -29,7 +29,7 @@ def kl_gmm_training(enc_apg_eta, generative, ob, z):
                                    p_mu=posterior_mu,
                                    p_nu=posterior_nu)
 
-    inckl = kl_eta_in.mean(-1).mean(0).mean().cpu().detach()
+    inckl = kl_eta_in.sum(-1).mean(0).mean().cpu().detach()
     # exckl = kl_eta_ex.mean(-1).mean(0).detach()
     return inckl
 
@@ -68,7 +68,7 @@ def kl_gmm(enc_apg_eta, enc_apg_z, generative, ob, z):
                                    prior_pi=generative.prior_pi)
     kl_z_ex, kl_z_in = kls_cats(q_logits=q_pi.log(),
                                 p_logits=posterior_logits)
-    inckls = {"inckl_eta" : kl_eta_in.mean(-1).mean(0).detach(),"inckl_z" : kl_z_in.mean(-1).mean(0).detach() }
+    inckls = {"inckl_eta" : kl_eta_in.sum(-1).mean(0).detach(),"inckl_z" : kl_z_in.sum(-1).mean(0).detach() }
     return inckls
 
 def params_to_nats(alpha, beta, mu, nu):
@@ -90,11 +90,11 @@ def nats_to_params(nat1, nat2, nat3, nat4):
 def data_to_stats(ob, z):
     """
     pointwise sufficient statstics
-    stat1 : sum of I[z_n=k], S * B * K
+    stat1 : sum of I[z_n=k], S * B * K * 1
     stat2 : sum of I[z_n=k]*x_n, S * B * K * D
     stat3 : sum of I[z_n=k]*x_n^2, S * B * K * D
     """
-    stat1 = z.sum(2)
+    stat1 = z.sum(2).unsqueeze(-1)
     z_expand = z.unsqueeze(-1).repeat(1, 1, 1, 1, ob.shape[-1])
     ob_expand = ob.unsqueeze(-1).repeat(1, 1, 1, 1, z.shape[-1]).transpose(-1, -2)
     stat2 = (z_expand * ob_expand).sum(2)
@@ -106,7 +106,7 @@ def posterior_eta(ob, z, prior_alpha, prior_beta, prior_mu, prior_nu):
     conjugate postrior of eta, given the normal-gamma prior
     """
     stat1, stat2, stat3 = data_to_stats(ob, z)
-    stat1_expand = stat1.unsqueeze(-1).repeat(1, 1, 1, ob.shape[-1]) ## S * B * K * D
+    stat1_expand = stat1.repeat(1, 1, 1, ob.shape[-1]) ## S * B * K * D
     stat1_nonzero = stat1_expand
     stat1_nonzero[stat1_nonzero == 0.0] = 1.0
     x_bar = stat2 / stat1_nonzero

@@ -147,8 +147,8 @@ def apg_eta(enc_apg_eta, generative, log_w_old, log_q_old, ob, z, tau_old, mu_ol
     """
     q_f = enc_apg_eta(ob=ob, z=z, prior_ng=generative.prior_ng, sampled=True) ## forward kernel
     p_f = generative.eta_prior(q=q_f)
-    log_q_f = q_f['means'].log_prob.sum(-1) + q_f['precisions'].log_prob.sum(-1)
-    log_p_f = p_f['means'].log_prob.sum(-1) + p_f['precisions'].log_prob.sum(-1)
+    log_q_f = q_f['means'].log_prob.sum(-1).sum(-1) + q_f['precisions'].log_prob.sum(-1).sum(-1)
+    log_p_f = p_f['means'].log_prob.sum(-1).sum(-1) + p_f['precisions'].log_prob.sum(-1).sum(-1)
     tau = q_f['precisions'].value
     mu = q_f['means'].value
     ll_f = generative.log_prob(ob=ob, z=z, tau=tau, mu=mu, aggregate=True)
@@ -156,12 +156,12 @@ def apg_eta(enc_apg_eta, generative, log_w_old, log_q_old, ob, z, tau_old, mu_ol
     ## backward
     q_b = enc_apg_eta(ob=ob, z=z, prior_ng=generative.prior_ng, sampled=False, tau_old=tau_old, mu_old=mu_old)
     p_b = generative.eta_prior(q=q_b)
-    log_q_b = q_b['means'].log_prob.sum(-1) + q_b['precisions'].log_prob.sum(-1)
-    log_p_b = p_b['means'].log_prob.sum(-1) + p_b['precisions'].log_prob.sum(-1)
+    log_q_b = q_b['means'].log_prob.sum(-1).sum(-1) + q_b['precisions'].log_prob.sum(-1).sum(-1)
+    log_p_b = p_b['means'].log_prob.sum(-1).sum(-1) + p_b['precisions'].log_prob.sum(-1).sum(-1)
     ll_b = generative.log_prob(ob=ob, z=z, tau=tau_old, mu=mu_old, aggregate=True)
     log_w_b = ll_b + log_p_b - log_q_b
-    log_q = log_q_old + log_q_f.sum(-1)
-    log_w = log_w_old + (log_w_f - log_w_b).sum(-1).detach()
+    log_q = log_q_old + log_q_f
+    log_w = log_w_old + (log_w_f - log_w_b).detach()
     w = F.softmax(log_w, 0).detach()
     # if loss_required:
     #     loss = (w * (- log_q_f.sum(-1))).sum(0).mean()

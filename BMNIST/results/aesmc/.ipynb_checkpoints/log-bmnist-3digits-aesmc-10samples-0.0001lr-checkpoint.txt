@@ -1,0 +1,1 @@
+(454s) Epoch=0, Group=0loss: 87125.522734,  ess_sis: 1.000000,  density: -62140.114160

@@ -17,7 +17,7 @@ class Enc_coor(nn.Module):
 
         self.where_log_std = nn.Sequential(
                             nn.Linear(num_hidden, int(0.5*num_hidden)),
-                            nn.ReLU(),
+                            nn.Softplus(),
                             nn.Linear(int(0.5*num_hidden), z_where_dim))
 
 

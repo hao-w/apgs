@@ -50,7 +50,7 @@ def viz_samples(datas, metrics, apg_sweeps, K, viz_interval, figure_size, title_
     num_rows = len(datas)
     num_cols = 2 + int(apg_sweeps / viz_interval)
     gs = gridspec.GridSpec(num_rows, num_cols)
-    gs.update(left=0.05 , bottom=0.05, right=0.95, top=0.95, wspace=0, hspace=0)
+    gs.update(left=0.0 , bottom=0.0, right=1.0, top=1.0, wspace=0, hspace=0)
     fig = plt.figure(figsize=(figure_size, figure_size * num_rows / num_cols))
     for row_ind, data in enumerate(datas):
         E_tau = metrics[row_ind]['E_tau'].cpu()
@@ -82,7 +82,7 @@ def viz_samples(datas, metrics, apg_sweeps, K, viz_interval, figure_size, title_
                     latents=(E_tau[sweep, 0], E_mu[sweep, 0], E_z[sweep, 0]))
             if row_ind == 0:
                 if sweep == 0:
-                    ax.set_title('rws-mlp', fontsize=title_fontsize)
+                    ax.set_title('RWS', fontsize=title_fontsize)
                 else:
                     ax.set_title('sweep %d' % sweep, fontsize=title_fontsize)
     if save_name is not None:

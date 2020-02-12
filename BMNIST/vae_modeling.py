@@ -1,7 +1,7 @@
 import torch
 from enc_coor_reparam import Enc_coor
 from enc_digit_reparam import Enc_digit
-from dec_digit import Dec_digit
+from dec_digit_reparam import Dec_digit
 from dec_coor import Dec_coor
 
 def init_model(frame_pixels, digit_pixels, num_hidden_digit, num_hidden_coor, z_where_dim, z_what_dim, CUDA, DEVICE, LOAD_VERSION, LR):
