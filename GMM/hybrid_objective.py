@@ -1,48 +1,54 @@
 import torch
 import torch.nn.functional as F
-# from resampling import resample
 from kls_gmm import kl_gmm, posterior_eta, posterior_z
 from torch.distributions.normal import Normal
 from torch.distributions.gamma import Gamma
 from torch.distributions.one_hot_categorical import OneHotCategorical as cat
 
-def hybrid_objective(model, flags, hmc, resampler, resampler_bps, apg_sweeps, ob, hmc_num_steps, leapfrog_step_size, leapfrog_num_steps):
-    trace_apg = dict() ## a dictionary that tracks variables needed during the sweeping
-    trace_apg['density'] = []
-
-    trace_hmc = dict() ## a dictionary that tracks variables needed during the sweeping
-    trace_hmc['density'] = []
-
-    trace_bps = dict() ## a dictionary that tracks variables needed during the sweeping
-    trace_bps['density'] = []
-
-    trace_gibbs = dict() ## a dictionary that tracks variables needed during the sweeping
-    trace_gibbs['density'] = []
-
-    density_dict = dict()
-
+def hybrid_objective(model, flags, hmc, resampler, apg_sweeps, ob):
+    densities = dict()
     (enc_rws_eta, enc_apg_z, enc_apg_eta, generative) = model
-    log_w, tau_rws, mu_rws, z_rws, log_joint = rws(enc_rws_eta=enc_rws_eta,
-                                                   enc_rws_z=enc_apg_z,
-                                                   generative=generative,
-                                                   ob=ob)
+    log_w_rws, tau_rws, mu_rws, z_rws, log_joint_rws = rws(enc_rws_eta=enc_rws_eta,
+                                                           enc_rws_z=enc_apg_z,
+                                                           generative=generative,
+                                                           ob=ob)
+    if flags['apg']:
+        print('Running APG updates..')
+        trace_apg = {'density' : []}
+        ancestral_index = resampler.sample_ancestral_index(log_weights=log_w_rws)
+        tau_apg = resampler.resample_4dims(var=tau_rws, ancestral_index=ancestral_index)
+        mu_apg = resampler.resample_4dims(var=mu_rws, ancestral_index=ancestral_index)
+        z_apg = resampler.resample_4dims(var=z_rws, ancestral_index=ancestral_index)
+        for m in range(apg_sweeps):
+            log_w_apg, tau_apg, mu_apg, trace_apg = apg_eta(enc_apg_eta=enc_apg_eta,
+                                                            generative=generative,
+                                                            ob=ob,
+                                                            z=z_apg,
+                                                            tau_old=tau_apg,
+                                                            mu_old=mu_apg,
+                                                            trace=trace_apg)
+            ancestral_index = resampler.sample_ancestral_index(log_weights=log_w_apg)
+            tau_apg = resampler.resample_4dims(var=tau_apg, ancestral_index=ancestral_index)
+            mu_apg = resampler.resample_4dims(var=mu_apg, ancestral_index=ancestral_index)
+            z_apg = resampler.resample_4dims(var=z_apg, ancestral_index=ancestral_index)
+            # trace['elbo'].append(log_w)
+            log_w_apg, z_apg, trace_apg = apg_z(enc_apg_z=enc_apg_z,
+                                                generative=generative,
+                                                ob=ob,
+                                                tau=tau_apg,
+                                                mu=mu_apg,
+                                                z_old=z_apg,
+                                                trace=trace_apg)
+            ancestral_index = resampler.sample_ancestral_index(log_weights=log_w_apg)
+            tau_apg = resampler.resample_4dims(var=tau_apg, ancestral_index=ancestral_index)
+            mu_apg = resampler.resample_4dims(var=mu_apg, ancestral_index=ancestral_index)
+            z_apg = resampler.resample_4dims(var=z_apg, ancestral_index=ancestral_index)
 
-    if flags['hmc']:
-        trace_hmc['density'].append(log_joint.unsqueeze(0))
-        # print('Running HMC+Gibbs updates..')
-        _, _, trace_hmc = hmc.hmc_sampling(ob=ob,
-                                          log_tau=tau_rws.log(),
-                                          mu=mu_rws,
-                                          trace=trace_hmc,
-                                          hmc_num_steps=hmc_num_steps,
-                                          leapfrog_step_size=leapfrog_step_size,
-                                          leapfrog_num_steps=leapfrog_num_steps)
-        density_dict['hmc'] =  torch.cat(trace_hmc['density'], 0)
+        densities['apg'] = torch.cat([log_joint_rws.unsqueeze(0)] + trace_apg['density'], 0) # (1 + apg_sweeps) * B
 
     if flags['gibbs']:
-        trace_gibbs['density'].append(log_joint.unsqueeze(0))
-
-        # print('Running Gibbs updates..')
+        trace_gibbs = {'density' : []}
+        print('Running Gibbs+RWS updates..')
         for m in range(apg_sweeps):
             if m == 0:
                 tau_gibbs, mu_gibbs, z_gibbs, trace_gibbs = gibbs_sweep(generative=generative,
@@ -54,84 +60,55 @@ def hybrid_objective(model, flags, hmc, resampler, resampler_bps, apg_sweeps, ob
                                                                         ob=ob,
                                                                         z=z_gibbs,
                                                                         trace=trace_gibbs)
-        density_dict['gibbs'] = torch.cat(trace_gibbs['density'], 0)
+        densities['gibbs'] = torch.cat([log_joint_rws.unsqueeze(0)] + trace_gibbs['density'], 0)
 
-    if flags['bps']:
-        factor = 1
-        trace_bps['density'].append(log_joint.repeat(factor, 1).unsqueeze(0))
-        # print('Running Boostraped Population Sampling updates..')
+    if flags['hmc']:
+        print('Running HMC+RWS updates..')
 
-        ## increase the number of particles by 100x
-        log_w_bps = log_w.repeat(factor, 1)
-        tau_bps = tau_rws.repeat(factor, 1, 1, 1)
-        mu_bps = mu_rws.repeat(factor, 1, 1, 1)
-        z_bps = z_rws.repeat(factor, 1, 1, 1)
-        ob_bps = ob.repeat(factor, 1, 1, 1)
-        ancestral_index = resampler_bps.sample_ancestral_index(log_weights=log_w_bps)
-        tau_bps = resampler_bps.resample_4dims(var=tau_bps, ancestral_index=ancestral_index)
-        mu_bps = resampler_bps.resample_4dims(var=mu_bps, ancestral_index=ancestral_index)
-        z_bps = resampler_bps.resample_4dims(var=z_bps, ancestral_index=ancestral_index)
+        _, _, density_list = hmc.hmc_sampling(ob=ob, log_tau=tau_rws.log(), mu=mu_rws)
+
+        densities['hmc'] =  torch.cat([log_joint_rws.unsqueeze(0)]+density_list, 0)
+
+    if flags['bpg']:
+        print('Running Boostraped Population Gibbs updates..')
+        trace_bpg = {'density' : []}
+        factor = 10 ## increase the number of particles by 100x
+        resampler_bpg = resampler
+        resampler_bpg.S = resampler_bpg.S * factor
+        log_w_bpg = log_w.repeat(factor, 1)
+        tau_bpg = tau_rws.repeat(factor, 1, 1, 1)
+        mu_bpg = mu_rws.repeat(factor, 1, 1, 1)
+        z_bpg = z_rws.repeat(factor, 1, 1, 1)
+        ob_bpg = ob.repeat(factor, 1, 1, 1)
+        ancestral_index = resampler.sample_ancestral_index(log_weights=log_w_rws)
+        tau_bpg = resampler.resample_4dims(var=tau_rws, ancestral_index=ancestral_index)
+        mu_bpg = resampler.resample_4dims(var=mu_rws, ancestral_index=ancestral_index)
+        z_bpg = resampler.resample_4dims(var=z_rws, ancestral_index=ancestral_index)
         for m in range(apg_sweeps):
-            log_w_bps, tau_bps, mu_bps, trace_bps = bps_eta(generative=generative,
-                                                                ob=ob_bps,
-                                                                z=z_bps,
-                                                                tau_old=tau_bps,
-                                                                mu_old=mu_bps,
-                                                                trace=trace_bps)
-            ancestral_index = resampler_bps.sample_ancestral_index(log_weights=log_w_bps)
-            tau_bps = resampler_bps.resample_4dims(var=tau_bps, ancestral_index=ancestral_index)
-            mu_bps = resampler_bps.resample_4dims(var=mu_bps, ancestral_index=ancestral_index)
-            z_bps = resampler_bps.resample_4dims(var=z_bps, ancestral_index=ancestral_index)
-            low_w_bps, z_bps, trace_bps = apg_z(enc_apg_z=enc_apg_z,
+            log_w_bpg, tau_bpg, mu_bpg, trace_bpg = bpg_eta(generative=generative,
+                                                                ob=ob,
+                                                                z=z_bpg,
+                                                                tau_old=tau_bpg,
+                                                                mu_old=mu_bpg,
+                                                                trace=trace_bpg)
+            ancestral_index = resampler.sample_ancestral_index(log_weights=log_w_bpg)
+            tau_bpg = resampler.resample_4dims(var=tau_bpg, ancestral_index=ancestral_index)
+            mu_bpg = resampler.resample_4dims(var=mu_bpg, ancestral_index=ancestral_index)
+            z_bpg = resampler.resample_4dims(var=z_bpg, ancestral_index=ancestral_index)
+            low_w_bpg, z_bpg, trace_bpg = apg_z(enc_apg_z=enc_apg_z,
                                                 generative=generative,
-                                                ob=ob_bps,
-                                                tau=tau_bps,
-                                                mu=mu_bps,
-                                                z_old=z_bps,
-                                                trace=trace_bps)
-            ancestral_index = resampler_bps.sample_ancestral_index(log_weights=low_w_bps)
-            tau_bps = resampler_bps.resample_4dims(var=tau_bps, ancestral_index=ancestral_index)
-            mu_bps = resampler_bps.resample_4dims(var=mu_bps, ancestral_index=ancestral_index)
-            z_bps = resampler_bps.resample_4dims(var=z_bps, ancestral_index=ancestral_index)
-        density_dict['bps'] = torch.cat(trace_bps['density'], 0)
+                                                ob=ob,
+                                                tau=tau_bpg,
+                                                mu=mu_bpg,
+                                                z_old=z_bpg,
+                                                trace=trace_bpg)
+            ancestral_index = resampler.sample_ancestral_index(log_weights=low_w_bpg)
+            tau_bpg = resampler.resample_4dims(var=tau_bpg, ancestral_index=ancestral_index)
+            mu_bpg = resampler.resample_4dims(var=mu_bpg, ancestral_index=ancestral_index)
+            z_bpg = resampler.resample_4dims(var=z_bpg, ancestral_index=ancestral_index)
+        densities['bpg'] = torch.cat([log_joint_rws.unsqueeze(0)]+ trace_bpg['density'], 0)
 
-
-    if flags['apg']:
-        trace_apg['density'].append(log_joint.unsqueeze(0))
-
-        # print('Running APG updates..')
-        ancestral_index = resampler.sample_ancestral_index(log_weights=log_w)
-        tau_apg = resampler.resample_4dims(var=tau_rws, ancestral_index=ancestral_index)
-        mu_apg = resampler.resample_4dims(var=mu_rws, ancestral_index=ancestral_index)
-        z_apg = resampler.resample_4dims(var=z_rws, ancestral_index=ancestral_index)
-        for m in range(apg_sweeps):
-            log_w, tau_apg, mu_apg, trace_apg = apg_eta(enc_apg_eta=enc_apg_eta,
-                                                        generative=generative,
-                                                        ob=ob,
-                                                        z=z_apg,
-                                                        tau_old=tau_apg,
-                                                        mu_old=mu_apg,
-                                                        trace=trace_apg)
-            ancestral_index = resampler.sample_ancestral_index(log_weights=log_w)
-            tau_apg = resampler.resample_4dims(var=tau_apg, ancestral_index=ancestral_index)
-            mu_apg = resampler.resample_4dims(var=mu_apg, ancestral_index=ancestral_index)
-            z_apg = resampler.resample_4dims(var=z_apg, ancestral_index=ancestral_index)
-            # trace['elbo'].append(log_w)
-            low_w, z_apg, trace_apg = apg_z(enc_apg_z=enc_apg_z,
-                                            generative=generative,
-                                            ob=ob,
-                                            tau=tau_apg,
-                                            mu=mu_apg,
-                                            z_old=z_apg,
-                                            trace=trace_apg)
-            ancestral_index = resampler.sample_ancestral_index(log_weights=log_w)
-            tau_apg = resampler.resample_4dims(var=tau_apg, ancestral_index=ancestral_index)
-            mu_apg = resampler.resample_4dims(var=mu_apg, ancestral_index=ancestral_index)
-            z_apg = resampler.resample_4dims(var=z_apg, ancestral_index=ancestral_index)
-
-        density_dict['apg'] = torch.cat(trace_apg['density'], 0) # (1 + apg_sweeps) * B
-
-    return density_dict
+    return densities
 
 def rws(enc_rws_eta, enc_rws_z, generative, ob):
     """
@@ -178,7 +155,7 @@ def apg_eta(enc_apg_eta, generative, ob, z, tau_old, mu_old, trace):
     trace['density'].append(log_p_f.unsqueeze(0)) # 1-by-B-length vector
     return log_w, tau, mu, trace
 
-def bps_eta(generative, ob, z, tau_old, mu_old, trace):
+def bpg_eta(generative, ob, z, tau_old, mu_old, trace):
     """
     Given local variable z, update global variables eta := {mu, tau}.
     """
