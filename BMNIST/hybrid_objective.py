@@ -4,75 +4,22 @@ from torch.distributions.normal import Normal
 from torch.distributions.one_hot_categorical import OneHotCategorical as cat
 
 
-def hybrid_objective(model, flags, hmc, AT, resampler, apg_sweeps, frames, mnist_mean, K, hmc_num_steps, leapfrog_step_size, leapfrog_num_steps):
-    trace_apg = dict() ## a dictionary that tracks variables needed during the sweeping
-    trace_apg['density'] = []
-
-    trace_hmc = dict() ## a dictionary that tracks variables needed during the sweeping
-    trace_hmc['density'] = []
-
-    trace_bps = dict() ## a dictionary that tracks variables needed during the sweeping
-    trace_bps['density'] = []
-    density_dict = dict()
-
-
+def hybrid_objective(model, flags, AT, hmc, resampler, apg_sweeps, frames, mnist_mean, K):
+    densities = dict()
     S, B, T, FP, _ = frames.shape
     (enc_coor, dec_coor, enc_digit, dec_digit) = model
-    # metrics = {'phi_loss' : [], 'theta_loss' : [], 'ess' : [], 'log_joint' : []}
-    log_w, z_where_rws, z_what_rws, log_joint = rws(enc_coor=enc_coor,
-                                                    dec_coor=dec_coor,
-                                                    enc_digit=enc_digit,
-                                                    dec_digit=dec_digit,
-                                                    AT=AT,
-                                                    frames=frames,
-                                                    digit=mnist_mean)
-
-    if flags['hmc']:
-        trace_hmc['density'].append(log_joint.unsqueeze(0))
-        print('Running HMC updates..')
-        hmc.hmc_sampling(ob=frames,
-                         z_where=z_where_rws,
-                         z_what=z_what_rws,
-                         trace=trace_hmc,
-                         hmc_num_steps=hmc_num_steps,
-                         step_size_what=leapfrog_step_size,
-                         step_size_where=leapfrog_step_size,
-                         leapfrog_num_steps=leapfrog_num_steps)
-        density_dict['hmc'] = torch.cat(trace_hmc['density'], 0) # (1 + apg_sweeps) * B
-
-    if flags['bps']:
-        trace_bps['density'].append(log_joint.unsqueeze(0))
-        print('Running BPS updates..')
-        ancestral_index = resampler.sample_ancestral_index(log_weights=log_w)
-        z_where_bps = resampler.resample_5dims(var=z_where_rws, ancestral_index=ancestral_index)
-        z_what_bps = resampler.resample_4dims(var=z_what_rws, ancestral_index=ancestral_index)
-        for m in range(apg_sweeps):
-            z_where_bps, trace_bps = apg_where(enc_coor=enc_coor,
-                                               dec_coor=dec_coor,
-                                               dec_digit=dec_digit,
-                                               AT=AT,
-                                               resampler=resampler,
-                                               frames=frames,
-                                               z_what=z_what_bps,
-                                               z_where_old=z_where_bps,
-                                               trace=trace_bps)
-
-            log_w_bps, z_what_bps, trace_bps = bps_what(dec_digit=dec_digit,
-                                                        AT=AT,
-                                                        frames=frames,
-                                                        z_where=z_where_bps,
-                                                        z_what_old=z_what_bps,
-                                                        trace=trace_bps)
-            ancestral_index = resampler.sample_ancestral_index(log_weights=log_w_bps)
-            z_where_bps = resampler.resample_5dims(var=z_where_bps, ancestral_index=ancestral_index)
-            z_what_bps = resampler.resample_4dims(var=z_what_bps, ancestral_index=ancestral_index)
-        density_dict['bps'] = torch.cat(trace_bps['density'], 0) # (1 + apg_sweeps) * B
-
+    log_w_rws, z_where_rws, z_what_rws, log_joint_rws = rws(enc_coor=enc_coor,
+                                                            dec_coor=dec_coor,
+                                                            enc_digit=enc_digit,
+                                                            dec_digit=dec_digit,
+                                                            AT=AT,
+                                                            frames=frames,
+                                                            digit=mnist_mean)
 
     if flags['apg']:
-        trace_apg['density'].append(log_joint.unsqueeze(0))
         print('Running APG updates..')
-        ancestral_index = resampler.sample_ancestral_index(log_weights=log_w)
+        trace_apg = {'density' : []}
+        ancestral_index = resampler.sample_ancestral_index(log_weights=log_w_rws)
         z_where_apg = resampler.resample_5dims(var=z_where_rws, ancestral_index=ancestral_index)
         z_what_apg = resampler.resample_4dims(var=z_what_rws, ancestral_index=ancestral_index)
         for m in range(apg_sweeps):
@@ -85,7 +32,6 @@ def hybrid_objective(model, flags, hmc, AT, resampler, apg_sweeps, frames, mnist
                                                z_what=z_what_apg,
                                                z_where_old=z_where_apg,
                                                trace=trace_apg)
-
             log_w_apg, z_what_apg, trace_apg = apg_what(enc_digit=enc_digit,
                                                         dec_digit=dec_digit,
                                                         AT=AT,
@@ -96,9 +42,43 @@ def hybrid_objective(model, flags, hmc, AT, resampler, apg_sweeps, frames, mnist
             ancestral_index = resampler.sample_ancestral_index(log_weights=log_w_apg)
             z_where_apg = resampler.resample_5dims(var=z_where_apg, ancestral_index=ancestral_index)
             z_what_apg = resampler.resample_4dims(var=z_what_apg, ancestral_index=ancestral_index)
-        density_dict['apg'] = torch.cat(trace_apg['density'], 0) # (1 + apg_sweeps) * B
+        densities['apg'] = torch.cat([log_joint_rws.unsqueeze(0)] + trace_apg['density'], 0)
 
-    return density_dict
+    if flags['hmc']:
+        print('Running HMC-RWS updates..')
+        _, _, density_list = hmc.hmc_sampling(ob=frames,
+                                              z_where=z_where_rws,
+                                              z_what=z_what_rws)
+        densities['hmc'] =  torch.cat([log_joint_rws.unsqueeze(0)]+density_list, 0)
+
+    if flags['bpg']:
+        print('Running Bootstrapped Population Gibbs updates..')
+        trace_bpg = {'density' : []}
+        ancestral_index = resampler.sample_ancestral_index(log_weights=log_w_rws)
+        z_where_bpg = resampler.resample_5dims(var=z_where_rws, ancestral_index=ancestral_index)
+        z_what_bpg = resampler.resample_4dims(var=z_what_rws, ancestral_index=ancestral_index)
+        for m in range(apg_sweeps):
+            z_where_bpg, trace_bpg = apg_where(enc_coor=enc_coor,
+                                               dec_coor=dec_coor,
+                                               dec_digit=dec_digit,
+                                               AT=AT,
+                                               resampler=resampler,
+                                               frames=frames,
+                                               z_what=z_what_bpg,
+                                               z_where_old=z_where_bpg,
+                                               trace=trace_bpg)
+
+            log_w_bpg, z_what_bpg, trace_bpg = bpg_what(dec_digit=dec_digit,
+                                                        AT=AT,
+                                                        frames=frames,
+                                                        z_where=z_where_bpg,
+                                                        z_what_old=z_what_bpg,
+                                                        trace=trace_bpg)
+            ancestral_index = resampler.sample_ancestral_index(log_weights=log_w_bpg)
+            z_where_bpg = resampler.resample_5dims(var=z_where_bpg, ancestral_index=ancestral_index)
+            z_what_bpg = resampler.resample_4dims(var=z_what_bpg, ancestral_index=ancestral_index)
+        densities['bpg'] = torch.cat([log_joint_rws.unsqueeze(0)]+ trace_bpg['density'], 0)
+    return densities
 
 def propose_one_movement(enc_coor, dec_coor, AT, frame, template, z_where_t_1, z_where_old_t, z_where_old_t_1):
     FP = frame.shape[-1]
@@ -264,7 +244,7 @@ def apg_what(enc_digit, dec_digit, AT, frames, z_where, z_what_old, trace):
     return log_w, z_what, trace
 
 
-def bps_what(dec_digit, AT, frames, z_where, z_what_old, trace):
+def bpg_what(dec_digit, AT, frames, z_where, z_what_old, trace):
     S, B, T, K, _ = z_where.shape
     z_what_dim = z_what_old.shape[-1]
     cropped = AT.frame_to_digit(frames=frames, z_where=z_where)

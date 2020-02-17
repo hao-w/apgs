@@ -1,6 +1,0 @@
-snr: inf, var: 7494.510254
-snr: inf, var: 0.480877
-snr: inf, var: 0.423483
-snr: inf, var: 2.014643
-snr: inf, var: 0.785907
-snr: inf, var: 0.944652

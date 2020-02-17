@@ -1,1 +1,0 @@
-(2741s) Epoch=0, Group=0, HMC rate=0.0000loss_phi: 63401.054551,  loss_theta: 63018.625723,  ess_vae: 1.000665,  density: -63488.535078

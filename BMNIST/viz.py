@@ -9,6 +9,34 @@ import matplotlib.patches as patches
 visualization functions
 ==========
 """
+def plot_baselines(flags, fs, fs_title, opacity, lw, colors):
+    fig = plt.figure(figsize=(fs*2.5,fs))
+    ax = fig.add_subplot(111)
+    if flags['apg']:
+        APG = np.load('log_joint_apg.npy')
+        APG_mean = APG.mean(0)
+        APG_std = APG.std(0)
+        ax.plot(APG_mean, linewidth=lw, c=colors[0], label='APG(L=100)')
+        ax.fill_between(np.arange(APG_mean.shape[0]), APG_mean-APG_std, APG_mean+APG_std, color=colors[0], alpha=opacity)
+    if flags['hmc']:
+        HMC = np.load('log_joint_hmc.npy')
+        HMC_mean = HMC.mean(0)
+        HMC_std = HMC.std(0)
+        ax.plot(HMC_mean, linewidth=lw, c=colors[1], label='HMC-RWS(L=100, LF=5)')
+        ax.fill_between(np.arange(HMC_mean.shape[0]), HMC_mean - HMC_std, HMC_mean + HMC_std, color=colors[1], alpha=opacity)
+    if flags['bpg']:
+        BPG = np.load('log_joint_bpg.npy')
+        BPG_mean = BPG.mean(0)
+        BPG_std = BPG.std(0)
+        ax.plot(BPG_mean, linewidth=lw, c=colors[2], label='BPG(L=100)')
+        ax.fill_between(np.arange(BPG_mean.shape[0]), BPG_mean-BPG_std, BPG_mean+BPG_std, color=colors[2], alpha=opacity)
+    ax.legend(fontsize=20, loc='lower right')
+    ax.tick_params(labelsize=20)
+    ax.set_xlabel('Sweeps', fontsize=25)
+    ax.set_ylabel(r'$\log \: p_\theta(x, z)$', fontsize=25)
+    ax.grid(alpha=0.4)
+
+
 def viz_samples(frames, metrics, apg_sweeps, K, viz_interval, figure_size, title_fontsize, linewidth, colors, save_name=None):
     recon = metrics['E_recon'][-1].squeeze(0).cpu() # T * 96 *96
     z_where = metrics['E_where'][-1].squeeze(0).cpu().clone()
@@ -115,7 +143,7 @@ def viz_samples(frames, metrics, apg_sweeps, K, viz_interval, figure_size, title
 # #                 ax.add_patch(rect_k)
 #             ax.imshow(recons[t], cmap='gray')
 #             plt.savefig(PATH + 'recon/%03d.png' % (t+1), dpi=300,bbox_inches='tight', pad_inches=0)
-#             plt.close()        
+#             plt.close()
 
 #             fig = plt.figure(figsize=(FS,FS)) # tracking
 #             ax = fig.add_subplot(111)

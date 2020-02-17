@@ -38,16 +38,13 @@ def apg_objective(model, AT, resampler, apg_sweeps, frames, mnist_mean, K, loss_
         trace['loss_phi'] = []
         trace['loss_theta'] = []
     if ess_required:
-        trace['ess_rws'] = []
-        trace['ess_what'] = []
-        trace['ess_where'] = []
+        trace['ess'] = []
     if mode_required:
         trace['E_where'] = []
         trace['E_what'] = []
         trace['E_recon'] = []
     if density_required:
         trace['density'] = []
-
     S, B, T, FP, _ = frames.shape
     (enc_coor, dec_coor, enc_digit, dec_digit) = model
     # metrics = {'phi_loss' : [], 'theta_loss' : [], 'ess' : [], 'log_joint' : []}
@@ -100,17 +97,13 @@ def apg_objective(model, AT, resampler, apg_sweeps, frames, mnist_mean, K, loss_
         trace['loss_phi'] = torch.cat(trace['loss_phi'], 0) # (1+apg_sweeps) * 1
         trace['loss_theta'] = torch.cat(trace['loss_theta'], 0) # (1+apg_sweeps) * 1
     if ess_required:
-        if trace['ess_what']:
-            trace['ess_what'] = torch.cat(trace['ess_what'], 0) # apg_sweeps * B
-        if trace['ess_where']:
-            trace['ess_where'] = torch.cat(trace['ess_where'], 0) # apg_sweeps * B
+        trace['ess'] = torch.cat(trace['ess'], 0) # apg_sweeps * B
     if mode_required:
         trace['E_where'] = torch.cat(trace['E_where'], 0)  # (1 + apg_sweeps) * B * K * D
         trace['E_what'] = torch.cat(trace['E_what'], 0) # (1 + apg_sweeps) * B * N * K
         trace['E_recon'] = torch.cat(trace['E_recon'], 0).cpu() # (1 + apg_sweeps) * B * T * FP * FP
     if density_required:
         trace['density'] = torch.cat(trace['density'], 0) # (1 + apg_sweeps) * B
-
     return trace
 
 def propose_one_movement(enc_coor, dec_coor, AT, frame, template, z_where_t_1, z_where_old_t, z_where_old_t_1):
@@ -145,8 +138,6 @@ def propose_one_movement(enc_coor, dec_coor, AT, frame, template, z_where_t_1, z
         frame_left = frame_left - recon_k
         if z_where_old_t is not None:
             log_q_b_k = Normal(q_k_f['z_where'].dist.loc, q_k_f['z_where'].dist.scale).log_prob(z_where_old_t[:,:,k,:]).sum(-1).detach()
-#             q_k_b = enc_coor(conved=conved_k, sampled=False, z_where_old=z_where_old_t[:,:,k,:])
-
             if z_where_old_t_1 is not None:
                 log_p_b_k = dec_coor.forward(z_where_t=z_where_old_t[:,:,k,:], z_where_t_1=z_where_old_t_1[:,:,k,:]) # S * B
             else:
@@ -167,9 +158,6 @@ def propose_one_movement(enc_coor, dec_coor, AT, frame, template, z_where_t_1, z
 def rws(enc_coor, dec_coor, enc_digit, dec_digit, AT, frames, digit, trace, loss_required, ess_required, mode_required, density_required):
     T = frames.shape[2]
     S, B, K, DP, DP = digit.shape
-#     z_where_t_1 = None
-#     log_q = []
-#     log_p = []
     z_where = []
     E_where = []
     for t in range(T):
@@ -221,7 +209,7 @@ def rws(enc_coor, dec_coor, enc_digit, dec_digit, AT, frames, digit, trace, loss
         trace['loss_theta'].append(loss_theta.unsqueeze(0))
     if ess_required:
         ess = (1. /(w**2).sum(0))
-        trace['ess_rws'].append(ess)
+        trace['ess'].append(ess.unsqueeze(0))
     if mode_required:
         trace['E_where'].append(E_where.mean(0).unsqueeze(0).detach()) # 1 * B * T * K * 2
         trace['E_what'].append(E_what.mean(0).unsqueeze(0).detach()) # 1 * B * K * z_what_dim
@@ -234,10 +222,6 @@ def apg_where(enc_coor, dec_coor, dec_digit, AT, resampler, frames, z_what, z_wh
     T = frames.shape[2]
     template = dec_digit(frames=None, z_what=z_what, z_where=None, AT=None)
     S, B, K, DP, DP = template.shape
-
-#     z_where_t_1 = None
-#     z_where_old_t_1 = None
-    # z_where = []
     E_where = []
     LOSS_phi = []
     LOSS_theta = []
@@ -290,19 +274,17 @@ def apg_where(enc_coor, dec_coor, dec_digit, AT, resampler, frames, z_what, z_wh
         if loss_required:
             LOSS_phi.append((w * (- log_q_f)).sum(0).mean().unsqueeze(-1))
             LOSS_theta.append((w * (- ll_f.squeeze(-1))).sum(0).mean().unsqueeze(-1))
-        if ess_required:
-            ESS.append((1. / (w**2).sum(0)).unsqueeze(-1)) # B vector
+        # if ess_required:
+            # ESS.append((1. / (w**2).sum(0)).unsqueeze(-1)) # B vector
     # z_where = torch.cat(z_where, 2)
     if mode_required:
         E_where = torch.cat(E_where, 2)
-
     if loss_required:
-
         trace['loss_phi'].append(torch.cat(LOSS_phi, -1).sum(-1).unsqueeze(0))
         trace['loss_theta'].append(torch.cat(LOSS_theta, -1).sum(-1).unsqueeze(0))
-    if ess_required:
-        ESS = torch.cat(ESS, -1).mean(-1)
-        trace['ess_where'].append(ESS.unsqueeze(0))
+    # if ess_required:
+    #     ESS = torch.cat(ESS, -1).mean(-1)
+    #     trace['ess_where'].append(ESS.unsqueeze(0))
     if mode_required:
         trace['E_where'].append(E_where.mean(0).unsqueeze(0).detach())
     if density_required:
@@ -332,7 +314,7 @@ def apg_what(enc_digit, dec_digit, AT, frames, z_where, z_what_old, trace, loss_
         trace['loss_theta'][-1] = trace['loss_theta'][-1] + loss_theta.unsqueeze(0)
     if ess_required:
         ess = (1. / (w**2).sum(0))
-        trace['ess_what'].append(ess.unsqueeze(0))
+        trace['ess'].append(ess.unsqueeze(0))
     if mode_required:
         E_what = q_f['z_what'].dist.loc
         trace['E_what'].append(E_what.mean(0).unsqueeze(0).detach())

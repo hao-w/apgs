@@ -4,8 +4,8 @@ import os
 # training parameters
 K = 3 # number of digits
 T = 10 # timesteps
-NUM_EPOCHS = 15
-APG_SWEEPS = 4
+NUM_EPOCHS = 100
+APG_SWEEPS = 3
 SAMPLE_SIZE = 20
 BATCH_SIZE = 5
 LR = 2 * 1e-4
