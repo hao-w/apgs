@@ -26,54 +26,6 @@ def sample_data_uniform(DATAs, data_ptr):
         datas.append(DATA[data_ptr])
     return datas
 
-def test_hybrid_all(model, flags, DATA, batch_size, sample_size, apg_sweeps, hmc_num_steps, leapfrog_step_size, leapfrog_num_steps, CUDA, DEVICE):
-    """
-    compute log joint with all baselines on the whole corpus (i.e. 20000 GMM instances)
-    """
-    metrics = {'apg' : [], 'gibbs' : [], 'hmc' : [], 'bpg': []}
-    num_datasets, N, D = DATA.shape
-    num_batches = int(num_datasets / batch_size)
-    (_, _, _, generative) = model
-    hmc_sampler = HMC(generative=generative,
-                        S=sample_size,
-                        B=batch_size,
-                        N=N,
-                        K=3,
-                        D=D,
-                        hmc_num_steps=hmc_num_steps,
-                        leapfrog_step_size=leapfrog_step_size,
-                        leapfrog_num_steps=leapfrog_num_steps,
-                        CUDA=CUDA,
-                        DEVICE=DEVICE)
-
-    resampler = Resampler(strategy='systematic',
-                          sample_size=sample_size,
-                          CUDA=CUDA,
-                          DEVICE=DEVICE)
-    for b in range(num_batches):
-        time_start = time.time()
-        ob = DATA[b*batch_size : (b+1)*batch_size]
-        ob = ob.unsqueeze(0).repeat(sample_size, 1, 1, 1)
-        if CUDA:
-            ob = ob.cuda().to(DEVICE)
-        density_dict = hybrid_objective(model=model,
-                                        flags=flags,
-                                        hmc=hmc_sampler,
-                                        resampler=resampler,
-                                        apg_sweeps=apg_sweeps,
-                                        ob=ob)
-        if flags['apg']:
-            metrics['apg'].append(density_dict['apg'][-1].mean().cpu())
-        if flags['hmc']:
-            metrics['hmc'].append(density_dict['hmc'][-1].mean().cpu())
-        if flags['gibbs']:
-            metrics['gibbs'].append(density_dict['gibbs'][-1].mean().cpu())
-        if flags['bpg']:
-            metrics['bpg'].append(density_dict['bpg'][-1].mean().cpu())
-        time_end = time.time()
-        print('%d / %d completed (%ds)' % (b+1, num_batches, time_end - time_start))
-    return metrics
-
 def test_hybrid(num_runs, model, flags, data, sample_size, apg_sweeps, hmc_num_steps, leapfrog_step_size, leapfrog_num_steps, CUDA, DEVICE):
     """
     ==========
@@ -139,3 +91,51 @@ def test_hybrid(num_runs, model, flags, data, sample_size, apg_sweeps, hmc_num_s
     np.save('log_joint_hmc', np.concatenate(DENSITIES['hmc'], 0))
     np.save('log_joint_gibbs', np.concatenate(DENSITIES['gibbs'], 0))
     np.save('log_joint_bpg', np.concatenate(DENSITIES['bpg'], 0))
+
+def test_hybrid_all(model, flags, DATA, batch_size, sample_size, apg_sweeps, hmc_num_steps, leapfrog_step_size, leapfrog_num_steps, CUDA, DEVICE):
+    """
+    compute log joint with all baselines on the whole corpus (i.e. 20000 GMM instances)
+    """
+    metrics = {'apg' : [], 'gibbs' : [], 'hmc' : [], 'bpg': []}
+    num_datasets, N, D = DATA.shape
+    num_batches = int(num_datasets / batch_size)
+    (_, _, _, generative) = model
+    hmc_sampler = HMC(generative=generative,
+                        S=sample_size,
+                        B=batch_size,
+                        N=N,
+                        K=3,
+                        D=D,
+                        hmc_num_steps=hmc_num_steps,
+                        leapfrog_step_size=leapfrog_step_size,
+                        leapfrog_num_steps=leapfrog_num_steps,
+                        CUDA=CUDA,
+                        DEVICE=DEVICE)
+
+    resampler = Resampler(strategy='systematic',
+                          sample_size=sample_size,
+                          CUDA=CUDA,
+                          DEVICE=DEVICE)
+    for b in range(num_batches):
+        time_start = time.time()
+        ob = DATA[b*batch_size : (b+1)*batch_size]
+        ob = ob.unsqueeze(0).repeat(sample_size, 1, 1, 1)
+        if CUDA:
+            ob = ob.cuda().to(DEVICE)
+        density_dict = hybrid_objective(model=model,
+                                        flags=flags,
+                                        hmc=hmc_sampler,
+                                        resampler=resampler,
+                                        apg_sweeps=apg_sweeps,
+                                        ob=ob)
+        if flags['apg']:
+            metrics['apg'].append(density_dict['apg'][-1].mean().cpu())
+        if flags['hmc']:
+            metrics['hmc'].append(density_dict['hmc'][-1].mean().cpu())
+        if flags['gibbs']:
+            metrics['gibbs'].append(density_dict['gibbs'][-1].mean().cpu())
+        if flags['bpg']:
+            metrics['bpg'].append(density_dict['bpg'][-1].mean().cpu())
+        time_end = time.time()
+        print('%d / %d completed (%ds)' % (b+1, num_batches, time_end - time_start))
+    return metrics
