@@ -44,7 +44,7 @@ def hybrid_objective(model, flags, hmc, resampler, apg_sweeps, ob):
             mu_apg = resampler.resample_4dims(var=mu_apg, ancestral_index=ancestral_index)
             z_apg = resampler.resample_4dims(var=z_apg, ancestral_index=ancestral_index)
 
-        densities['apg'] = torch.cat([log_joint_rws.unsqueeze(0)] + trace_apg['density'], 0) # (1 + apg_sweeps) * B
+        densities['apg'] = torch.cat([log_joint_rws.unsqueeze(0)] + trace_apg['density'], 0) # (1 + apg_sweeps) * S * B
 
     if flags['gibbs']:
         trace_gibbs = {'density' : []}
@@ -64,22 +64,20 @@ def hybrid_objective(model, flags, hmc, resampler, apg_sweeps, ob):
 
     if flags['hmc']:
         print('Running HMC+RWS updates..')
-
         _, _, density_list = hmc.hmc_sampling(ob=ob, log_tau=tau_rws.log(), mu=mu_rws)
-
         densities['hmc'] =  torch.cat([log_joint_rws.unsqueeze(0)]+density_list, 0)
 
     if flags['bpg']:
         print('Running Boostraped Population Gibbs updates..')
         trace_bpg = {'density' : []}
-        factor = 10 ## increase the number of particles by 100x
-        resampler_bpg = resampler
-        resampler_bpg.S = resampler_bpg.S * factor
-        log_w_bpg = log_w.repeat(factor, 1)
-        tau_bpg = tau_rws.repeat(factor, 1, 1, 1)
-        mu_bpg = mu_rws.repeat(factor, 1, 1, 1)
-        z_bpg = z_rws.repeat(factor, 1, 1, 1)
-        ob_bpg = ob.repeat(factor, 1, 1, 1)
+        # factor = 10 ## increase the number of particles by 100x
+        # resampler_bpg = resampler
+        # resampler_bpg.S = resampler_bpg.S * factor
+        # log_w_bpg = log_w.repeat(factor, 1)
+        # tau_bpg = tau_rws.repeat(factor, 1, 1, 1)
+        # mu_bpg = mu_rws.repeat(factor, 1, 1, 1)
+        # z_bpg = z_rws.repeat(factor, 1, 1, 1)
+        # ob_bpg = ob.repeat(factor, 1, 1, 1)
         ancestral_index = resampler.sample_ancestral_index(log_weights=log_w_rws)
         tau_bpg = resampler.resample_4dims(var=tau_rws, ancestral_index=ancestral_index)
         mu_bpg = resampler.resample_4dims(var=mu_rws, ancestral_index=ancestral_index)

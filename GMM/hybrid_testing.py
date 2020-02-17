@@ -26,13 +26,30 @@ def sample_data_uniform(DATAs, data_ptr):
         datas.append(DATA[data_ptr])
     return datas
 
-def test_hybrid_all(model, methods_flags, hmc_sampler, resampler, resampler_bpg, DATA, batch_size, sample_size, apg_sweeps, hmc_num_steps, leapfrog_step_size, leapfrog_num_steps, filename, CUDA, DEVICE):
+def test_hybrid_all(model, flags, DATA, batch_size, sample_size, apg_sweeps, hmc_num_steps, leapfrog_step_size, leapfrog_num_steps, CUDA, DEVICE):
     """
     compute log joint with all baselines on the whole corpus (i.e. 20000 GMM instances)
     """
     metrics = {'apg' : [], 'gibbs' : [], 'hmc' : [], 'bpg': []}
     num_datasets, N, D = DATA.shape
     num_batches = int(num_datasets / batch_size)
+    (_, _, _, generative) = model
+    hmc_sampler = HMC(generative=generative,
+                        S=sample_size,
+                        B=batch_size,
+                        N=N,
+                        K=3,
+                        D=D,
+                        hmc_num_steps=hmc_num_steps,
+                        leapfrog_step_size=leapfrog_step_size,
+                        leapfrog_num_steps=leapfrog_num_steps,
+                        CUDA=CUDA,
+                        DEVICE=DEVICE)
+
+    resampler = Resampler(strategy='systematic',
+                          sample_size=sample_size,
+                          CUDA=CUDA,
+                          DEVICE=DEVICE)
     for b in range(num_batches):
         time_start = time.time()
         ob = DATA[b*batch_size : (b+1)*batch_size]
@@ -40,15 +57,11 @@ def test_hybrid_all(model, methods_flags, hmc_sampler, resampler, resampler_bpg,
         if CUDA:
             ob = ob.cuda().to(DEVICE)
         density_dict = hybrid_objective(model=model,
-                                        flags=methods_flags,
+                                        flags=flags,
                                         hmc=hmc_sampler,
                                         resampler=resampler,
-                                        resampler_bpg=resampler_bpg,
                                         apg_sweeps=apg_sweeps,
-                                        ob=ob,
-                                        hmc_num_steps=hmc_num_steps,
-                                        leapfrog_step_size=leapfrog_step_size,
-                                        leapfrog_num_steps=leapfrog_num_steps)
+                                        ob=ob)
         if flags['apg']:
             metrics['apg'].append(density_dict['apg'][-1].mean().cpu())
         if flags['hmc']:

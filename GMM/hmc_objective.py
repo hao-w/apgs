@@ -20,7 +20,6 @@ class HMC():
         self.generative = generative
         self.Sigma = torch.ones(self.D)
         self.mu = torch.zeros(self.D)
-        self.sigma_mu = torch.ones((self.K, self.D)) * 15
         self.accept_count = 0.0
         self.smallest_accept_ratio = 0.0
         self.hmc_num_steps = hmc_num_steps
@@ -30,7 +29,6 @@ class HMC():
             with torch.cuda.device(DEVICE):
                 self.Sigma = self.Sigma.cuda()
                 self.mu = self.mu.cuda()
-                self.sigma_mu = self.sigma_mu.cuda()
                 self.uniformer = Uniform(torch.Tensor([0.0]).cuda(), torch.Tensor([1.0]).cuda())
         else:
             self.uniformer = Uniform(torch.Tensor([0.0]), torch.Tensor([1.0]))
@@ -47,7 +45,6 @@ class HMC():
     def hmc_sampling(self, ob, log_tau, mu):
         self.accept_count = 0.0
         density_list = []
-        time_start = time.time()
         for m in range(self.hmc_num_steps):
             log_tau, mu = self.metrioplis(ob=ob, log_tau=log_tau.detach(), mu=mu.detach())
             posterior_logits = posterior_z(ob=ob,
@@ -153,7 +150,6 @@ class HMC():
         sigma = 1. / tau.sqrt()
         logprior_tau =(Gamma(self.generative.prior_alpha, self.generative.prior_beta).log_prob(tau) + log_tau).sum(-1).sum(-1)  # S * B
         logprior_mu = Normal(self.generative.prior_mu, 1. / (self.generative.prior_nu * tau).sqrt()).log_prob(mu).sum(-1).sum(-1)  # S * B
-        # logprior_mu = Normal(self.generative.prior_mu, self.sigma_mu).log_prob(mu).sum(-1).sum(-1)  # S * B
         mu_expand = mu.unsqueeze(2).repeat(1, 1, self.N, 1, 1).permute(3, 0, 1, 2, 4)
         sigma_expand = sigma.unsqueeze(2).repeat(1, 1, self.N, 1, 1).permute(3, 0, 1, 2, 4) #  K * S * B * N * D
         ll = Normal(mu_expand, sigma_expand).log_prob(ob).sum(-1).permute(1, 2, 3, 0) # S * B * N * K
