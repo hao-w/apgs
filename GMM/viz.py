@@ -106,11 +106,11 @@ def viz_metrics(metrics, budget_sweeps, budget_samples, figure_size, title_fonts
     ax2.plot(np.array(budget_sweeps), torch.Tensor(metrics['ess_small']).data.numpy(), 'o-', c=colors[0],  linewidth=linewidth, label=r'$\{\mu, \tau\}, \{c\}$')
     ax2.plot(np.array(budget_sweeps), torch.Tensor(metrics['ess_large']).data.numpy(), 'o-', c=colors[1],  linewidth=linewidth, label=r'$\{\mu, \tau, c\}$')
     ax2.set_xticks(np.array(budget_sweeps))
-    ax1.set_xticklabels(['K=%d\nL=%d' % (budget_sweeps[0], budget_samples[0]),
+    ax2.set_xticklabels(['K=%d\nL=%d' % (budget_sweeps[0], budget_samples[0]),
                          'K=%d\nL=%d' % (budget_sweeps[1], budget_samples[1]),
                          'K=%d\nL=%d' % (budget_sweeps[2], budget_samples[2]),
                          'K=%d\nL=%d' % (budget_sweeps[3], budget_samples[3]),
-                         'K=%d\nL=%d' % (budget_sweeps[4], budget_samples[4])])    
+                         'K=%d\nL=%d' % (budget_sweeps[4], budget_samples[4])])
     ax2.tick_params(labelsize=title_fontsize)
     ax2.grid(alpha=0.4)
     ax2.legend(fontsize=title_fontsize)

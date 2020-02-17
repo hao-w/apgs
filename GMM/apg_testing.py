@@ -4,8 +4,6 @@ import sys
 sys.path.append('../')
 from utils import shuffler
 from apg_objective import apg_objective
-from hybrid_objective import hybrid_objective
-from hmc_objective import HMC
 from resample import Resampler
 import time
 import numpy as np
