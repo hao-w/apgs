@@ -6,7 +6,7 @@ from utils import shuffler
 from apg_modeling import save_model
 from apg_objective import apg_objective
 
-def train(optimizer, model, resampler, apg_sweeps, data, K, num_epochs, sample_size, batch_size, CUDA, DEVICE, MODEL_VERSION):
+def train(optimizer, model, block, resampler, apg_sweeps, data, K, num_epochs, sample_size, batch_size, CUDA, DEVICE, MODEL_VERSION):
     """
     ==========
     training function of apg samplers
@@ -17,8 +17,7 @@ def train(optimizer, model, resampler, apg_sweeps, data, K, num_epochs, sample_s
     mode_required = False
     density_required = True
 
-    num_datasets = data.shape[0]
-    N = data.shape[1]
+    num_datasets, N, D = data.shape
     num_batches = int((num_datasets / batch_size))
 
     for epoch in range(num_epochs):
@@ -33,6 +32,7 @@ def train(optimizer, model, resampler, apg_sweeps, data, K, num_epochs, sample_s
                 ob = ob.cuda().to(DEVICE)
             trace = apg_objective(model=model,
                                   resampler=resampler,
+                                  block=block,
                                   apg_sweeps=apg_sweeps,
                                   ob=ob,
                                   K=K,
@@ -57,25 +57,11 @@ def train(optimizer, model, resampler, apg_sweeps, data, K, num_epochs, sample_s
                     metrics['loss_theta'] += trace['loss_theta'][-1].item()
                 else:
                     metrics['loss_theta'] = trace['loss_theta'][-1].item()
-
             if ess_required:
-                assert trace['ess_rws'][0].shape == (batch_size, ), 'ERROR! ess_rws has unexpected shape.'
-                assert trace['ess_mu'].shape == (apg_sweeps, batch_size), 'ERROR! ess_mu has unexpected shape.'
-                assert trace['ess_local'].shape == (apg_sweeps, batch_size), 'ERROR! ess_local has unexpected shape.'
-                if 'ess_rws' in metrics:
-                    metrics['ess_rws'] += trace['ess_rws'][0].mean().item()
+                if 'ess' in metrics:
+                    metrics['ess'] += trace['ess'].mean(-1)[-1].item()
                 else:
-                    metrics['ess_rws'] = trace['ess_rws'][0].mean().item()
-
-                if 'ess_mu' in metrics:
-                    metrics['ess_mu'] += trace['ess_mu'].mean(-1)[-1].item()
-                else:
-                    metrics['ess_mu'] = trace['ess_mu'].mean(-1)[-1].item()
-
-                if 'ess_local' in metrics:
-                    metrics['ess_local'] += trace['ess_local'].mean(-1)[-1].item()
-                else:
-                    metrics['ess_local'] = trace['ess_local'].mean(-1)[-1].item()
+                    metrics['ess'] = trace['ess'].mean(-1)[-1].item()
             if density_required:
                 assert trace['density'].shape == (1+apg_sweeps, batch_size), 'ERROR! density has unexpected shape.'
                 if 'density' in metrics:

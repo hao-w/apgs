@@ -89,30 +89,32 @@ def viz_samples(datas, metrics, apg_sweeps, K, viz_interval, figure_size, title_
         plt.savefig(save_name +'.svg', dpi=300)
 
 
-def Plot_metrics(ll, ess, sample_size, filename):
-    num_cols = len(ll)
-    gs = gridspec.GridSpec(2, num_cols)
-    gs.update(left=0.05 , bottom=0.05, right=0.95, top=0.95, wspace=0.2, hspace=0.05)
-    fig = plt.figure(figsize=(self.fs, self.fs * 2 / num_cols))
-    plt.rc('axes',edgecolor='#eeeeee')
-    for col_ind in range(num_cols):
-        ax1 = fig.add_subplot(gs[0, col_ind])
-        ax2 = fig.add_subplot(gs[1, col_ind])
-        temp = ll[col_ind][0].data.numpy()
+def viz_metrics(metrics, budget_sweeps, budget_samples, figure_size, title_fontsize, linewidth, colors):
+    fig = plt.figure(figsize=(figure_size*2.5, figure_size))
+    ax1 = fig.add_subplot(1, 2, 1)
+    ax1.plot(np.array(budget_sweeps), torch.Tensor(metrics['density_small']).data.numpy(), 'o-', c=colors[0], linewidth=linewidth, label=r'$\{\mu, \tau\}, \{c\}$')
+    ax1.plot(np.array(budget_sweeps), torch.Tensor(metrics['density_large']).data.numpy(), 'o-', c=colors[1],  linewidth=linewidth, label=r'$\{\mu, \tau, c\}$')
 
-        baseline = np.ones(temp.shape[0]) * temp[0]
-        ax1.plot(ll[col_ind][0].data.numpy(), c=self.colors[0], marker='o')
-        ax1.plot(baseline, '--', c=self.colors[1], alpha=0.4)
-
-        ax2.plot(ess[col_ind][0].data.numpy() / sample_size, c=self.colors[2])
-        ax2.scatter(np.arange(temp.shape[0]), ess[col_ind][0].data.numpy() / sample_size, c=self.colors[2], s=6.0)
-
-        # ax1.set_title('N= %d' % ((col_ind+1) * 20), fontsize=self.title_fontsize)
-        # if col_ind == 0:
-            # ax1.set_ylabel('log p(z, x)', fontsize=self.title_fontsize)
-            # ax2.set_ylabel('ESS / L', fontsize=self.title_fontsize)
-        ax2.set_ylim([-0.1, 1.1])
-        ax1.set_xticks([])
-        ax1.set_ylim([temp.min()-50, temp.max()+10])
-    plt.savefig(filename + '.svg', dpi=300)
-    plt.savefig(filename + '.pdf')
+    ax1.set_xticks(np.array(budget_sweeps))
+    ax1.set_xticklabels(['K=%d\nL=%d' % (budget_sweeps[0], budget_samples[0]),
+                         'K=%d\nL=%d' % (budget_sweeps[1], budget_samples[1]),
+                         'K=%d\nL=%d' % (budget_sweeps[2], budget_samples[2]),
+                         'K=%d\nL=%d' % (budget_sweeps[3], budget_samples[3]),
+                         'K=%d\nL=%d' % (budget_sweeps[4], budget_samples[4])])
+    ax1.tick_params(labelsize=title_fontsize)
+    ax1.grid(alpha=0.4)
+    ax2 = fig.add_subplot(1, 2, 2)
+    ax2.plot(np.array(budget_sweeps), torch.Tensor(metrics['ess_small']).data.numpy(), 'o-', c=colors[0],  linewidth=linewidth, label=r'$\{\mu, \tau\}, \{c\}$')
+    ax2.plot(np.array(budget_sweeps), torch.Tensor(metrics['ess_large']).data.numpy(), 'o-', c=colors[1],  linewidth=linewidth, label=r'$\{\mu, \tau, c\}$')
+    ax2.set_xticks(np.array(budget_sweeps))
+    ax2.set_xticklabels(['K=%d\nL=%d' % (budget_sweeps[0], budget_samples[0]),
+                         'K=%d\nL=%d' % (budget_sweeps[1], budget_samples[1]),
+                         'K=%d\nL=%d' % (budget_sweeps[2], budget_samples[2]),
+                         'K=%d\nL=%d' % (budget_sweeps[3], budget_samples[3]),
+                         'K=%d\nL=%d' % (budget_sweeps[4], budget_samples[4])])
+    ax2.tick_params(labelsize=title_fontsize)
+    ax2.grid(alpha=0.4)
+    ax2.legend(fontsize=title_fontsize)
+    ax1.legend(fontsize=title_fontsize)
+    ax1.set_ylabel(r'$\log \: p_\theta(x, \: z)$', fontsize=title_fontsize)
+    ax2.set_ylabel('ESS / L', fontsize=title_fontsize)

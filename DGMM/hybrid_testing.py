@@ -24,18 +24,9 @@ def sample_data_uniform(DATAs, data_ptr):
         datas.append(DATA[data_ptr])
     return datas
 
-def test_hybrid_all(model, flags, DATA, batch_size, sample_size, apg_sweeps, K, hmc_num_steps, leapfrog_step_size, leapfrog_num_steps, filename, CUDA, DEVICE):
-    """
-    ==========
-    run apg sampler for each of the selected datasets
-    ==========
-
-    """
-    metrics = {'apg' : [], 'bps': [], 'hmc' : []}
-    # metrics_apg = []
-    # metrics_hmc = []
-    num_datasets = DATA.shape[0]
-    N = DATA.shape[1]
+def test_hybrid_all(model, flags, DATA, batch_size, sample_size, apg_sweeps, K, hmc_num_steps, leapfrog_step_size, leapfrog_num_steps, CUDA, DEVICE):
+    metrics = {'apg' : [], 'bpg': [], 'hmc' : []}
+    num_datasets, N, D = DATA.shape
     num_batches = int(num_datasets / batch_size)
     (_, enc_apg_local, _, dec) = model
     resampler = Resampler(strategy='systematic',
@@ -43,21 +34,18 @@ def test_hybrid_all(model, flags, DATA, batch_size, sample_size, apg_sweeps, K, 
                           CUDA=CUDA,
                           DEVICE=DEVICE)
 
-    resampler_bps = Resampler(strategy='systematic',
-                              sample_size=sample_size,
-                              CUDA=CUDA,
-                              DEVICE=DEVICE)
-
-    hmc = HMC(enc_local=enc_apg_local,
-              dec=dec,
-              burn_in=None,
-              S=sample_size,
-              B=batch_size,
-              N=N,
-              K=K,
-              D=2,
-              CUDA=CUDA,
-              DEVICE=DEVICE)
+    hmc_sampler = HMC(enc_local=enc_apg_local,
+                      dec=dec,
+                      S=sample_size,
+                      B=batch_size,
+                      N=N,
+                      K=K,
+                      D=2,
+                      hmc_num_steps=hmc_num_steps,
+                      leapfrog_step_size=leapfrog_step_size,
+                      leapfrog_num_steps=leapfrog_num_steps,
+                      CUDA=CUDA,
+                      DEVICE=DEVICE)
 
     for b in range(num_batches):
         time_start = time.time()
@@ -68,155 +56,74 @@ def test_hybrid_all(model, flags, DATA, batch_size, sample_size, apg_sweeps, K, 
 
         density_dict = hybrid_objective(model=model,
                                          flags=flags,
-                                         hmc=hmc,
+                                         hmc=hmc_sampler,
                                          resampler=resampler,
-                                         resampler_bps=resampler_bps,
                                          apg_sweeps=apg_sweeps,
                                          ob=ob,
-                                         K=K,
-                                         hmc_num_steps=hmc_num_steps,
-                                         leapfrog_step_size=leapfrog_step_size,
-                                         leapfrog_num_steps=leapfrog_num_steps)
+                                         K=K)
         if flags['apg']:
             metrics['apg'].append(density_dict['apg'][-1].mean().cpu())
         if flags['hmc']:
             metrics['hmc'].append(density_dict['hmc'][-1].mean().cpu())
-        if flags['bps']:
-            metrics['bps'].append(density_dict['bps'][-1].mean().cpu())
+        if flags['bpg']:
+            metrics['bpg'].append(density_dict['bpg'][-1].mean().cpu())
         time_end = time.time()
         print('%d / %d completed (%ds)' % (b+1, num_batches, time_end - time_start))
     return metrics
 
 
 
-def test_hybrid(model, flags, datas, sample_size, apg_sweeps, K, hmc_num_steps, leapfrog_step_size, leapfrog_num_steps, filename, CUDA, DEVICE):
-    """
-    ==========
-    run apg sampler for each of the selected datasets
-    ==========
-
-    """
-
-
-    for data in datas:
-        data = data.unsqueeze(0).repeat(sample_size, 1, 1, 1)
-        if CUDA:
-            ob = data.cuda().to(DEVICE)
-        S, B, N, D = ob.shape
-
-
-        resampler = Resampler(strategy='systematic',
-                              sample_size=sample_size,
-                              CUDA=CUDA,
-                              DEVICE=DEVICE)
-
-        resampler_bps = Resampler(strategy='systematic',
-                                  sample_size=sample_size*100,
-                                  CUDA=CUDA,
-                                  DEVICE=DEVICE)
-
-        (_, enc_apg_local, _, dec) = model
-        hmc = HMC(enc_local=enc_apg_local,
-                  dec=dec,
-                  burn_in=None,
-                  S=S,
-                  B=B,
-                  N=N,
-                  K=K,
-                  D=D,
-                  CUDA=CUDA,
-                  DEVICE=DEVICE)
-
-        density_dict = hybrid_objective(model=model,
-                                         flags=flags,
-                                         hmc=hmc,
-                                         resampler=resampler,
-                                         resampler_bps=resampler_bps,
-                                         apg_sweeps=apg_sweeps,
-                                         ob=ob,
-                                         K=K,
-                                         hmc_num_steps=hmc_num_steps,
-                                         leapfrog_step_size=leapfrog_step_size,
-                                         leapfrog_num_steps=leapfrog_num_steps)
-        if flags['apg']:
-            density_apg = density_dict['apg'].cpu().squeeze(-1)
-            np.save('log_joint_apg_%s' % filename, density_apg.data.numpy())
-        if flags['hmc']:
-            density_hmc = density_dict['hmc'].cpu().squeeze(-1)
-            np.save('log_joint_hmc_%s' % filename, density_hmc.data.numpy())
-        if flags['bps']:
-            density_bps = density_dict['bps'].cpu().squeeze(-1)
-            np.save('log_joint_bps_%s' % filename, density_bps.data.numpy())
-
-def test_budget(model, budget, apg_sweeps, datas, K, CUDA, DEVICE):
-    """
-    ==========
-    compute the ess and log joint under same budget
-    ==========
-    """
-    ESSs = []
-    DENSITIES = []
-
-    loss_required = False
-    ess_required = True
-    mode_required = False
-    density_required = True
-
-    for apg_sweep in apg_sweeps:
+def test_hybrid(num_runs, model, flags, data, sample_size, apg_sweeps, K, hmc_num_steps, leapfrog_step_size, leapfrog_num_steps, CUDA, DEVICE):
+    DENSITIES = {'apg' : [], 'hmc' : [], 'gibbs' : [], 'bpg' : []}
+    data = data.unsqueeze(0).unsqueeze(0).repeat(sample_size, 1, 1, 1)
+    if CUDA:
+        ob = data.cuda().to(DEVICE)
+    S, B, N, D = ob.shape
+    (_, enc_apg_local, _, dec) = model
+    hmc_sampler = HMC(enc_local=enc_apg_local,
+                      dec=dec,
+                      S=S,
+                      B=B,
+                      N=N,
+                      K=K,
+                      D=D,
+                      hmc_num_steps=hmc_num_steps,
+                      leapfrog_step_size=leapfrog_step_size,
+                      leapfrog_num_steps=leapfrog_num_steps,
+                      CUDA=CUDA,
+                      DEVICE=DEVICE)
+    resampler = Resampler(strategy='systematic',
+                          sample_size=sample_size,
+                          CUDA=CUDA,
+                          DEVICE=DEVICE)
+    for r in range(num_runs):
         time_start = time.time()
-        sample_size = int(budget / apg_sweep)
-        print('sample_size=%d' % sample_size)
-        resampler = Resampler(strategy='systematic',
-                              sample_size=sample_size,
-                              CUDA=CUDA,
-                              DEVICE=DEVICE)
-
-        ess = []
-        density = []
-        for data in datas:
-            data = data.unsqueeze(0).repeat(sample_size, 1, 1, 1)
-            if CUDA:
-                ob = data.cuda().to(DEVICE)
-            trace = apg_objective(model=model,
-                                  resampler=resampler,
-                                  apg_sweeps=apg_sweep-1,
-                                  ob=ob,
-                                  K=K,
-                                  loss_required=loss_required,
-                                  ess_required=ess_required,
-                                  mode_required=mode_required, # no need to track modes during training, since modes are only for visualization purpose at test time
-                                  density_required=density_required)
-            density.append(trace['density'][-1])
-            if apg_sweep == 1:
-                ess.append(trace['ess_rws'][0] / float(sample_size))
-
-            else:
-                ess.append(trace['ess_mu'][-1] / float(sample_size))
-        ESSs.append(ess)
-
-        DENSITIES.append(density)
+        densities = hybrid_objective(model=model,
+                                     flags=flags,
+                                     hmc=hmc_sampler,
+                                     resampler=resampler,
+                                     apg_sweeps=apg_sweeps,
+                                     ob=ob,
+                                     K=K)
+        if flags['apg']:
+            np.save('log_joint_apg_run=%d' % (r+1), densities['apg'].cpu().squeeze(-1).data.numpy())
+        if flags['hmc']:
+            np.save('log_joint_hmc_run=%d' % (r+1), densities['hmc'].cpu().squeeze(-1).data.numpy())
+        if flags['bpg']:
+            np.save('log_joint_bpg_run=%d' % (r+1), densities['bpg'].cpu().squeeze(-1).data.numpy())
         time_end = time.time()
-        print('apg_sweep=%d completed in %ds' % (apg_sweep, time_end - time_start))
-
-    return ESSs, DENSITIES
-    # #
-    # def Test_ALL(self, objective, Data, mcmc_steps, Test_Params):
-    #     Metrics = {'kl_ex' : [], 'kl_in' : [], 'll' : [], 'ess' : []}
-    #     (S, B, DEVICE) = Test_Params
-    #     EPS = torch.FloatTensor([1e-15]).log() ## EPS for KL between categorial distributions
-    #     EPS = EPS.cuda().to(DEVICE) ## EPS for KL between categorial distributions
-    #     for g, data_g in enumerate(Data):
-    #         print("group=%d" % (g+1))
-    #         NUM_DATASETS = data_g.shape[0]
-    #         NUM_BATCHES = int((NUM_DATASETS / B))
-    #         for step in range(NUM_BATCHES):
-    #             ob = data_g[step*B : (step+1)*B]
-    #             ob = shuffler(ob).repeat(S, 1, 1, 1)
-    #             ob = ob.cuda().to(DEVICE)
-    #             metrics = objective(self.models, ob, mcmc_steps, EPS)
-    #             Metrics['ess'].append(metrics['ess'])
-    #             Metrics['ll'].append(metrics['ll'])
-    #             Metrics['kl_ex'].append(metrics['kl_ex'])
-    #             Metrics['kl_in'].append(metrics['kl_in'])
-    #
-    #     return Metrics
+        print('Run=%d/%d completed in %ds' % (r+1, num_runs, time_end - time_start))
+    for r in range(num_runs):
+        if flags['apg']:
+            DENSITIES['apg'].append(np.load('log_joint_apg_run=%d.npy' % (r+1)).mean(1)[None, :])
+            os.remove('log_joint_apg_run=%d.npy' % (r+1))
+        if flags['hmc']:
+            DENSITIES['hmc'].append(np.load('log_joint_hmc_run=%d.npy' % (r+1)).mean(1)[None, :])
+            os.remove('log_joint_hmc_run=%d.npy' % (r+1))
+        if flags['bpg']:
+            DENSITIES['bpg'].append(np.load('log_joint_bpg_run=%d.npy' % (r+1)).mean(1)[None, :])
+            os.remove('log_joint_bpg_run=%d.npy' % (r+1))
+    print('Merged individual results..')
+    np.save('log_joint_apg', np.concatenate(DENSITIES['apg'], 0))
+    np.save('log_joint_hmc', np.concatenate(DENSITIES['hmc'], 0))
+    np.save('log_joint_bpg', np.concatenate(DENSITIES['bpg'], 0))

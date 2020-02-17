@@ -1,0 +1,8 @@
+(314s) loss_phi: -65.171754,  loss_theta: 5497.926555,  ess: 1.046965,  density: -3637.496932
+(313s) loss_phi: -234.489066,  loss_theta: 1158.800608,  ess: 1.180503,  density: -1062.120630
+(312s) loss_phi: -249.547556,  loss_theta: 935.251303,  ess: 1.263751,  density: -944.056308
+(490s) loss_phi: -262.144658,  loss_theta: 832.202589,  ess: 1.340389,  density: -881.163253
+(888s) loss_phi: -271.740299,  loss_theta: 767.112841,  ess: 1.383194,  density: -834.094455
+(311s) loss_phi: -278.676951,  loss_theta: 716.284287,  ess: 1.409716,  density: -797.536541
+(312s) loss_phi: -283.421548,  loss_theta: 681.427471,  ess: 1.440394,  density: -770.449161
+(308s) loss_phi: -286.286256,  loss_theta: 659.974056,  ess: 1.451454,  density: -752.617917

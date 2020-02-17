@@ -87,25 +87,24 @@ def test_hybrid(num_runs, model, flags, data, sample_size, apg_sweeps, hmc_num_s
         ob = data.cuda().to(DEVICE)
     (_, _, _, generative) = model
     S, B, N, D = ob.shape
+    hmc_sampler = HMC(generative=generative,
+                        S=sample_size,
+                        B=B,
+                        N=N,
+                        K=3,
+                        D=D,
+                        hmc_num_steps=hmc_num_steps,
+                        leapfrog_step_size=leapfrog_step_size,
+                        leapfrog_num_steps=leapfrog_num_steps,
+                        CUDA=CUDA,
+                        DEVICE=DEVICE)
+
+    resampler = Resampler(strategy='systematic',
+                          sample_size=sample_size,
+                          CUDA=CUDA,
+                          DEVICE=DEVICE)
     for r in range(num_runs):
         time_start = time.time()
-        hmc_sampler = HMC(generative=generative,
-                            S=sample_size,
-                            B=B,
-                            N=N,
-                            K=3,
-                            D=D,
-                            hmc_num_steps=hmc_num_steps,
-                            leapfrog_step_size=leapfrog_step_size,
-                            leapfrog_num_steps=leapfrog_num_steps,
-                            CUDA=CUDA,
-                            DEVICE=DEVICE)
-
-        resampler = Resampler(strategy='systematic',
-                              sample_size=sample_size,
-                              CUDA=CUDA,
-                              DEVICE=DEVICE)
-
         densities = hybrid_objective(model=model,
                                         flags=flags,
                                         hmc=hmc_sampler,

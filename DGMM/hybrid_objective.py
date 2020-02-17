@@ -3,87 +3,18 @@ import torch.nn.functional as F
 from torch.distributions.normal import Normal
 from torch.distributions.one_hot_categorical import OneHotCategorical as cat
 
-
-def hybrid_objective(model, flags, hmc, resampler, resampler_bps, apg_sweeps, ob, K, hmc_num_steps, leapfrog_step_size, leapfrog_num_steps):
-    trace_apg = dict() ## a dictionary that tracks variables needed during the sweeping
-    trace_apg['density'] = []
-
-    trace_hmc = dict() ## a dictionary that tracks variables needed during the sweeping
-    trace_hmc['density'] = []
-    trace_hmc['marginal'] = []
-    trace_bps = dict() ## a dictionary that tracks variables needed during the sweeping
-    trace_bps['density'] = []
-    density_dict = dict()
-
+def hybrid_objective(model, flags, hmc, resampler, apg_sweeps, ob, K):
+    densities = dict()
     (enc_rws_mu, enc_apg_local, enc_apg_mu, dec) = model
-    log_w, mu_rws, z_rws, beta_rws, log_joint = rws(enc_rws_mu=enc_rws_mu,
-                                                    enc_rws_local=enc_apg_local,
-                                                    dec=dec,
-                                                    ob=ob,
-                                                    K=K)
-    if flags['hmc']:
-        trace_hmc['density'].append(log_joint.unsqueeze(0))
-        # print('Running HMC+Gibbs updates..')
-        _, trace_hmc = hmc.hmc_sampling(ob=ob,
-                                              mu=mu_rws,
-                                              z=z_rws,
-                                              beta=beta_rws,
-                                              trace=trace_hmc,
-                                              hmc_num_steps=hmc_num_steps,
-                                              leapfrog_step_size=leapfrog_step_size,
-                                              leapfrog_num_steps=leapfrog_num_steps)
-        # density_dict['hmc'] =  torch.cat(trace_hmc['density'], 0)
-        density_dict['hmc'] =  torch.cat(trace_hmc['density'], 0)
-#         print(hmc.smallest_accept_ratio)
-
-    if flags['bps']:
-        factor = 1
-        trace_bps['density'].append(log_joint.repeat(factor, 1).unsqueeze(0))
-        # print('Running Boostraped Population Sampling updates..')
-        ## increase the number of particles by 10x
-        ob_bps = ob.repeat(factor, 1, 1, 1)
-        log_w_bps = log_w.repeat(factor, 1)
-        mu_bps = mu_rws.repeat(factor, 1, 1, 1)
-        z_bps = z_rws.repeat(factor, 1, 1, 1)
-        beta_bps = beta_rws.repeat(factor, 1, 1, 1)
-        ancestral_index = resampler_bps.sample_ancestral_index(log_weights=log_w_bps)
-        mu_bps = resampler_bps.resample_4dims(var=mu_bps, ancestral_index=ancestral_index)
-        z_bps = resampler_bps.resample_4dims(var=z_bps, ancestral_index=ancestral_index)
-        beta_bps = resampler_bps.resample_4dims(var=beta_bps, ancestral_index=ancestral_index)
-
-        for m in range(apg_sweeps):
-            log_w_bps, mu_bps, trace_bps = bps_mu(dec=dec,
-                                                    ob=ob_bps,
-                                                    z=z_bps,
-                                                    beta=beta_bps,
-                                                    mu_old=mu_bps,
-                                                    K=K,
-                                                    trace=trace_bps)
-            ancestral_index = resampler_bps.sample_ancestral_index(log_weights=log_w_bps)
-            mu_bps = resampler_bps.resample_4dims(var=mu_bps, ancestral_index=ancestral_index)
-            z_bps = resampler_bps.resample_4dims(var=z_bps, ancestral_index=ancestral_index)
-            beta_bps = resampler_bps.resample_4dims(var=beta_bps, ancestral_index=ancestral_index)
-
-            log_w_bps, z_bps, beta_bps, trace_bps = apg_local(enc_apg_local=enc_apg_local,
-                                                              dec=dec,
-                                                              ob=ob_bps,
-                                                              mu=mu_bps,
-                                                              z_old=z_bps,
-                                                              beta_old=beta_bps,
-                                                              K=K,
-                                                              trace=trace_bps)
-            ancestral_index = resampler_bps.sample_ancestral_index(log_weights=log_w_bps)
-            mu_bps = resampler_bps.resample_4dims(var=mu_bps, ancestral_index=ancestral_index)
-            z_bps = resampler_bps.resample_4dims(var=z_bps, ancestral_index=ancestral_index)
-            beta_bps = resampler_bps.resample_4dims(var=beta_bps, ancestral_index=ancestral_index)
-
-        density_dict['bps'] = torch.cat(trace_bps['density'], 0)
-
-
+    log_w_rws, mu_rws, z_rws, beta_rws, log_joint_rws = rws(enc_rws_mu=enc_rws_mu,
+                                                            enc_rws_local=enc_apg_local,
+                                                            dec=dec,
+                                                            ob=ob,
+                                                            K=K)
     if flags['apg']:
-        trace_apg['density'].append(log_joint.unsqueeze(0))
-        # print('Running APG updates..')
-        ancestral_index = resampler.sample_ancestral_index(log_weights=log_w)
+        print('Running APG updates..')
+        trace_apg = {'density' : []}
+        ancestral_index = resampler.sample_ancestral_index(log_weights=log_w_rws)
         mu_apg = resampler.resample_4dims(var=mu_rws, ancestral_index=ancestral_index)
         z_apg = resampler.resample_4dims(var=z_rws, ancestral_index=ancestral_index)
         beta_apg = resampler.resample_4dims(var=beta_rws, ancestral_index=ancestral_index)
@@ -114,9 +45,48 @@ def hybrid_objective(model, flags, hmc, resampler, resampler_bps, apg_sweeps, ob
             mu_apg = resampler.resample_4dims(var=mu_apg, ancestral_index=ancestral_index)
             z_apg = resampler.resample_4dims(var=z_apg, ancestral_index=ancestral_index)
             beta_apg = resampler.resample_4dims(var=beta_apg, ancestral_index=ancestral_index)
-        density_dict['apg'] = torch.cat(trace_apg['density'], 0) # (1 + apg_sweeps) * B
 
-    return density_dict
+        densities['apg'] = torch.cat([log_joint_rws.unsqueeze(0)] + trace_apg['density'], 0) # (1 + apg_sweeps) * B
+
+    if flags['hmc']:
+        print('Running HMC+RWS updates..')
+        _, _, _, density_list = hmc.hmc_sampling(ob=ob, mu=mu_rws, z=z_rws, beta=beta_rws)
+        densities['hmc'] =  torch.cat([log_joint_rws.unsqueeze(0)]+density_list, 0)
+
+    if flags['bpg']:
+        print('Running Boostraped Population Gibbs updates..')
+        trace_bpg = {'density' : []}
+        ancestral_index = resampler.sample_ancestral_index(log_weights=log_w_rws)
+        mu_bpg = resampler.resample_4dims(var=mu_rws, ancestral_index=ancestral_index)
+        z_bpg = resampler.resample_4dims(var=z_rws, ancestral_index=ancestral_index)
+        beta_bpg = resampler.resample_4dims(var=beta_rws, ancestral_index=ancestral_index)
+        for m in range(apg_sweeps):
+            log_w_bpg, mu_bpg, trace_bpg = bpg_mu(dec=dec,
+                                                    ob=ob_bpg,
+                                                    z=z_bpg,
+                                                    beta=beta_bpg,
+                                                    mu_old=mu_bpg,
+                                                    K=K,
+                                                    trace=trace_bpg)
+            ancestral_index = resampler.sample_ancestral_index(log_weights=log_w_bpg)
+            mu_bpg = resampler.resample_4dims(var=mu_bpg, ancestral_index=ancestral_index)
+            z_bpg = resampler.resample_4dims(var=z_bpg, ancestral_index=ancestral_index)
+            beta_bpg = resampler.resample_4dims(var=beta_bpg, ancestral_index=ancestral_index)
+
+            log_w_bpg, z_bpg, beta_bpg, trace_bpg = apg_local(enc_apg_local=enc_apg_local,
+                                                              dec=dec,
+                                                              ob=ob_bpg,
+                                                              mu=mu_bpg,
+                                                              z_old=z_bpg,
+                                                              beta_old=beta_bpg,
+                                                              K=K,
+                                                              trace=trace_bpg)
+            ancestral_index = resampler.sample_ancestral_index(log_weights=log_w_bpg)
+            mu_bpg = resampler.resample_4dims(var=mu_bpg, ancestral_index=ancestral_index)
+            z_bpg = resampler.resample_4dims(var=z_bpg, ancestral_index=ancestral_index)
+            beta_bpg = resampler.resample_4dims(var=beta_bpg, ancestral_index=ancestral_index)
+        densities['bpg'] = torch.cat([log_joint_rws.unsqueeze(0)]+ trace_bpg['density'], 0)
+    return densities
 
 def rws(enc_rws_mu, enc_rws_local, dec, ob, K):
     """
@@ -159,12 +129,10 @@ def apg_mu(enc_apg_mu, dec, ob, z, beta, mu_old, K, trace):
     log_p_b =  log_prior_b + ll_b
     log_w_b =  log_p_b - log_q_b
     log_w = (log_w_f - log_w_b).detach()
-
     trace['density'].append(log_priors_f.unsqueeze(0)) # 1-by-B-length vector
-
     return log_w, mu, trace
 
-def bps_mu(dec, ob, z, beta, mu_old, K, trace):
+def bpg_mu(dec, ob, z, beta, mu_old, K, trace):
     """
     Given local variable {z, beta}, update global variables mu
     """

@@ -13,16 +13,16 @@ evaluation functions for apg samplers
 def sample_data_uniform(DATAs, data_ptr):
     """
     ==========
-    randomly select one dgmm dataset from each group,
+    randomly select one gmm dataset from each group,
     given the data pointer
     ==========
     """
-    datas = []
+    selected_data = []
     for DATA in DATAs:
-        datas.append(DATA[data_ptr])
-    return datas
+        selected_data.append(DATA[data_ptr])
+    return selected_data
 
-def test_single(model, resampler, apg_sweeps, datas, K, sample_size, CUDA, DEVICE):
+def test_single(model, block, apg_sweeps, datas, K, sample_size, CUDA, DEVICE):
     """
     ==========
     run apg sampler for each of the selected datasets
@@ -35,11 +35,18 @@ def test_single(model, resampler, apg_sweeps, datas, K, sample_size, CUDA, DEVIC
     density_required = True
 
     metrics = []
+
+    resampler = Resampler(strategy='systematic',
+                          sample_size=sample_size,
+                          CUDA=CUDA,
+                          DEVICE=DEVICE)
+
     for data in datas:
         data = data.unsqueeze(0).repeat(sample_size, 1, 1, 1)
         if CUDA:
             ob = data.cuda().to(DEVICE)
         trace = apg_objective(model=model,
+                              block=block,
                               resampler=resampler,
                               apg_sweeps=apg_sweeps,
                               ob=ob,
@@ -52,79 +59,36 @@ def test_single(model, resampler, apg_sweeps, datas, K, sample_size, CUDA, DEVIC
     return metrics
 
 
-def test_budget_grid(model, apg_sweeps, sample_sizes, data, K, CUDA, DEVICE):
+def test_budget_grid(model, apg_sweeps, batch_size, sample_sizes, DATA, K, CUDA, DEVICE):
     """
     ==========
     compute the ess and log joint under same budget
     ==========
     """
-    ess = []
-    density = []
-
     loss_required = False
     ess_required = True
     mode_required = False
     density_required = True
 
+    metrics = dict()
+    num_datasets, N, D = DATA.shape
+    num_batches = int(num_datasets / batch_size)
     for i, apg_sweep in enumerate(apg_sweeps):
-
+        metrics_one_run = {'ess_small' : [], 'density_small' : [], 'ess_large' : [], 'density_large' : []}
+        time_start = time.time()
         sample_size = sample_sizes[i]
         resampler = Resampler(strategy='systematic',
                               sample_size=sample_size,
                               CUDA=CUDA,
                               DEVICE=DEVICE)
 
-
-        ob = data.unsqueeze(0).repeat(sample_size, 1, 1, 1)
-        if CUDA:
-            ob = ob.cuda().to(DEVICE)
-        trace = apg_objective(model=model,
-                              resampler=resampler,
-                              apg_sweeps=apg_sweep-1,
-                              ob=ob,
-                              K=K,
-                              loss_required=loss_required,
-                              ess_required=ess_required,
-                              mode_required=mode_required, # no need to track modes during training, since modes are only for visualization purpose at test time
-                              density_required=density_required)
-        density.append(trace['density'][-1].cpu())
-        if apg_sweep == 1:
-            ess.append(trace['ess_rws'][0].cpu() / float(sample_size))
-        else:
-            ess.append(trace['ess_mu'].mean(0).cpu() / float(sample_size))
-    return ess, density
-
-
-def test_budget(model, budget, apg_sweeps, datas, K, CUDA, DEVICE):
-    """
-    ==========
-    compute the ess and log joint under same budget
-    ==========
-    """
-    ESSs = []
-    DENSITIES = []
-
-    loss_required = False
-    ess_required = True
-    mode_required = False
-    density_required = True
-
-    for apg_sweep in apg_sweeps:
-        time_start = time.time()
-        sample_size = int(budget / apg_sweep)
-        print('sample_size=%d' % sample_size)
-        resampler = Resampler(strategy='systematic',
-                              sample_size=sample_size,
-                              CUDA=CUDA,
-                              DEVICE=DEVICE)
-
-        ess = []
-        density = []
-        for data in datas:
-            data = data.unsqueeze(0).repeat(sample_size, 1, 1, 1)
+        for b in range(num_batches):
+            ob = DATA[b*batch_size : (b+1)*batch_size]
+            ob = ob.unsqueeze(0).repeat(sample_size, 1, 1, 1)
             if CUDA:
-                ob = data.cuda().to(DEVICE)
+                ob = ob.cuda().to(DEVICE)
             trace = apg_objective(model=model,
+                                  block='small',
                                   resampler=resampler,
                                   apg_sweeps=apg_sweep-1,
                                   ob=ob,
@@ -133,37 +97,26 @@ def test_budget(model, budget, apg_sweeps, datas, K, CUDA, DEVICE):
                                   ess_required=ess_required,
                                   mode_required=mode_required, # no need to track modes during training, since modes are only for visualization purpose at test time
                                   density_required=density_required)
-            density.append(trace['density'][-1])
-            if apg_sweep == 1:
-                ess.append(trace['ess_rws'][0] / float(sample_size))
-
+            metrics_one_run['density_small'].append(trace['density'][-1].mean().cpu())
+            metrics_one_run['ess_small'].append(trace['ess'][-1].mean().cpu() / float(sample_size))
+            trace = apg_objective(model=model,
+                                  block='large',
+                                  resampler=resampler,
+                                  apg_sweeps=apg_sweep-1,
+                                  ob=ob,
+                                  K=K,
+                                  loss_required=loss_required,
+                                  ess_required=ess_required,
+                                  mode_required=mode_required, # no need to track modes during training, since modes are only for visualization purpose at test time
+                                  density_required=density_required)
+            metrics_one_run['density_large'].append(trace['density'][-1].mean().cpu())
+            metrics_one_run['ess_large'].append(trace['ess'][-1].mean().cpu() / float(sample_size))
+        for key in metrics_one_run.keys():
+            if key in metrics:
+                metrics[key].append(torch.Tensor(metrics_one_run[key]).mean())
             else:
-                ess.append(trace['ess_mu'].mean(0) / float(sample_size))
-        ESSs.append(ess)
-
-        DENSITIES.append(density)
+                metrics[key] = [torch.Tensor(metrics_one_run[key]).mean()]
         time_end = time.time()
-        print('apg_sweep=%d completed in %ds' % (apg_sweep, time_end - time_start))
+        print('K=%d, L=%d completed in %ds' % (apg_sweep, sample_size, time_end - time_start))
 
-    return ESSs, DENSITIES
-    # #
-    # def Test_ALL(self, objective, Data, mcmc_steps, Test_Params):
-    #     Metrics = {'kl_ex' : [], 'kl_in' : [], 'll' : [], 'ess' : []}
-    #     (S, B, DEVICE) = Test_Params
-    #     EPS = torch.FloatTensor([1e-15]).log() ## EPS for KL between categorial distributions
-    #     EPS = EPS.cuda().to(DEVICE) ## EPS for KL between categorial distributions
-    #     for g, data_g in enumerate(Data):
-    #         print("group=%d" % (g+1))
-    #         NUM_DATASETS = data_g.shape[0]
-    #         NUM_BATCHES = int((NUM_DATASETS / B))
-    #         for step in range(NUM_BATCHES):
-    #             ob = data_g[step*B : (step+1)*B]
-    #             ob = shuffler(ob).repeat(S, 1, 1, 1)
-    #             ob = ob.cuda().to(DEVICE)
-    #             metrics = objective(self.models, ob, mcmc_steps, EPS)
-    #             Metrics['ess'].append(metrics['ess'])
-    #             Metrics['ll'].append(metrics['ll'])
-    #             Metrics['kl_ex'].append(metrics['kl_ex'])
-    #             Metrics['kl_in'].append(metrics['kl_in'])
-    #
-    #     return Metrics
+    return metrics
