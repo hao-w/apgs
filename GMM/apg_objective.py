@@ -19,7 +19,7 @@ eta := {tau, mu} global block
 z : S * B * N * K, cluster assignments, as local variables
 ==========
 """
-def apg_objective(model, resampler, block, apg_sweeps, ob, loss_required=True, ess_required=True, mode_required=False, density_required=False):
+def apg_objective(model, block, resampler, apg_sweeps, ob, loss_required=True, ess_required=True, mode_required=False, density_required=False):
     trace = dict() ## a dictionary that tracks variables needed during the sweeping
     if loss_required:
         trace['loss'] = []

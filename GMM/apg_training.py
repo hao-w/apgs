@@ -37,8 +37,8 @@ def train(optimizer, model, block, resampler, apg_sweeps, data, true_z, num_epoc
                 ob = concat_var[:,:,:,:2].cuda().to(DEVICE)
                 true_zb = concat_var[:,:,:,2:].cuda().to(DEVICE)
             trace = apg_objective(model=model,
-                                  resampler=resampler,
                                   block=block,
+                                  resampler=resampler,
                                   apg_sweeps=apg_sweeps,
                                   ob=ob,
                                   loss_required=loss_required,
@@ -57,10 +57,11 @@ def train(optimizer, model, block, resampler, apg_sweeps, data, true_z, num_epoc
                     metrics['loss'] += trace['loss'][-1].item()
                 else:
                     metrics['loss'] = trace['loss'][-1].item()
-            if 'ess' in metrics:
-                metrics['ess'] += trace['ess'].mean(-1)[-1].item()
-            else:
-                metrics['ess'] = trace['ess'].mean(-1)[-1].item()
+            if ess_required:
+                if 'ess' in metrics:
+                    metrics['ess'] += trace['ess'].mean(-1)[-1].item()
+                else:
+                    metrics['ess'] = trace['ess'].mean(-1)[-1].item()
             if density_required:
                 assert trace['density'].shape == (1+apg_sweeps, batch_size), 'ERROR! density has unexpected shape.'
                 if 'density' in metrics:
