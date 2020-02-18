@@ -9,7 +9,7 @@ BMNIST_DIR = '/data/hao/apg_data/'
 import torch
 import numpy as np
 import os
-# os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
+os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
 
 import probtorch
 print('probtorch:', probtorch.__version__,
