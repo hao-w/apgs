@@ -62,7 +62,7 @@ def hybrid_objective(model, flags, hmc, resampler, apg_sweeps, ob, K):
         beta_bpg = resampler.resample_4dims(var=beta_rws, ancestral_index=ancestral_index)
         for m in range(apg_sweeps):
             log_w_bpg, mu_bpg, trace_bpg = bpg_mu(dec=dec,
-                                                    ob=ob_bpg,
+                                                    ob=ob,
                                                     z=z_bpg,
                                                     beta=beta_bpg,
                                                     mu_old=mu_bpg,
@@ -75,7 +75,7 @@ def hybrid_objective(model, flags, hmc, resampler, apg_sweeps, ob, K):
 
             log_w_bpg, z_bpg, beta_bpg, trace_bpg = apg_local(enc_apg_local=enc_apg_local,
                                                               dec=dec,
-                                                              ob=ob_bpg,
+                                                              ob=ob,
                                                               mu=mu_bpg,
                                                               z_old=z_bpg,
                                                               beta_old=beta_bpg,
