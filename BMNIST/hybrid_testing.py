@@ -78,9 +78,12 @@ def test_hybrid(num_runs, model, flags, AT, apg_sweeps, frames, mnist_mean_path,
             DENSITIES['bpg'].append(np.load('log_joint_bpg_run=%d.npy' % (r+1)).mean(1)[None, :])
             os.remove('log_joint_bpg_run=%d.npy' % (r+1))
     print('Merged individual results..')
-    np.save('log_joint_apg', np.concatenate(DENSITIES['apg'], 0))
-    np.save('log_joint_hmc', np.concatenate(DENSITIES['hmc'], 0))
-    np.save('log_joint_bpg', np.concatenate(DENSITIES['bpg'], 0))
+    if flags['apg']:
+        np.save('log_joint_apg', np.concatenate(DENSITIES['apg'], 0))
+    if flags['hmc']:
+        np.save('log_joint_hmc', np.concatenate(DENSITIES['hmc'], 0))
+    if flags['bpg']:
+        np.save('log_joint_bpg', np.concatenate(DENSITIES['bpg'], 0))
 
 
 def test_hybrid_all(model, flags, AT, apg_sweeps, data_paths, mnist_mean_path, T, K, D, z_what_dim, batch_size, sample_size, hmc_num_steps, leapfrog_step_size, leapfrog_num_steps, CUDA, DEVICE):
