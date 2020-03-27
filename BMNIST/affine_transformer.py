@@ -41,7 +41,7 @@ class Affine_Transformer():
     def digit_to_frame(self, digit, z_where):
         """
         transfer the digits to the frame
-        [digit: S * B * T * K * DP * DP, z_where: S * B * T * K * 2 ===> frame: S * B * T * K * FP * FP]
+        [digit: S * B * K * DP * DP, z_where: S * B * T * K * 2 ===> frame: S * B * T * K * FP * FP]
         """
         S, B, T, K, _ = z_where.shape
         affine_p1 = self.scale_dtof.repeat(S, B, T, K, 1, 1)## S * B * T * K * 2 * 2
@@ -65,7 +65,7 @@ class Affine_Transformer():
     def frame_to_digit(self, frames, z_where):
         """
         transfer the frames to the digits
-        [frame: S * B * T * K * FP * FP, z_where: S * B * T * K * 2 ===> digit: S * B * T * K * DP * DP]
+        [frame: S * B * T * FP * FP, z_where: S * B * T * K * 2 ===> digit: S * B * T * K * DP * DP]
         """
         S, B, T, K, _ = z_where.shape
         affine_p1 = self.scale_ftod.repeat(S, B, T, K, 1, 1)## S * B * T * K * 2 * 2
