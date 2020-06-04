@@ -1,11 +1,9 @@
-import sys
-sys.path.append('../')
 import torch
 import time
 import numpy as np
 from random import shuffle
-from apg_modeling import save_model
-from apg_objective import apg_objective
+from BMNIST.apg_modeling import save_model
+from BMNIST.apg_objective import apg_objective
 # from snr import *
 
 def train(optimizer, model, AT, resampler, apg_sweeps, data_paths, mnist_mean_path, K, num_epochs, sample_size, batch_size, CUDA, DEVICE, MODEL_VERSION):
@@ -82,22 +80,22 @@ def train(optimizer, model, AT, resampler, apg_sweeps, data_paths, mnist_mean_pa
 
                 if ess_required:
                     assert trace['ess_rws'][0].shape == (batch_size, ), 'ERROR! ess_rws has unexpected shape.'
-                    assert trace['ess_what'].shape == (apg_sweeps, batch_size), 'ERROR! ess_what has unexpected shape.'
-                    assert trace['ess_where'].shape == (apg_sweeps, batch_size), 'ERROR! ess_where has unexpected shape.'
+#                     assert trace['ess_what'].shape == (apg_sweeps, batch_size), 'ERROR! ess_what has unexpected shape.'
+#                     assert trace['ess_where'].shape == (apg_sweeps, batch_size), 'ERROR! ess_where has unexpected shape.'
                     if 'ess_rws' in metrics:
                         metrics['ess_rws'] += trace['ess_rws'][0].mean().item()
                     else:
                         metrics['ess_rws'] = trace['ess_rws'][0].mean().item()
 
-                    if 'ess_what' in metrics:
-                        metrics['ess_what'] += trace['ess_what'].mean(-1)[-1].item()
-                    else:
-                        metrics['ess_what'] = trace['ess_what'].mean(-1)[-1].item()
+#                     if 'ess_what' in metrics:
+#                         metrics['ess_what'] += trace['ess_what'].mean(-1)[-1].item()
+#                     else:
+#                         metrics['ess_what'] = trace['ess_what'].mean(-1)[-1].item()
 
-                    if 'ess_where' in metrics:
-                        metrics['ess_where'] += trace['ess_where'].mean(-1)[-1].item()
-                    else:
-                        metrics['ess_where'] = trace['ess_where'].mean(-1)[-1].item()
+#                     if 'ess_where' in metrics:
+#                         metrics['ess_where'] += trace['ess_where'].mean(-1)[-1].item()
+#                     else:
+#                         metrics['ess_where'] = trace['ess_where'].mean(-1)[-1].item()
                 if density_required:
                     assert trace['density'].shape == (1+apg_sweeps, batch_size), 'ERROR! density has unexpected shape.'
                     if 'density' in metrics:
@@ -107,7 +105,7 @@ def train(optimizer, model, AT, resampler, apg_sweeps, data_paths, mnist_mean_pa
 
             save_model(model=model, SAVE_VERSION=MODEL_VERSION)
             metrics_print = ",  ".join(['%s: %.6f' % (k, v/num_batches) for k, v in metrics.items()])
-            log_file = open('../results/apg/log-' + MODEL_VERSION + '.txt', 'a+')
+            log_file = open('../results/log-' + MODEL_VERSION + '.txt', 'a+')
             time_end = time.time()
             print("(%ds) Epoch=%d, Group=%d, " % (time_end - time_start, epoch, group) + metrics_print, file=log_file)
             log_file.close()

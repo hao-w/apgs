@@ -223,7 +223,7 @@ def rws(enc_coor, dec_coor, enc_digit, dec_digit, AT, frames, digit, trace, loss
         ess = (1. /(w**2).sum(0))
         trace['ess_rws'].append(ess)
     if mode_required:
-        trace['E_where'].append(E_where.mean(0).unsqueeze(0).detach()) # 1 * B * T * K * 2
+        trace['E_where'].append(z_where.mean(0).unsqueeze(0).detach()) # 1 * B * T * K * 2
         trace['E_what'].append(E_what.mean(0).unsqueeze(0).detach()) # 1 * B * K * z_what_dim
         trace['E_recon'].append(recon.mean(0).unsqueeze(0).detach()) # 1 * B * T * FP * FP
     if density_required:
@@ -304,7 +304,7 @@ def apg_where(enc_coor, dec_coor, dec_digit, AT, resampler, frames, z_what, z_wh
         ESS = torch.cat(ESS, -1).mean(-1)
         trace['ess_where'].append(ESS.unsqueeze(0))
     if mode_required:
-        trace['E_where'].append(E_where.mean(0).unsqueeze(0).detach())
+        trace['E_where'].append(z_where.mean(0).unsqueeze(0).detach())
     if density_required:
         trace['density'].append(log_prior.mean(0).unsqueeze(0).detach())
     return z_where, trace

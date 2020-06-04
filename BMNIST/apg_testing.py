@@ -1,10 +1,8 @@
-import sys
-sys.path.append('../')
 import torch
 import numpy as np
 from random import shuffle
 from resample import Resampler
-from apg_objective import apg_objective
+from BMNIST.apg_objective import apg_objective
 import time
 """
 ==========
