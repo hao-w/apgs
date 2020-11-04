@@ -2,8 +2,11 @@ import torch
 import torch.nn.functional as F
 from torch.distributions.normal import Normal
 
-def kl_gmm_training(enc_apg_eta, generative, ob, z):
-    # (prior_alpha, prior_beta, prior_mu, prior_nu, prior_pi) = generative.prior_all
+def kls_eta(models, ob, z):
+    """
+    compute the KL divergence KL(p(\eta | x, z)|| q(\eta | x, z))
+    """
+    (_, _, enc_apg_eta, generative) = models   
     q_f_eta = enc_apg_eta(ob=ob, z=z, prior_ng=generative.prior_ng, sampled=True)
     mu = q_f_eta['means'].value
     tau = q_f_eta['precisions'].value
@@ -29,47 +32,46 @@ def kl_gmm_training(enc_apg_eta, generative, ob, z):
                                    p_mu=posterior_mu,
                                    p_nu=posterior_nu)
 
-    inckl = kl_eta_in.sum(-1).mean(0).mean().cpu().detach()
-    # exckl = kl_eta_ex.mean(-1).mean(0).detach()
-    return inckl
+    inckl = kl_eta_in.sum(-1).mean().detach()
+    exckl = kl_eta_ex.sum(-1).mean().detach()
+    return exckl, inckl
 
-def kl_gmm(enc_apg_eta, enc_apg_z, generative, ob, z):
-    # (prior_alpha, prior_beta, prior_mu, prior_nu, prior_pi) = generative.prior_all
-    q_f_eta = enc_apg_eta(ob=ob, z=z, prior_ng=generative.prior_ng, sampled=True)
-    mu = q_f_eta['means'].value
-    tau = q_f_eta['precisions'].value
-    ## KLs for mu and sigma based on Normal-Gamma prior
-    q_alpha = q_f_eta['precisions'].dist.concentration
-    q_beta = q_f_eta['precisions'].dist.rate
-    q_mu = q_f_eta['means'].dist.loc
-    q_std = q_f_eta['means'].dist.scale
-    q_nu = 1. / (tau * (q_std**2)) # nu*tau = 1 / std**2
+# def kl_eta_and_z(enc_apg_eta, enc_apg_z, generative, ob, z):
+#     q_f_eta = enc_apg_eta(ob=ob, z=z, prior_ng=generative.prior_ng, sampled=True)
+#     mu = q_f_eta['means'].value
+#     tau = q_f_eta['precisions'].value
+#     ## KLs for mu and sigma based on Normal-Gamma prior
+#     q_alpha = q_f_eta['precisions'].dist.concentration
+#     q_beta = q_f_eta['precisions'].dist.rate
+#     q_mu = q_f_eta['means'].dist.loc
+#     q_std = q_f_eta['means'].dist.scale
+#     q_nu = 1. / (tau * (q_std**2)) # nu*tau = 1 / std**2
 
-    q_f_z = enc_apg_z(ob=ob, tau=tau, mu=mu, sampled=True)
-    q_pi = q_f_z['states'].dist.probs
-    #
-    posterior_alpha, posterior_beta, posterior_mu, posterior_nu = posterior_eta(ob=ob,
-                                                                                z=z,
-                                                                                prior_alpha=generative.prior_alpha,
-                                                                                prior_beta=generative.prior_beta,
-                                                                                prior_mu=generative.prior_mu,
-                                                                                prior_nu=generative.prior_nu)
-    kl_eta_ex, kl_eta_in = kls_NGs(q_alpha=q_alpha,
-                                   q_beta=q_beta,
-                                   q_mu=q_mu,
-                                   q_nu=q_nu,
-                                   p_alpha=posterior_alpha,
-                                   p_beta=posterior_beta,
-                                   p_mu=posterior_mu,
-                                   p_nu=posterior_nu)
-    posterior_logits = posterior_z(ob=ob,
-                                   tau=tau,
-                                   mu=mu,
-                                   prior_pi=generative.prior_pi)
-    kl_z_ex, kl_z_in = kls_cats(q_logits=q_pi.log(),
-                                p_logits=posterior_logits)
-    inckls = {"inckl_eta" : kl_eta_in.sum(-1).mean(0).detach(),"inckl_z" : kl_z_in.sum(-1).mean(0).detach() }
-    return inckls
+#     q_f_z = enc_apg_z(ob=ob, tau=tau, mu=mu, sampled=True)
+#     q_pi = q_f_z['states'].dist.probs
+    
+#     posterior_alpha, posterior_beta, posterior_mu, posterior_nu = posterior_eta(ob=ob,
+#                                                                                 z=z,
+#                                                                                 prior_alpha=generative.prior_alpha,
+#                                                                                 prior_beta=generative.prior_beta,
+#                                                                                 prior_mu=generative.prior_mu,
+#                                                                                 prior_nu=generative.prior_nu)
+#     kl_eta_ex, kl_eta_in = kls_NGs(q_alpha=q_alpha,
+#                                    q_beta=q_beta,
+#                                    q_mu=q_mu,
+#                                    q_nu=q_nu,
+#                                    p_alpha=posterior_alpha,
+#                                    p_beta=posterior_beta,
+#                                    p_mu=posterior_mu,
+#                                    p_nu=posterior_nu)
+#     posterior_logits = posterior_z(ob=ob,
+#                                    tau=tau,
+#                                    mu=mu,
+#                                    prior_pi=generative.prior_pi)
+#     kl_z_ex, kl_z_in = kls_cats(q_logits=q_pi.log(),
+#                                 p_logits=posterior_logits)
+#     inckls = {"inckl_eta" : kl_eta_in.sum(-1).mean(0).detach(),"inckl_z" : kl_z_in.sum(-1).mean(0).detach() }
+#     return inckls
 
 def params_to_nats(alpha, beta, mu, nu):
     """

@@ -1,6 +1,0 @@
-TrueKL=1274.368811, loss: 62.994484,  ess_rws: 1.079584,  inckl_eta: 201.402754,  inckl_z: 25.352197
-TrueKL=2110.038145, loss: 58.942616,  ess_rws: 1.170136,  inckl_eta: 289.684504,  inckl_z: 10.422724
-TrueKL=2292.998602, loss: 55.780829,  ess_rws: 1.181750,  inckl_eta: 326.819269,  inckl_z: 9.296284
-TrueKL=2124.955476, loss: 52.723984,  ess_rws: 1.179472,  inckl_eta: 348.634273,  inckl_z: 9.432570
-TrueKL=1987.140127, loss: 49.619365,  ess_rws: 1.170769,  inckl_eta: 369.195361,  inckl_z: 9.546929
-TrueKL=1860.538874, loss: 46.188643,  ess_rws: 1.168558,  inckl_eta: 409.138135,  inckl_z: 9.668934

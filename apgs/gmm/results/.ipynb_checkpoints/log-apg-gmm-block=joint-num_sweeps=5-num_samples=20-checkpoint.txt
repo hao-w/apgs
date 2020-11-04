@@ -1,0 +1,2 @@
+ess: 1.11,  density: -816.17,  inc_kl: 1034.09,  exc_kl: 597.70
+ess: 1.35,  density: -512.00,  inc_kl: 1548.62,  exc_kl: 262.12
