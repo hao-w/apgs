@@ -1,18 +1,19 @@
 import math
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from torch.distributions.normal import Normal
 from torch.distributions.beta import Beta
 from torch.distributions.one_hot_categorical import OneHotCategorical as cat
 import probtorch
 
 class Enc_rws_mu(nn.Module):
-    def __init__(self, K, D, num_hidden, num_stats):
+    def __init__(self, K, D, num_hidden, num_nss):
         super(self.__class__, self).__init__()
         self.nss1 = nn.Sequential(
             nn.Linear(D, num_hidden),
             nn.Tanh(),
-            nn.Linear(num_hidden, num_stats))
+            nn.Linear(num_hidden, num_nss))
 
         self.nss2 = nn.Sequential(
             nn.Linear(D, num_hidden),
@@ -21,12 +22,12 @@ class Enc_rws_mu(nn.Module):
             nn.Softmax(-1))
 
         self.mean_mu = nn.Sequential(
-            nn.Linear(num_stats+2*D, num_hidden),
+            nn.Linear(num_nss+2*D, num_hidden),
             nn.Tanh(),
             nn.Linear(num_hidden, D))
 
         self.mean_log_sigma = nn.Sequential(
-            nn.Linear(num_stats+2*D, num_hidden),
+            nn.Linear(num_nss+2*D, num_hidden),
             nn.Tanh(),
             nn.Linear(num_hidden, D))
 
@@ -54,23 +55,23 @@ class Enc_rws_mu(nn.Module):
         return q
     
 class Enc_apg_local(nn.Module):
-    def __init__(self, K, D, num_hidden_state, num_hidden_angle):
+    def __init__(self, K, D, num_hidden):
         super(self.__class__, self).__init__()
 
         self.pi_log_prob = nn.Sequential(
-            nn.Linear(D, num_hidden_state),
+            nn.Linear(D, num_hidden),
             nn.ReLU(),
-            nn.Linear(num_hidden_state, 1))
+            nn.Linear(num_hidden, 1))
 
         self.angle_log_con1 = nn.Sequential(
-            nn.Linear(D, num_hidden_angle),
+            nn.Linear(D, num_hidden),
             nn.Tanh(),
-            nn.Linear(num_hidden_angle, 1))
+            nn.Linear(num_hidden, 1))
 
         self.angle_log_con0 = nn.Sequential(
-            nn.Linear(D, num_hidden_angle),
+            nn.Linear(D, num_hidden),
             nn.Tanh(),
-            nn.Linear(num_hidden_angle, 1))
+            nn.Linear(num_hidden, 1))
 
     def forward(self, ob, mu, K, sampled=True, z_old=None, beta_old=None):
         q = probtorch.Trace()
@@ -106,23 +107,23 @@ class Enc_apg_local(nn.Module):
         return q
 
 class Enc_apg_mu(nn.Module):
-    def __init__(self, K, D, num_hidden, num_stats):
+    def __init__(self, K, D, num_hidden, num_nss):
         super(self.__class__, self).__init__()
         self.nss1 = nn.Sequential(
             nn.Linear(D+K, num_hidden),
             nn.Tanh(),
-            nn.Linear(num_hidden, num_stats))
+            nn.Linear(num_hidden, num_nss))
         self.nss2 = nn.Sequential(
             nn.Linear(D+K, num_hidden),
             nn.Tanh(),
             nn.Linear(num_hidden, K),
             nn.Softmax(-1))
         self.mean_mu = nn.Sequential(
-            nn.Linear(num_stats+2*D, num_hidden),
+            nn.Linear(num_nss+2*D, num_hidden),
             nn.Tanh(),
             nn.Linear(num_hidden, D))
         self.mean_log_sigma = nn.Sequential(
-            nn.Linear(num_stats+2*D, num_hidden),
+            nn.Linear(num_nss+2*D, num_hidden),
             nn.Tanh(),
             nn.Linear(num_hidden, D))
 
