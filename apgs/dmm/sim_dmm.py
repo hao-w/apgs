@@ -88,7 +88,7 @@ class Sim_Rings():
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser('DMM_DATA')
-    parser.add_argument('--num_instances', default=10000, type=int)
+    parser.add_argument('--num_instances', default=20000, type=int)
     parser.add_argument('--data_path', default='../../data/dmm/')
     parser.add_argument('--N', default=200, help='number of points in one DMM instance')
     parser.add_argument('--K', default=4, help='number of clusters in one DMM instance')

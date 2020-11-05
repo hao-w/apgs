@@ -12,7 +12,7 @@ def train(objective, optimizer, models, data, K, num_epochs, sample_size, batch_
     num_batches = int((data.shape[0] / batch_size))
     for epoch in range(num_epochs):
         time_start = time.time()
-        metrics = {'ess': 0.0, 'density' : 0.0}
+        metrics = dict()
         data = shuffler(data)
         for b in range(num_batches):
             optimizer.zero_grad()
@@ -20,11 +20,29 @@ def train(objective, optimizer, models, data, K, num_epochs, sample_size, batch_
             if CUDA:
                 x = x.cuda().to(device)
             trace = objective(models, x, K, result_flags, **kwargs)
-            loss = trace['loss'].sum()
-            loss.backward()
+            loss_phi = trace['loss_phi'].sum()
+            loss_theta = trace['loss_theta'][-1] * kwargs['num_sweeps']
+            loss_phi.backward(retain_graph=True)
+            loss_theta.backward()
             optimizer.step()
-            metrics['ess'] += trace['ess'][-1].mean()
-            metrics['density'] += trace['density'][-1].mean()
+            if 'loss_phi' in metrics:
+                metrics['loss_phi'] += trace['loss_phi'][-1].item()
+            else:
+                metrics['loss_phi'] = trace['loss_phi'][-1].item()
+            if 'loss_theta' in metrics:
+                metrics['loss_theta'] += trace['loss_theta'][-1].item()
+            else:
+                metrics['loss_theta'] = trace['loss_theta'][-1].item()
+#             print(trace['ess'].mean(-1))
+            if 'ess' in metrics:
+                metrics['ess'] += trace['ess'][-1].mean().item()
+            else:
+                metrics['ess'] = trace['ess'][-1].mean().item()
+
+            if 'density' in metrics:
+                metrics['density'] += trace['density'][-1].mean().item()
+            else:
+                metrics['density'] = trace['density'][-1].mean().item()
         save_apg_models(models, model_version)
         metrics_print = ",  ".join(['%s: %.4f' % (k, v/num_batches) for k, v in metrics.items()])
         if not os.path.exists('results/'):
@@ -148,11 +166,11 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser('DMM Clustering Task')
     parser.add_argument('--data_dir', default='../../data/dmm/')
     parser.add_argument('--device', default=0, type=int)
-    parser.add_argument('--num_epochs', default=50, type=int)
+    parser.add_argument('--num_epochs', default=200, type=int)
     parser.add_argument('--batch_size', default=20, type=int)
     parser.add_argument('--budget', default=70, type=int)
     parser.add_argument('--num_sweeps', default=7, type=int)
-    parser.add_argument('--lr', default=1e-4, type=float)
+    parser.add_argument('--lr', default=5e-4, type=float)
     parser.add_argument('--resample_strategy', default='systematic', choices=['systematic', 'multinomial'])
     parser.add_argument('--num_clusters', default=4, type=int)
     parser.add_argument('--data_dim', default=2, type=int)
@@ -160,7 +178,7 @@ if __name__ == '__main__':
     parser.add_argument('--num_nss', default=8, type=int)
     parser.add_argument('--num_hidden_local', default=32, type=int)
     parser.add_argument('--num_hidden_dec', default=32, type=int)
-    parser.add_argument('--recon_sigma', default=0.1, type=float)
+    parser.add_argument('--recon_sigma', default=0.5, type=float)
     args = parser.parse_args()
     sample_size = int(args.budget / args.num_sweeps)
     CUDA = torch.cuda.is_available()

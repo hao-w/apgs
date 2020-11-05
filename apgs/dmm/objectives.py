@@ -28,7 +28,7 @@ def apg_objective(models, x, K, result_flags, num_sweeps, resampler):
         resample
     ==========
     """
-    trace = {'loss' : [], 'ess' : [], 'E_mu' : [], 'E_z' : [], 'E_recon' : [], 'density' : []}
+    trace = {'loss_phi' : [], 'loss_theta' : [], 'ess' : [], 'E_mu' : [], 'E_z' : [], 'E_recon' : [], 'density' : []}
     (enc_rws_mu, enc_apg_local, enc_apg_mu, dec) = models
     log_w, mu, z, beta, trace = oneshot(enc_rws_mu, enc_apg_local, dec, x, K, trace, result_flags)
     mu, z, beta = resample_variables(resampler, mu, z, beta, log_weights=log_w)
@@ -38,7 +38,9 @@ def apg_objective(models, x, K, result_flags, num_sweeps, resampler):
         log_w_z, z, beta, trace = apg_update_local(enc_apg_local, dec, x, mu, z, beta, K, trace, result_flags)
         mu, z, beta = resample_variables(resampler, mu, z, beta, log_weights=log_w_z)
     if result_flags['loss_required']:
-        trace['loss'] = torch.cat(trace['loss'], 0) 
+        trace['loss_phi'] = torch.cat(trace['loss_phi'], 0) 
+        trace['loss_theta'] = torch.cat(trace['loss_theta'], 0) 
+#     trace['loss'] = trace['loss_phi'].sum() + trace['loss_theta'][-1] * num_sweeps
     if result_flags['ess_required']:
         trace['ess'] = torch.cat(trace['ess'], 0) 
     if result_flags['mode_required']:
@@ -53,12 +55,14 @@ def rws_objective(models, x, K, result_flags):
     """
     RWS objective 
     """
-    trace = {'loss' : [], 'ess' : [], 'E_mu' : [], 'E_z' : [], 'E_recon' : [], 'density' : []}
+    trace = {'loss_phi' : [], 'loss_theta' : [], 'ess' : [], 'E_mu' : [], 'E_z' : [], 'E_recon' : [], 'density' : []}
     (enc_rws_mu, enc_rws_local, dec) = models
     log_w, mu, z, beta, trace = oneshot(enc_rws_mu, enc_apg_local, dec, x, K, trace, result_flags)
     mu, z, beta = resample_variables(resampler, mu, z, beta, log_weights=log_w)
     if result_flags['loss_required']:
-        trace['loss'] = torch.cat(trace['loss'], 0) 
+        trace['loss_phi'] = torch.cat(trace['loss_phi'], 0) 
+        trace['loss_theta'] = torch.cat(trace['loss_theta'], 0) 
+    trace['loss'] = trace['loss_phi'].sum() + trace['loss_theta'][-1]
     if result_flags['ess_required']:
         trace['ess'] = torch.cat(trace['ess'], 0) 
     if result_flags['mode_required']:
@@ -87,7 +91,8 @@ def oneshot(enc_rws_mu, enc_rws_local, dec, x, K, trace, result_flags):
     if result_flags['loss_required']:
         loss_phi = (w * (- log_q)).sum(0).mean()
         loss_theta = (w * (- ll)).sum(0).mean()
-        trace['loss'].append(loss_phi.unsqueeze(0)+loss_theta.unsqueeze(0))
+        trace['loss_phi'].append(loss_phi.unsqueeze(0))
+        trace['loss_theta'].append(loss_theta.unsqueeze(0))
     if result_flags['ess_required']:
         ess = (1. /(w**2).sum(0))
         trace['ess'].append(ess.unsqueeze(0))
@@ -129,7 +134,8 @@ def apg_update_mu(enc_apg_mu, dec, x, z, beta, mu_old, K, trace, result_flags):
     if result_flags['loss_required']:
         loss_phi = (w * (- log_q_f)).sum(0).mean()
         loss_theta = (w * (- ll_f)).sum(0).mean()
-        trace['loss'].append(loss_phi.unsqueeze(0) + loss_theta.unsqueeze(0))
+        trace['loss_phi'].append(loss_phi.unsqueeze(0))
+        trace['loss_theta'].append(loss_theta.unsqueeze(0))
     if result_flags['ess_required']:
         ess = (1. / (w**2).sum(0))
         trace['ess'].append(ess.unsqueeze(0)) # 1-by-B tensor
@@ -138,7 +144,7 @@ def apg_update_mu(enc_apg_mu, dec, x, z, beta, mu_old, K, trace, result_flags):
         trace['E_mu'].append(E_mu.unsqueeze(0))
     if result_flags['density_required']:
         trace['density'].append(log_priors_f.unsqueeze(0))
-        return log_w, mu, trace
+    return log_w, mu, trace
 
 def apg_update_local(enc_apg_local, dec, x, mu, z_old, beta_old, K, trace, result_flags):
     """
@@ -160,14 +166,14 @@ def apg_update_local(enc_apg_local, dec, x, mu, z_old, beta_old, K, trace, resul
     ll_b = p_b['likelihood'].log_prob.sum(-1).detach()
     log_p_b = ll_b + p_b['states'].log_prob + p_b['angles'].log_prob.sum(-1)
     log_w_b = log_p_b - log_q_b
-
     log_w_local = (log_w_f - log_w_b).detach()
     log_w = log_w_local.sum(-1)
     w_local = F.softmax(log_w_local, 0).detach()
     if result_flags['loss_required']:
         loss_phi = (w_local * (- log_q_f)).sum(0).sum(-1).mean()
         loss_theta = (w_local * (- ll_f)).sum(0).sum(-1).mean()
-        trace['loss'][-1] = trace['loss'][-1] + loss_phi.unsqueeze(0) + loss_theta.unsqueeze(0) 
+        trace['loss_phi'][-1] = trace['loss_phi'][-1] + loss_phi.unsqueeze(0)  
+        trace['loss_theta'][-1] = trace['loss_theta'][-1] + loss_theta.unsqueeze(0)  
     if result_flags['mode_required']:
         E_z = q_f['states'].dist.probs.mean(0).detach()
         E_recon = p_f['likelihood'].dist.loc.mean(0).detach()
