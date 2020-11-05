@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 
 class Sim_Rings():
     """
+    simulate instances of DMM
     N : number of points in one dataset
     K : number of clusters
     Nk = numer of points in one cluster
@@ -16,12 +17,9 @@ class Sim_Rings():
     """
     def __init__(self, N, K, D, period, mu_std, noise_std, radi):
         super().__init__()
-        self.N = N
-        self.K = K
-        self.D = D
+        self.N, self.K, self.D = N, K, D
         self.Nk = int(self.N / self.K)
         self.period = period
-        # self.bound = bound
         self.mu_std = mu_std
         self.noise_std = noise_std
         self.radi = radi
@@ -45,28 +43,12 @@ class Sim_Rings():
         pos = pos + noise
         return pos, radis, angles
 
-    def sim_one_ncmm(self):
+    def sim_one_dmm(self):
         ob = []
         state = []
         radi = []
         angle = []
         mu = np.random.normal(0, self.mu_std, (self.K, 2))
-        # helped to generate less overlapped rings
-        # the apg sampler does not depend on this assumption
-        # just for better visualization effect in the paper
-        a = 2.0
-        a2 = a**1
-#         while(True):
-#             if(
-#                ((mu[0] - mu[1])**2).sum() > a2 and
-#                ((mu[0] - mu[2])**2).sum() > a2 and
-#                ((mu[0] - mu[3])**2).sum() > a2 and
-#                ((mu[1] - mu[2])**2).sum() > a2 and
-#                ((mu[1] - mu[3])**2).sum() > a2 and
-#                ((mu[2] - mu[3])**2).sum() > a2
-#                ):
-#                 break
-#             mu = np.random.normal(0, self.mu_std, (self.K, 2))
         for k in range(self.K):
             ob_k, radi_k, angle_k = self.sim_one_ring()
             one_hot_k = np.zeros(self.K)
@@ -81,7 +63,7 @@ class Sim_Rings():
 
     def viz_data(self, num_seqs=20, bound=10, fs=6, colors=['#AA3377', '#EE7733', '#0077BB', '#009988', '#555555', '#999933']):
         for s in range(num_seqs):
-            ob, state, mu, _, _ = self.sim_one_ncmm()
+            ob, state, mu, _, _ = self.sim_one_dmm()
             assignments = state.argmax(-1)
             fig, ax = plt.subplots(figsize=(fs, fs))
             for k in range(self.K):
@@ -96,12 +78,25 @@ class Sim_Rings():
         if not os.path.exists(PATH):
             os.makedirs(PATH)
         OB = np.zeros((num_seqs, self.N, self.D))
-        # STATE = np.zeros((num_seqs,  pts_dataset, self.num_clusters))
-        # MU = np.zeros((num_seqs, self.num_clusters, 2))
-        # RADI = np.zeros((num_seqs, pts_dataset, 1))
-        # ANGLE = np.zeros((num_seqs, pts_dataset, 1))
-
         for s in range(num_seqs):
-            ob, state, mu, radi, angle = self.sim_one_ncmm()
+            ob, _, _, _, _ = self.sim_one_dmm()
             OB[s] = ob
+        print('saving to %s' % os.path.abspath(PATH))
         np.save(PATH + 'ob', OB)
+        
+        
+if __name__ == '__main__':
+    import argparse
+    parser = argparse.ArgumentParser('DMM_DATA')
+    parser.add_argument('--num_instances', default=10000, type=int)
+    parser.add_argument('--data_path', default='../../data/dmm/')
+    parser.add_argument('--N', default=200, help='number of points in one DMM instance')
+    parser.add_argument('--K', default=4, help='number of clusters in one DMM instance')
+    parser.add_argument('--D', default=2, help='dimension of data points')
+    parser.add_argument('--period', default=2, help='number of circles in each ring')
+    parser.add_argument('--mu_std', default=3.0, help='standard deviation of the centers of rings')
+    parser.add_argument('--noise_std', default=0.1, help='standard deviation of Gaussian noise')
+    parser.add_argument('--radius', default=2.0, help='raidus of the ring')
+    args = parser.parse_args()
+    simulator = Sim_Rings(args.N, args.K, args.D, args.period, args.mu_std, args.noise_std, args.radius)
+    simulator.sim_save_data(args.num_instances, args.data_path)
