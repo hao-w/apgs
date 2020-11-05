@@ -56,7 +56,7 @@ def rws_objective(models, x, result_flags):
     """
     The objective of RWS method
     """
-    trace = {'loss' : [], 'ess' : [], 'E_tau' : [], 'E_mu' : [], 'E_z' : [], 'density' : []} ## a dictionary that tracks things needed during the sweeping
+    trace = {'loss' : [], 'ess' : [], 'E_tau' : [], 'E_mu' : [], 'E_z' : [], 'density' : []} 
     (enc_rws_eta, enc_rws_z, generative) = models
     w, tau, mu, z, trace = oneshot(enc_rws_eta, enc_rws_z, generative, x, trace, result_flags)
     if result_flags['loss_required']:
@@ -66,9 +66,9 @@ def rws_objective(models, x, result_flags):
     if result_flags['mode_required']:
         trace['E_tau'] = torch.cat(trace['E_tau'], 0)
         trace['E_mu'] = torch.cat(trace['E_mu'], 0) 
-        trace['E_z'] = torch.cat(trace['E_z'], 0) # (num_sweeps) * B * N * K
+        trace['E_z'] = torch.cat(trace['E_z'], 0) 
     if result_flags['density_required']:
-        trace['density'] = torch.cat(trace['density'], 0)  # (num_sweeps) * S * B
+        trace['density'] = torch.cat(trace['density'], 0) 
     return trace
 
 def oneshot(enc_rws_eta, enc_rws_z, generative, x, trace, result_flags):

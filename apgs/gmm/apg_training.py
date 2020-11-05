@@ -13,12 +13,14 @@ def train(objective, optimizer, models, data, assignments, num_epochs, sample_si
     for epoch in range(num_epochs):
         time_start = time.time()
         metrics = {'ess': 0.0, 'density' : 0.0, 'inc_kl' : 0.0, 'exc_kl' : 0.0}
-#         data, assignments = shuffler(data, assignments)
+        data, assignments = shuffler(data, assignments)
         for b in range(num_batches):
             optimizer.zero_grad()
+            x = data[b*batch_size : (b+1)*batch_size].repeat(sample_size, 1, 1, 1)
+            z_true = assignments[b*batch_size : (b+1)*batch_size].repeat(sample_size, 1, 1, 1)
             if CUDA:
-                x = data[b*batch_size : (b+1)*batch_size].repeat(sample_size, 1, 1, 1).cuda().to(device)
-                z_true = assignments[b*batch_size : (b+1)*batch_size].repeat(sample_size, 1, 1, 1).cuda().to(device)
+                x = x.cuda().to(device)
+                z_true = z_true.cuda().to(device)
             trace = objective(models, x, result_flags, **kwargs)
             loss = trace['loss'].sum()
             loss.backward()
@@ -29,7 +31,7 @@ def train(objective, optimizer, models, data, assignments, num_epochs, sample_si
             metrics['inc_kl'] += inc_kl
             metrics['exc_kl'] += exc_kl
         save_apg_models(models, model_version)
-        metrics_print = ", ".join(['%s=%.2f' % (k, v / num_batches) for k, v in metrics.items()])
+        metrics_print = ", ".join(['%s=%.4f' % (k, v / num_batches) for k, v in metrics.items()])
         if not os.path.exists('results/'):
             os.makedirs('results/')
         log_file = open('results/log-' + model_version + '.txt', 'a+')
