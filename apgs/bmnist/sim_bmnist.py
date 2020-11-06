@@ -106,14 +106,14 @@ class Sim_BMNIST():
             digit_image = torch.from_numpy(mnist[mnist_index[k]] / 255.0).float()
             S = torch.Tensor([[s_factor, 0], [0, s_factor]]).repeat(self.timesteps, 1, 1)
             Thetas = torch.cat((S, Xs[k].unsqueeze(-1) * t_factor), -1)
-            grid = affine_grid(Thetas, torch.Size((self.timesteps, 1, self.frame_size, self.frame_size)))
-            bmnist.append(grid_sample(digit_image.repeat(self.timesteps, 1, 1).unsqueeze(1), grid, mode='nearest'))
+            grid = affine_grid(Thetas, torch.Size((self.timesteps, 1, self.frame_size, self.frame_size)), align_corners=True)
+            bmnist.append(grid_sample(digit_image.repeat(self.timesteps, 1, 1).unsqueeze(1), grid, mode='nearest', align_corners=True))
             # TJ.append(Xs[n].unsqueeze(0))
             # Init_V.append(V[0.unsqueeze()])
         bmnist = torch.cat(bmnist, 1).sum(1).clamp(min=0.0, max=1.0)
         return bmnist
 
-    def sim_save_data(self, num_seqs, MNIST_DIR, PATH):
+    def sim_save_data(self, num_seqs, PATH):
         """
         ==========
         way it saves data:
@@ -123,7 +123,7 @@ class Sim_BMNIST():
         """
         if not os.path.exists(PATH):
             os.makedirs(PATH)
-        mnist = self.load_mnist(MNIST_DIR=MNIST_DIR)
+        mnist = self.load_mnist(MNIST_DIR=PATH)
         N = mnist.shape[0]
         assert num_seqs > 0, 'number of sequences must be a positive number'
         assert isinstance(num_seqs, int)
@@ -152,7 +152,7 @@ class Sim_BMNIST():
             time_end = time.time()
             print('(%ds) Simulated %d sequences, saved to \'%s\', %d sequences left.' % ((time_end - time_start), num_this_round, incremental_PATH, num_seqs_left))
 
-    def viz_data(self, MNIST_DIR, num_seqs=5, fs=15):
+    def viz_data(self, MNIST_DIR, num_seqs=5, fs=2):
         mnist = self.load_mnist(MNIST_DIR=MNIST_DIR)
         N = mnist.shape[0]
         mnist_indices = torch.arange(N).repeat(1, self.num_digits).squeeze(0)
@@ -161,7 +161,7 @@ class Sim_BMNIST():
         num_rows = num_seqs
         gs = gridspec.GridSpec(num_rows, num_cols)
         gs.update(left=0.0 , bottom=0.0, right=1.0, top=1.0, wspace=0.05, hspace=0.05)
-        fig = plt.figure(figsize=(fs, fs * num_rows / num_cols))
+        fig = plt.figure(figsize=(fs * num_cols, fs * num_rows))
         for i in range(num_rows):
             bmnist = self.sim_one_bmnist(mnist, mnist_indices[i])
             for j in range(num_cols):
@@ -169,3 +169,17 @@ class Sim_BMNIST():
                 ax.set_xticks([])
                 ax.set_yticks([])
                 ax.imshow(bmnist[j], cmap='gray', vmin=0.0, vmax=1.0)
+
+if __name__ == '__main__':
+    import argparse
+    parser = argparse.ArgumentParser('Bouncing MNIST DATA')
+    parser.add_argument('--num_instances', default=60000, type=int)
+    parser.add_argument('--data_path', default='../../data/bmnist/')
+    parser.add_argument('--timesteps', default=10, help='number of video frames in one video')
+    parser.add_argument('--num_digits', default=3, help='number of digitis in one video')
+    parser.add_argument('--delta_t', default=0.3, help='constant velocity of the digits')
+    parser.add_argument('--frame_size', default=96, help='squared size of the canvas')
+    parser.add_argument('--chunk_size', default=1000, help='number of sqeuences that are stored in one single file (for the purpose of memory saving)')
+    args = parser.parse_args()
+    simulator = Sim_BMNIST(args.timesteps, args.num_digits, args.frame_size, args.delta_t, args.chunk_size)
+    simulator.sim_save_data(args.num_instances, args.data_path)

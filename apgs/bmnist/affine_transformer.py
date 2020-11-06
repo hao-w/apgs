@@ -47,20 +47,9 @@ class Affine_Transformer():
         affine_p1 = self.scale_dtof.repeat(S, B, T, K, 1, 1)## S * B * T * K * 2 * 2
         affine_p2 = z_where.unsqueeze(-1) * self.translation_dtof ## S * B * T * K * 2 * 1
         affine_p2[:, :, :, :, 0, :] = -1 * affine_p2[:, :, :, :, 0, :] ## flip the x-axis due to grid function
-        grid = affine_grid(torch.cat((affine_p1, affine_p2), -1).view(S*B*T*K, 2, 3), torch.Size((S*B*T*K, 1, self.frame_pixels, self.frame_pixels)))
-        frames = grid_sample(digit.unsqueeze(2).repeat(1,1,T,1,1,1).view(S*B*T*K, self.digit_pixels, self.digit_pixels).unsqueeze(1), grid, mode='nearest')
+        grid = affine_grid(torch.cat((affine_p1, affine_p2), -1).view(S*B*T*K, 2, 3), torch.Size((S*B*T*K, 1, self.frame_pixels, self.frame_pixels)), align_corners=True)
+        frames = grid_sample(digit.unsqueeze(2).repeat(1,1,T,1,1,1).view(S*B*T*K, self.digit_pixels, self.digit_pixels).unsqueeze(1), grid, mode='nearest', align_corners=True)
         return frames.squeeze(1).view(S, B, T, K, self.frame_pixels, self.frame_pixels)
-    #     """
-    #     transfer the digits to the frame (in time-dependent manner)
-    #     [digit: S * B * K * DP * DP, z_where: S * B * K * 2 ===> frame: S * B * K * FP * FP]
-    #     """
-    #     S, B, K, _ = z_where.shape
-    #     affine_p1 = self.scale_dtof.repeat(S, B, K, 1, 1)## S * B * K * 2 * 2
-    #     affine_p2 = z_where.unsqueeze(-1) * self.translation_dtof ## S * B * K * 2 * 1
-    #     affine_p2[:, :, :, 0, :] = -1 * affine_p2[:, :, :, 0, :] ## flip the x-axis due to grid function
-    #     grid = affine_grid(torch.cat((affine_p1, affine_p2), -1).view(S*B*K, 2, 3), torch.Size((S*B*K, 1, self.frame_pixels, self.frame_pixels)))
-    #     frames = grid_sample(digit.view(S*B*K, self.digit_pixels, self.digit_pixels).unsqueeze(1), grid, mode='nearest')
-    #     return frames.squeeze(1).view(S, B, K, self.frame_pixels, self.frame_pixels)
 
     def frame_to_digit(self, frames, z_where):
         """
@@ -71,6 +60,6 @@ class Affine_Transformer():
         affine_p1 = self.scale_ftod.repeat(S, B, T, K, 1, 1)## S * B * T * K * 2 * 2
         affine_p2 = z_where.unsqueeze(-1) * self.translation_ftod ## S * B * T * K * 2 * 1
         affine_p2[:, :, :, :, 1, :] = -1 * affine_p2[:, :, :, :, 1, :] ## flip the y-axis due to grid function
-        grid = affine_grid(torch.cat((affine_p1, affine_p2), -1).view(S*B*T*K, 2, 3), torch.Size((S*B*T*K, 1, self.digit_pixels, self.digit_pixels)))
-        digit = grid_sample(frames.unsqueeze(-3).repeat(1, 1, 1, K, 1, 1).view(S*B*T*K, self.frame_pixels, self.frame_pixels).unsqueeze(1), grid, mode='nearest')
+        grid = affine_grid(torch.cat((affine_p1, affine_p2), -1).view(S*B*T*K, 2, 3), torch.Size((S*B*T*K, 1, self.digit_pixels, self.digit_pixels)), align_corners=True)
+        digit = grid_sample(frames.unsqueeze(-3).repeat(1, 1, 1, K, 1, 1).view(S*B*T*K, self.frame_pixels, self.frame_pixels).unsqueeze(1), grid, mode='nearest', align_corners=True)
         return digit.squeeze(1).view(S, B, T, K, self.digit_pixels, self.digit_pixels)
