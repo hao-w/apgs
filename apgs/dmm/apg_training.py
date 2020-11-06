@@ -80,7 +80,7 @@ def init_apg_models(K, D, num_hidden_mu, num_nss, num_hidden_local, num_hidden_d
             dec.cuda()
             
     if load_version is not None:
-        weights = torch.load("../weights/cp-%s" % load_version)
+        weights = torch.load("weights/cp-%s" % load_version)
         enc_rws_mu.load_state_dict(weights['enc-rws-mu'])
         enc_apg_local.load_state_dict(weights['enc-apg-local'])
         enc_apg_mu.load_state_dict(weights['enc-apg-mu'])
@@ -128,7 +128,7 @@ def init_rws_models(K, D, num_hidden_mu, num_nss, num_hidden_local, num_hidden_d
             enc_rws_local.cuda()
             dec.cuda()
     if load_version is not None:
-        weights = torch.load("../weights/cp-%s" % load_version)
+        weights = torch.load("weights/cp-%s" % load_version)
         enc_rws_mu.load_state_dict(weights['enc-rws-mu'])
         enc_rws_local.load_state_dict(weights['enc-rws-local'])
         dec.load_state_dict(weights['dec'])

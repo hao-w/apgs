@@ -11,13 +11,11 @@ class HMC():
         self.S, self.B, self.N, self.K, self.D = S, B, N, K, D
         self.Sigma = torch.ones(self.D)
         self.mu = torch.zeros(self.D)
-        self.sigma_mu = torch.ones((self.K, self.D)) * 15
         self.accept_count = 0.0
         if CUDA:
             with torch.cuda.device(device):
                 self.Sigma = self.Sigma.cuda()
                 self.mu = self.mu.cuda()
-                self.sigma_mu = self.sigma_mu.cuda()
                 self.uniformer = Uniform(torch.Tensor([0.0]).cuda(), torch.Tensor([1.0]).cuda())
         else:
             self.uniformer = Uniform(torch.Tensor([0.0]), torch.Tensor([1.0]))

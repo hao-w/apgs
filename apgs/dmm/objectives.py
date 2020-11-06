@@ -1,5 +1,10 @@
 import torch
 import torch.nn.functional as F
+from torch.distributions.normal import Normal
+from torch.distributions.uniform import Uniform
+from torch.distributions.one_hot_categorical import OneHotCategorical as cat
+from torch.distributions.beta import Beta
+import math
 
 def apg_objective(models, x, K, result_flags, num_sweeps, resampler):
     """
@@ -40,7 +45,6 @@ def apg_objective(models, x, K, result_flags, num_sweeps, resampler):
     if result_flags['loss_required']:
         trace['loss_phi'] = torch.cat(trace['loss_phi'], 0) 
         trace['loss_theta'] = torch.cat(trace['loss_theta'], 0) 
-#     trace['loss'] = trace['loss_phi'].sum() + trace['loss_theta'][-1] * num_sweeps
     if result_flags['ess_required']:
         trace['ess'] = torch.cat(trace['ess'], 0) 
     if result_flags['mode_required']:
@@ -189,3 +193,47 @@ def resample_variables(resampler, mu, z, beta, log_weights):
     z = resampler.resample_4dims(var=z, ancestral_index=ancestral_index)
     beta = resampler.resample_4dims(var=beta, ancestral_index=ancestral_index)
     return mu, z, beta
+
+
+def hmc_objective(models, x, result_flags, hmc_sampler):
+    """
+    HMC + marginalization over discrete variables in GMM problem
+    """
+    trace = {'density' : []} 
+    (enc_rws_mu, enc_apg_local, enc_apg_mu, dec) = models
+    _, mu, z, beta, trace = oneshot(enc_rws_mu, enc_apg_local, dec, x, K, trace, result_flags)
+    trace = hmc_sampler.hmc_sampling(enc_local, dec, x, mu, z, beta, trace)
+    trace['density'] = torch.cat(trace['density'], 0)
+    return trace
+
+def bpg_objective(models, x, result_flags, num_sweeps, resampler):
+    """
+    bpg objective
+    """
+    trace = {'density' : []} ## a dictionary that tracks things needed during the sweeping
+    (enc_rws_mu, enc_apg_local, enc_apg_mu, dec) = models
+    log_w, mu, z, beta, trace = oneshot(enc_rws_mu, enc_apg_local, dec, x, K, trace, result_flags)
+    mu, z, beta = resample_variables(resampler, mu, z, beta, log_weights=log_w)
+    for m in range(num_sweeps-1):
+        log_w_mu, mu, trace = bpg_update_mu(enc_apg_mu, dec, x, z, beta, mu, K, trace)
+        mu, z, beta = resample_variables(resampler, mu, z, beta, log_weights=log_w_mu)
+        log_w_z, z, beta, trace = apg_update_local(enc_apg_local, dec, x, mu, z, beta, K, trace, result_flags)
+        mu, z, beta = resample_variables(resampler, mu, z, beta, log_weights=log_w_z)
+    trace['density'] = torch.cat(trace['density'], 0) 
+    return trace
+
+def bpg_update_mu(enc_apg_mu, dec, x, z, beta, mu_old, K, trace):
+    """
+    Given local variable z, update global variables eta := {mu, tau}.
+    """
+    q = Normal(dec.prior_mu_mu, dec.prior_mu_sigma)
+    S, B, K, D = mu_old.shape
+    mu = q.sample((S, B, K, ))
+    log_p = q.log_prob(mu).sum(-1).sum(-1)
+    p_f = dec(x, mu=mu, z=z, beta=beta)
+    ll_f = p_f['likelihood'].log_prob.sum(-1).sum(-1)
+    p_b = dec(x, mu=mu_old, z=z, beta=beta)
+    ll_b = p_b['likelihood'].log_prob.sum(-1).sum(-1).detach()
+    log_w = (ll_f - ll_b).detach()
+    trace['density'].append(log_p.unsqueeze(0)) # 1-by-B-length vector
+    return log_w, mu, trace

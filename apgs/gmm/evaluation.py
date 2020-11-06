@@ -12,6 +12,47 @@ from apgs.resampler import Resampler
 from apgs.gmm.objectives import apg_objective, bpg_objective, gibbs_objective, hmc_objective
 from apgs.gmm.hmc_sampler import HMC
 
+    
+def density_all_instances(models, data, sample_size, K, num_sweeps, lf_step_size, lf_num_steps, bpg_factor, CUDA, device, batch_size=100):
+    densities = dict()
+    num_batches = (data.shape[0] / batch_size)
+    for b in range(num_batches):
+        x = data[b*batch_size : (b+1)*batch_size].repeat(sample_size, 1, 1, 1)
+        if CUDA:
+            x = x.cuda().to(device)            
+        S, B, N, D = x.shape
+        hmc_sampler = HMC(S, B, N, K, D, CUDA, device)
+        resampler = Resampler('systematic', S, CUDA, device)
+        resampler_bpg = Resampler('systematic', S*bpg_factor, CUDA, device)
+        result_flags = {'loss_required' : False, 'ess_required' : False, 'mode_required' : False, 'density_required' : True}
+        for lf in lf_num_steps:
+            _, _, trace_hmc = hmc_objective(models, x, result_flags, hmc_sampler, num_sweeps, lf_step_size, lf) 
+            if 'HMC-RWS(L=%d, LF=%d)' % (S, lf) in densities:
+                densities['HMC-RWS(L=%d, LF=%d)' % (S, lf)].append(trace_hmc['density'].mean(-1).mean(-1).cpu().numpy()[-1])
+            else:
+                densities['HMC-RWS(L=%d, LF=%d)' % (S, lf)] = [trace_hmc['density'].mean(-1).mean(-1).cpu().numpy()[-1]]
+        trace_gibbs = gibbs_objective(models, x, result_flags, num_sweeps)
+        if 'GIBBS(L=%d)' % S in densities:
+            densities['GIBBS(L=%d)' % S].append(trace_gibbs['density'].mean(-1).mean(-1).cpu().numpy()[-1])
+        else:
+            densities['GIBBS(L=%d)' % S] = [trace_gibbs['density'].mean(-1).mean(-1).cpu().numpy()[-1]]
+        x_bpg = x.repeat(bpg_factor, 1, 1, 1)
+        trace_bpg = bpg_objective(models, x_bpg, result_flags, num_sweeps, resampler_bpg)
+        if 'BPG(L=%d)' % (S*bpg_factor) in densities:
+            densities['BPG(L=%d)' % (S*bpg_factor)].append(trace_bpg['density'].mean(-1).mean(-1).cpu().numpy()[-1])
+        else:
+            densities['BPG(L=%d)' % (S*bpg_factor)] = [trace_bpg['density'].mean(-1).mean(-1).cpu().numpy()[-1]]
+        block = 'decomposed'
+        trace_apg = apg_objective(models, x, result_flags, num_sweeps, block, resampler)
+        if 'APG(L=%d)' % S in densities:
+            densities['APG(L=%d)' % S].append(trace_apg['density'].mean(-1).mean(-1).cpu().numpy()[-1])
+        else:
+            densities['APG(L=%d)' % S] = [trace_apg['density'].mean(-1).mean(-1).cpu().numpy()[-1]]
+    for key in densities.keys():
+        densities[key] = np.concatenate(densities[key], 0).mean()
+        print('method=%s, log joint=%.2f' % (key, densities[key]))
+    return densities
+
 def plot_convergence(densities, fs=6, fs_title=14, lw=3, opacity=0.1, colors = ['#0077BB', '#009988', '#EE7733', '#AA3377', '#555555', '#999933']):
     fig = plt.figure(figsize=(fs*2.5,fs)) 
     ax = fig.add_subplot(111)
@@ -36,13 +77,15 @@ def set_seed(seed):
     random.seed(seed)
     torch.backends.cudnn.benchmark = True
     
-def density_convergence(models, x, K, num_runs, num_sweeps, lf_step_size, lf_num_steps, bpg_factor, CUDA, device):
+def density_convergence(models, data, sample_size, K, num_runs, num_sweeps, lf_step_size, lf_num_steps, bpg_factor, CUDA, device):
     DENSITIES = dict()
+    x = data[torch.randperm(data.shape[0])[0]].repeat(sample_size, 1, 1, 1)
+    if CUDA:
+        x = x.cuda().to(device)
     for i in range(num_runs):
         densities = dict()
         set_seed(i)    
         S, B, N, D = x.shape
-
         hmc_sampler = HMC(S, B, N, K, D, CUDA, device)
         resampler = Resampler('systematic', S, CUDA, device)
         resampler_bpg = Resampler('systematic', S*bpg_factor, CUDA, device)
@@ -97,8 +140,9 @@ def budget_analysis(models, blocks, num_sweeps, sample_sizes, data, K, CUDA, dev
                                   device=device)
             ess, density = 0.0, 0.0
             for b in range(num_batches):
+                x = data[b*batch_size : (b+1)*batch_size].repeat(sample_size, 1, 1, 1)
                 if CUDA:
-                    x = data[b*batch_size : (b+1)*batch_size].repeat(sample_size, 1, 1, 1).cuda().to(device)
+                    x = x.cuda().to(device)
                 trace = apg_objective(models, x, result_flags, num_sweeps=num_sweep, block=block, resampler=resampler)
                 ess += trace['ess'][-1].mean().item()
                 density += trace['density'][-1].mean().item()
