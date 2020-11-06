@@ -1,3 +1,4 @@
+import os
 import torch
 import time
 import numpy as np
@@ -50,6 +51,8 @@ def train(optimizer, models, AT, resampler, num_sweeps, data_paths, mnist_mean, 
                     metrics['density'] = trace['density'][-1].mean().item()
             save_models(models, model_version)
             metrics_print = ",  ".join(['%s: %.4f' % (k, v/num_batches) for k, v in metrics.items()])
+            if not os.path.exists('results/'):
+                os.makedirs('results/')
             log_file = open('results/log-' + model_version + '.txt', 'a+')
             time_end = time.time()
             print("(%ds) Epoch=%d, Group=%d, " % (time_end - time_start, epoch, group) + metrics_print, file=log_file)
