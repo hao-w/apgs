@@ -1,4 +1,4 @@
-Source code for the amortized population Gibbs (APG) samplers in the paper **Amortized Population Gibbs Samplers with Neural Sufficient Statstics**, which was accepted by ICML2020 ([paper](https://proceedings.icml.cc/paper/2020/hash/6d378765f17a856b7ba8bf1541cafb69-Abstract.html) [video](https://icml.cc/virtual/2020/poster/6715)). The implementation was built on [ProbTorch](https://github.com/probtorch/probtorch), a deep generative modeling library which extends [PyTorch](https://pytorch.org/).
+Source code for the amortized population Gibbs (APG) samplers in the paper **Amortized Population Gibbs Samplers with Neural Sufficient Statstics**, which was accepted by ICML2020 ([paper](https://proceedings.icml.cc/paper/2020/hash/6d378765f17a856b7ba8bf1541cafb69-Abstract.html); [video](https://icml.cc/virtual/2020/poster/6715)). The implementation was built on [ProbTorch](https://github.com/probtorch/probtorch), a deep generative modeling library which extends [PyTorch](https://pytorch.org/).
 
 ### Prerequisite
 1. Install PyTorch >= 1.6.0 [[instructions](https://github.com/pytorch/pytorch)]
