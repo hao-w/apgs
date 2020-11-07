@@ -8,8 +8,9 @@ Source code for the amortized population Gibbs (APG) samplers in the paper **Amo
 Each set of experiments are stored in its own subdirectory. In detail, gmm, dmm, bmnist correspond the GMM clustering task, Deep Generative Mixture Model clustering task, and the Bouncing MNIST trakcing task, respectively.
 Each subdirectory includes the implementation of APG sampler, baselines, and evaluation functions that are put in jupyter notebooks for the convenience of interactivity.
 
-#### GMM
+To train the APG sampler, go to each subdirectory and run 
+```python
+python apg_training.py
+```
 
-#### DMM
-
-#### BMNIST
+If you have any questions about the code or the paper, please feel free to email me by wu.hao10@northeastern.edu.
