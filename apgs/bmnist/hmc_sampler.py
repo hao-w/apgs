@@ -3,16 +3,16 @@ import torch.nn.functional as F
 from torch.distributions.normal import Normal
 from torch.distributions.uniform import Uniform
 from torch.distributions.one_hot_categorical import OneHotCategorical as cat
-################ implementation of HMC
+
 class HMC():
-    def __init__(self, model, AT, S, B, T, K, D, z_what_dim, hmc_num_steps, step_size_what, step_size_where, leapfrog_num_steps, CUDA, DEVICE):
-        (self.enc_coor, self.dec_coor, self.enc_digit, self.dec_digit) = model
+    def __init__(self, models, AT, S, B, T, K, z_where_dim, z_what_dim, hmc_num_steps, step_size_what, step_size_where, leapfrog_num_steps, CUDA, device):
+        (_, self.dec_coor, _, self.dec_digit) = models
         self.AT = AT
         self.S = S
         self.B = B
         self.T = T
         self.K = K
-        self.D = D
+        self.z_where_dim = z_where_dim
         self.z_what_dim = z_what_dim
         self.Sigma = torch.ones(1)
         self.mu = torch.zeros(1)
@@ -23,7 +23,7 @@ class HMC():
         self.lf_step_size_what = step_size_what
         self.lf_num_steps = leapfrog_num_steps
         if CUDA:
-            with torch.cuda.device(DEVICE):
+            with torch.cuda.device(device):
                 self.Sigma = self.Sigma.cuda()
                 self.mu = self.mu.cuda()
                 self.uniformer = Uniform(torch.Tensor([0.0]).cuda(), torch.Tensor([1.0]).cuda())
@@ -37,22 +37,24 @@ class HMC():
         initialize auxiliary variables from univariate Gaussian
         return r_what, r_where
         """
-        return self.gauss_dist.sample((self.S, self.B, self.T, self.K, self.D,)).squeeze(-1), self.gauss_dist.sample((self.S, self.B, self.K, self.z_what_dim, )).squeeze(-1)
+        return self.gauss_dist.sample((self.S, self.B, self.T, self.K, self.z_where_dim,)).squeeze(-1), self.gauss_dist.sample((self.S, self.B, self.K, self.z_what_dim, )).squeeze(-1)
 
-    def hmc_sampling(self, ob, z_where, z_what):
+    
+    def hmc_sampling(self, ob, z_where, z_what, trace):
         self.accept_count = 0.0
-        density_list = []
         for m in range(self.hmc_num_steps):
             z_where, z_what = self.metrioplis(ob=ob, z_where=z_where.detach(), z_what=z_what.detach())
             log_joint = self.log_joint(ob=ob, z_where=z_where, z_what=z_what)
-            density_list.append(log_joint.unsqueeze(0))
+            trace['density'].append(log_joint.unsqueeze(0))
         self.smallest_accept_ratio = (self.accept_count / self.hmc_num_steps).min().item()
         if self.smallest_accept_ratio > 0.25: # adaptive leapfrog step size
             self.smallest_accept_ratio *= 1.005
         else:
             self.smallest_accept_ratio *= 0.995
-        return z_where, z_what, density_list
+        return trace
 
+    
+    
     def log_joint(self, ob, z_where, z_what):
         for t in range(self.T):
             if t == 0:
@@ -75,7 +77,7 @@ class HMC():
         accept_index = (u_samples < accept_ratio)
         # assert accept_index.shape == (self.S, self.B), "ERROR! index has unexpected shape."
         accept_index_expand1 = accept_index.unsqueeze(-1).unsqueeze(-1).repeat(1, 1, self.K, self.z_what_dim)
-        accept_index_expand2 = accept_index.unsqueeze(-1).unsqueeze(-1).unsqueeze(-1).repeat(1, 1, self.T, self.K, self.D)
+        accept_index_expand2 = accept_index.unsqueeze(-1).unsqueeze(-1).unsqueeze(-1).repeat(1, 1, self.T, self.K, self.z_where_dim)
         filtered_z_where = new_where * accept_index_expand2.float() + z_where * (~accept_index_expand2).float()
         filtered_z_what = new_what * accept_index_expand1.float() + z_what * (~accept_index_expand1).float()
         self.accept_count = self.accept_count + accept_index.float()

@@ -7,7 +7,7 @@ from torch.distributions.one_hot_categorical import OneHotCategorical as cat
 from apgs.gmm.kls_gmm import posterior_z
 
 class HMC():
-    def __init__(self, S, B, N, K, D, CUDA, device):
+    def __init__(self, S, B, N, K, D, hmc_num_steps, leapfrog_step_size, leapfrog_num_steps, CUDA, device):
         self.S, self.B, self.N, self.K, self.D = S, B, N, K, D
         self.Sigma = torch.ones(self.D)
         self.mu = torch.zeros(self.D)
@@ -21,7 +21,9 @@ class HMC():
             self.uniformer = Uniform(torch.Tensor([0.0]), torch.Tensor([1.0]))
 
         self.gauss_dist = Normal(self.mu, self.Sigma)
-
+        self.hmc_num_steps = hmc_num_steps
+        self.leapfrog_step_size = leapfrog_step_size
+        self.leapfrog_num_steps = leapfrog_num_steps
     def init_sample(self):
         """
         initialize auxiliary variables from univariate Gaussian
@@ -29,14 +31,14 @@ class HMC():
         """
         return self.gauss_dist.sample((self.S, self.B, self.K, )), self.gauss_dist.sample((self.S, self.B, self.K, ))
 
-    def hmc_sampling(self, generative, x, log_tau, mu, trace, hmc_num_steps, leapfrog_step_size, leapfrog_num_steps):
-        for m in range(hmc_num_steps):
+    def hmc_sampling(self, generative, x, log_tau, mu, trace):
+        for m in range(self.hmc_num_steps):
             log_tau, mu = self.metrioplis(generative,
                                           x, 
                                           log_tau=log_tau.detach(), 
                                           mu=mu.detach(), 
-                                          step_size=leapfrog_step_size, 
-                                          num_steps=leapfrog_num_steps)
+                                          step_size=self.leapfrog_step_size, 
+                                          num_steps=self.leapfrog_num_steps)
             posterior_logits = posterior_z(x,
                                            tau=log_tau.exp(),
                                            mu=mu,

@@ -255,3 +255,48 @@ def apg_what(enc_digit, dec_digit, AT, frames, z_where, z_what_old, trace, resul
     if result_flags['density_required']:
         trace['density'][-1] = trace['density'][-1] + (ll_f.sum(-1) + log_p_f.sum(-1)).unsqueeze(0).detach()
     return log_w, z_what, trace
+
+
+def hmc_objective(models, AT, frames, result_flags, hmc_sampler, mnist_mean):
+    """
+    HMC objective
+    """
+    trace = {'density' : []} 
+    S, B, T, FP, _ = frames.shape
+    (enc_coor, dec_coor, enc_digit, dec_digit) = models
+    log_w, z_where, z_what, trace = oneshot(enc_coor, dec_coor, enc_digit, dec_digit, AT, frames, mnist_mean, trace, result_flags)
+    trace = hmc_sampler.hmc_sampling(frames, z_where, z_what, trace)
+    trace['density'] = torch.cat(trace['density'], 0)
+    return trace
+
+def bpg_objective(models, AT, frames, result_flags, num_sweeps, resampler, mnist_mean):
+    """
+    bpg objective
+    """
+    trace = {'density' : []} ## a dictionary that tracks things needed during the sweeping
+    S, B, T, FP, _ = frames.shape
+    (enc_coor, dec_coor, enc_digit, dec_digit) = models
+    log_w, z_where, z_what, trace = oneshot(enc_coor, dec_coor, enc_digit, dec_digit, AT, frames, mnist_mean, trace, result_flags)
+    z_where, z_what = resample_variables(resampler, z_where, z_what, log_weights=log_w)
+    for m in range(num_sweeps-1):
+        z_where, trace = apg_where(enc_coor, dec_coor, dec_digit, AT, resampler, frames, z_what, z_where, trace, result_flags)
+        log_w, z_what, trace = bpg_what(dec_digit, AT, frames, z_where, z_what, trace)
+        z_where, z_what = resample_variables(resampler, z_where, z_what, log_weights=log_w)
+    trace['density'] = torch.cat(trace['density'], 0) 
+    return trace
+
+def bpg_what(dec_digit, AT, frames, z_where, z_what_old, trace):
+    S, B, T, K, _ = z_where.shape
+    z_what_dim = z_what_old.shape[-1]
+    cropped = AT.frame_to_digit(frames=frames, z_where=z_where)
+    DP = cropped.shape[-1]
+    q = Normal(dec_digit.prior_mu, dec_digit.prior_std)
+    z_what = q.sample((S, B, K, ))
+    cropped = cropped.view(S, B, T, K, int(DP*DP))
+    log_p_f, ll_f, recon = dec_digit(frames=frames, z_what=z_what, z_where=z_where, AT=AT)
+    log_prior = log_p_f.sum(-1)
+    ## backward
+    _, ll_b, _ = dec_digit(frames=frames, z_what=z_what_old, z_where=z_where, AT=AT)
+    log_w = (ll_f.sum(-1) - ll_b.sum(-1)).detach()
+    trace['density'][-1] = trace['density'][-1] + (ll_f.sum(-1) + log_prior).unsqueeze(0).detach()
+    return log_w, z_what, trace

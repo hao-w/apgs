@@ -15,18 +15,20 @@ from apgs.gmm.hmc_sampler import HMC
     
 def density_all_instances(models, data, sample_size, K, num_sweeps, lf_step_size, lf_num_steps, bpg_factor, CUDA, device, batch_size=100):
     densities = dict()
-    num_batches = (data.shape[0] / batch_size)
+    num_batches = int(data.shape[0] / batch_size)
     for b in range(num_batches):
+        time_start = time.time()
         x = data[b*batch_size : (b+1)*batch_size].repeat(sample_size, 1, 1, 1)
         if CUDA:
             x = x.cuda().to(device)            
         S, B, N, D = x.shape
-        hmc_sampler = HMC(S, B, N, K, D, CUDA, device)
+        
         resampler = Resampler('systematic', S, CUDA, device)
         resampler_bpg = Resampler('systematic', S*bpg_factor, CUDA, device)
         result_flags = {'loss_required' : False, 'ess_required' : False, 'mode_required' : False, 'density_required' : True}
         for lf in lf_num_steps:
-            _, _, trace_hmc = hmc_objective(models, x, result_flags, hmc_sampler, num_sweeps, lf_step_size, lf) 
+            hmc_sampler = HMC(S, B, N, K, D, num_sweeps, lf_step_size, lf, CUDA, device)
+            _, _, trace_hmc = hmc_objective(models, x, result_flags, hmc_sampler) 
             if 'HMC-RWS(L=%d, LF=%d)' % (S, lf) in densities:
                 densities['HMC-RWS(L=%d, LF=%d)' % (S, lf)].append(trace_hmc['density'].mean(-1).mean(-1).cpu().numpy()[-1])
             else:
@@ -48,10 +50,11 @@ def density_all_instances(models, data, sample_size, K, num_sweeps, lf_step_size
             densities['APG(L=%d)' % S].append(trace_apg['density'].mean(-1).mean(-1).cpu().numpy()[-1])
         else:
             densities['APG(L=%d)' % S] = [trace_apg['density'].mean(-1).mean(-1).cpu().numpy()[-1]]
+        time_end = time.time()
+        print('%d / %d completed in (%ds)' % (b+1, num_batches, time_end-time_start))
     for key in densities.keys():
-        densities[key] = np.concatenate(densities[key], 0).mean()
+        densities[key] = np.array(densities[key]).mean()
         print('method=%s, log joint=%.2f' % (key, densities[key]))
-    return densities
 
 def plot_convergence(densities, fs=6, fs_title=14, lw=3, opacity=0.1, colors = ['#0077BB', '#009988', '#EE7733', '#AA3377', '#555555', '#999933']):
     fig = plt.figure(figsize=(fs*2.5,fs)) 
@@ -86,13 +89,14 @@ def density_convergence(models, data, sample_size, K, num_runs, num_sweeps, lf_s
         densities = dict()
         set_seed(i)    
         S, B, N, D = x.shape
-        hmc_sampler = HMC(S, B, N, K, D, CUDA, device)
+        
         resampler = Resampler('systematic', S, CUDA, device)
         resampler_bpg = Resampler('systematic', S*bpg_factor, CUDA, device)
         result_flags = {'loss_required' : False, 'ess_required' : False, 'mode_required' : False, 'density_required' : True}
         for lf in lf_num_steps:
+            hmc_sampler = HMC(S, B, N, K, D, num_sweeps, lf_step_size, lf, CUDA, device)
 #             print('Running RWS-HMC with %dx leapfrog steps..' % lp)
-            _, _, trace_hmc = hmc_objective(models, x, result_flags, hmc_sampler, num_sweeps, lf_step_size, lf) 
+            _, _, trace_hmc = hmc_objective(models, x, result_flags, hmc_sampler) 
             densities['HMC-RWS(L=%d, LF=%d)' % (S, lf)] = trace_hmc['density'].mean(-1).mean(-1).cpu().numpy()[None, :] 
 #         print('Running Standard Gibbs..')
         trace_gibbs = gibbs_objective(models, x, result_flags, num_sweeps)
@@ -221,7 +225,7 @@ def viz_gmm(ax, ob, K, marker_size, opacity, bound, colors, latents=None):
     ax.set_xticks([])
     ax.set_yticks([])
 
-def viz_samples(data, trace, num_sweeps, K, viz_interval=3, figure_size=3, title_fontsize=20, marker_size=1.0, opacity=0.3, bound=15, colors=['#AA3377','#0077BB', '#EE7733', '#009988', '#BBBBBB', '#EE3377', '#DDCC77'], save_name=None):
+def viz_samples(data, trace, num_sweeps, K, viz_interval=3, figure_size=3, title_fontsize=20, marker_size=1.0, opacity=0.3, bound=20, colors=['#AA3377','#0077BB', '#EE7733', '#009988', '#BBBBBB', '#EE3377', '#DDCC77'], save_name=None):
     """
     visualize the samples along the sweeps
     """

@@ -25,11 +25,24 @@ def train(objective, optimizer, models, data, assignments, num_epochs, sample_si
             loss = trace['loss'].sum()
             loss.backward()
             optimizer.step()
-            metrics['ess'] += trace['ess'][-1].mean()
-            metrics['density'] += trace['density'][-1].mean() 
-            exc_kl, inc_kl = kls_eta(models, x, z_true)
-            metrics['inc_kl'] += inc_kl
-            metrics['exc_kl'] += exc_kl
+            if 'ess' in metrics:
+                metrics['ess'] += trace['ess'][-1].mean()
+            else:
+                metrics['ess'] = trace['ess'][-1].mean()
+            if 'density' in metrics:
+                metrics['density'] += trace['density'][-1].mean() 
+            else:
+                metrics['density'] = trace['density'][-1].mean() 
+            if kwargs['num_sweeps'] > 1:
+                exc_kl, inc_kl = kls_eta(models, x, z_true)
+                if 'inc_kl' in metrics:
+                    metrics['inc_kl'] += inc_kl
+                else:
+                    metrics['inc_kl'] = inc_kl
+                if 'exc_kl' in metrics:
+                    metrics['exc_kl'] += exc_kl
+                else:
+                    metrics['exc_kl'] = exc_kl
         save_apg_models(models, model_version)
         metrics_print = ", ".join(['%s=%.4f' % (k, v / num_batches) for k, v in metrics.items()])
         if not os.path.exists('results/'):
@@ -68,7 +81,7 @@ def init_apg_models(K, D, num_hidden_z, CUDA, device, load_version=None, lr=None
             enc_apg_z.cuda()
             enc_apg_eta.cuda()
     if load_version is not None:
-        weights = torch.load("../weights/cp-%s" % load_version)
+        weights = torch.load("weights/cp-%s" % load_version)
         enc_rws_eta.load_state_dict(weights['enc-rws-eta'])
         enc_apg_z.load_state_dict(weights['enc-apg-z'])
         enc_apg_eta.load_state_dict(weights['enc-apg-eta'])
@@ -115,7 +128,7 @@ def init_rws_models(K, D, num_hidden_z, CUDA, device, load_version=None, lr=None
             enc_rws_eta.cuda()
             enc_rws_z.cuda()
     if load_version is not None:
-        weights = torch.load("../weights/cp-%s" % load_version)
+        weights = torch.load("weights/cp-%s" % load_version)
         enc_rws_eta.load_state_dict(weights['enc-rws-eta'])
         enc_rws_z.load_state_dict(weights['enc-apg-z'])
     if lr is not None:
@@ -157,7 +170,7 @@ if __name__ == '__main__':
     parser.add_argument('--num_epochs', default=50, type=int)
     parser.add_argument('--batch_size', default=20, type=int)
     parser.add_argument('--budget', default=100, type=int)
-    parser.add_argument('--num_sweeps', default=1, type=int)
+    parser.add_argument('--num_sweeps', default=10, type=int)
     parser.add_argument('--lr', default=1e-4, type=float)
     parser.add_argument('--resample_strategy', default='systematic', choices=['systematic', 'multinomial'])
     parser.add_argument('--block_strategy', default='decomposed', choices=['decomposed', 'joint'])

@@ -273,7 +273,7 @@ def gibbs_sweep(generative, x, z, trace):
     trace['density'].append(log_joint.unsqueeze(0)) # 1-by-B-length vector
     return tau, mu, z, trace
 
-def hmc_objective(models, x, result_flags, hmc_sampler, hmc_num_steps, leapfrog_step_size, leapfrog_num_steps):
+def hmc_objective(models, x, result_flags, hmc_sampler):
     """
     HMC + marginalization over discrete variables in GMM problem
     """
@@ -284,10 +284,7 @@ def hmc_objective(models, x, result_flags, hmc_sampler, hmc_num_steps, leapfrog_
                                                   x,
                                                   log_tau=tau.log(),
                                                   mu=mu,
-                                                  trace=trace,
-                                                  hmc_num_steps=hmc_num_steps,
-                                                  leapfrog_step_size=leapfrog_step_size,
-                                                  leapfrog_num_steps=leapfrog_num_steps)
+                                                  trace=trace)
     trace['density'] = torch.cat(trace['density'], 0)
     return log_tau.exp(), mu, trace
 

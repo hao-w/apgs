@@ -195,18 +195,18 @@ def resample_variables(resampler, mu, z, beta, log_weights):
     return mu, z, beta
 
 
-def hmc_objective(models, x, result_flags, hmc_sampler):
+def hmc_objective(models, x, K, result_flags, hmc_sampler):
     """
-    HMC + marginalization over discrete variables in GMM problem
+    HMC objective
     """
     trace = {'density' : []} 
     (enc_rws_mu, enc_apg_local, enc_apg_mu, dec) = models
     _, mu, z, beta, trace = oneshot(enc_rws_mu, enc_apg_local, dec, x, K, trace, result_flags)
-    trace = hmc_sampler.hmc_sampling(enc_local, dec, x, mu, z, beta, trace)
+    trace = hmc_sampler.hmc_sampling(x, mu, z, beta, trace)
     trace['density'] = torch.cat(trace['density'], 0)
     return trace
 
-def bpg_objective(models, x, result_flags, num_sweeps, resampler):
+def bpg_objective(models, x, K, result_flags, num_sweeps, resampler):
     """
     bpg objective
     """
@@ -223,9 +223,6 @@ def bpg_objective(models, x, result_flags, num_sweeps, resampler):
     return trace
 
 def bpg_update_mu(enc_apg_mu, dec, x, z, beta, mu_old, K, trace):
-    """
-    Given local variable z, update global variables eta := {mu, tau}.
-    """
     q = Normal(dec.prior_mu_mu, dec.prior_mu_sigma)
     S, B, K, D = mu_old.shape
     mu = q.sample((S, B, K, ))
