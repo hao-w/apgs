@@ -13,4 +13,4 @@ To train the APG sampler, go to each subdirectory and run
 python apg_training.py
 ```
 
-If you have any questions about the code or the paper, please feel free to email me by wu.hao10@northeastern.edu.
+If you have any questions about the code or the paper, please feel free to contact me by wu.hao10@northeastern.edu.
