@@ -205,6 +205,8 @@ if __name__ == '__main__':
     parser.add_argument('--num_clusters', default=3, type=int)
     parser.add_argument('--data_dim', default=2, type=int)
     parser.add_argument('--num_hidden', default=32, type=int)
+    parser.add_argument('--ema_beta1', default=0.99, type=float)
+    parser.add_argument('--ema_beta2', default=0.99, type=float)
     parser.add_argument('--grad_use', choices=['full', 'first', 'last'])
     args = parser.parse_args()
     sample_size = int(args.budget / args.num_sweeps)
@@ -218,14 +220,16 @@ if __name__ == '__main__':
         model_version = 'rws-gmm-num_samples=%s' % (sample_size)
         print('version='+ model_version)
         models, optimizer = init_rws_models(args.num_clusters, args.data_dim, args.num_hidden, CUDA, device, load_version=None, lr=args.lr)
-        train(rws_objective, optimizer, models, data, assignments, args.num_epochs, sample_size, args.batch_size, CUDA, device)
+        ema = EMA(args.ema_beta1, args.ema_beta2)
+        train(rws_objective, optimizer, models, ema, args.grad_use, data, assignments, args.num_epochs, sample_size, args.batch_size, CUDA, device)
         
     elif args.num_sweeps > 1: ## apg sampler
         model_version = 'apg-%s-gmm-block=%s-num_sweeps=%s-num_samples=%s' % (args.grad_use, args.block_strategy, args.num_sweeps, sample_size)
         print('version=' + model_version)
         models, optimizer = init_apg_models(args.num_clusters, args.data_dim, args.num_hidden, CUDA, device, load_version=None, lr=args.lr)
+        ema = EMA(args.ema_beta1, args.ema_beta2)
         resampler = Resampler(args.resample_strategy, sample_size, CUDA, device)
-        train(apg_objective, optimizer, models, data, assignments, args.num_epochs, sample_size, args.batch_size, CUDA, device, num_sweeps=args.num_sweeps, block=args.block_strategy, resampler=resampler)
+        train(apg_objective, optimizer, models, ema, args.grad_use, data, assignments, args.num_epochs, sample_size, args.batch_size, CUDA, device, num_sweeps=args.num_sweeps, block=args.block_strategy, resampler=resampler)
         
     else:
         raise ValueError
