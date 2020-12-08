@@ -52,7 +52,7 @@ def apg_objective(models, x, result_flags, num_sweeps, block, resampler):
         trace['density'] = torch.cat(trace['density'], 0)  # (num_sweeps) * S * B
     return trace
 
-def rws_objective(models, x, result_flags):
+def rws_objective(models, x, result_flags, num_sweeps):
     """
     The objective of RWS method
     """
