@@ -70,7 +70,10 @@ def train(objective, optimizer, models, ema, grad_use, data, assignments, num_ep
                     metrics['exc_kl'] += exc_kl
                 else:
                     metrics['exc_kl'] = exc_kl
-        save_apg_models(models, model_version)
+        if kwargs['num_sweeps'] > 1:
+            save_apg_models(models, model_version)
+        else:
+            save_rws_models(models, model_version)
         metrics_print = ", ".join(['%s=%.4f' % (k, v / num_batches) for k, v in metrics.items()])
         if not os.path.exists('results/'):
             os.makedirs('results/')
@@ -221,7 +224,7 @@ if __name__ == '__main__':
         print('version='+ model_version)
         models, optimizer = init_rws_models(args.num_clusters, args.data_dim, args.num_hidden, CUDA, device, load_version=None, lr=args.lr)
         ema = EMA(args.ema_beta1, args.ema_beta2)
-        train(rws_objective, optimizer, models, ema, args.grad_use, data, assignments, args.num_epochs, sample_size, args.batch_size, CUDA, device)
+        train(rws_objective, optimizer, models, ema, args.grad_use, data, assignments, args.num_epochs, sample_size, args.batch_size, CUDA, device, num_sweeps=args.num_sweeps)
         
     elif args.num_sweeps > 1: ## apg sampler
         model_version = 'apg-%s-gmm-block=%s-num_sweeps=%s-num_samples=%s' % (args.grad_use, args.block_strategy, args.num_sweeps, sample_size)
