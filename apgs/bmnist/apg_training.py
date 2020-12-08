@@ -106,23 +106,23 @@ def init_models(frame_pixels, digit_pixels, num_hidden_digit, num_hidden_coor, z
         enc_digit.load_state_dict(weights['enc-digit'])
         dec_digit.load_state_dict(weights['dec-digit'])
     if lr is not None:
-#         optimizer =  torch.optim.Adam(list(enc_coor.parameters())+
-#                                         list(enc_digit.parameters())+
-#                                         list(dec_digit.parameters()),
-#                                         lr=lr,
-#                                         betas=(0.9, 0.99))
-        optimizer =  torch.optim.SGD(list(enc_coor.parameters())+
+        optimizer =  torch.optim.Adam(list(enc_coor.parameters())+
                                         list(enc_digit.parameters())+
                                         list(dec_digit.parameters()),
-                                        lr=lr)
+                                        lr=lr,
+                                        betas=(0.9, 0.99))
+#         optimizer =  torch.optim.SGD(list(enc_coor.parameters())+
+#                                         list(enc_digit.parameters())+
+#                                         list(dec_digit.parameters()),
+#                                         lr=lr)
         return (enc_coor, dec_coor, enc_digit, dec_digit), optimizer
-    else: 
-        for p in enc_coor.parameters():
-            p.requires_grad = False
-        for p in enc_digit.parameters():
-            p.requires_grad = False
-        for p in dec_digit.parameters():
-            p.requires_grad = False
+#     else: 
+#         for p in enc_coor.parameters():
+#             p.requires_grad = False
+#         for p in enc_digit.parameters():
+#             p.requires_grad = False
+#         for p in dec_digit.parameters():
+#             p.requires_grad = False
     return (enc_coor, dec_coor, enc_digit, dec_digit)
 
 def save_models(models, save_version):
