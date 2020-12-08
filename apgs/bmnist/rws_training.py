@@ -29,8 +29,8 @@ def train(optimizer, models, AT, resampler, ema, num_sweeps, data_paths, mnist_m
                         frames = frames.cuda()
                         mnist_mean = mnist_mean.cuda()
                 trace = apg_objective(models, AT, frames, K, result_flags, num_sweeps, resampler, mnist_mean)
-                loss_phi = trace['loss_phi'][-1]*5
-                loss_theta = trace['loss_theta'][-1]*5
+                loss_phi = trace['loss_phi'][0]*5
+                loss_theta = trace['loss_theta'][0]*5
                 loss_phi.backward(retain_graph=True)
                 loss_theta.backward()
                 if ema_iter == 0:
@@ -51,7 +51,7 @@ def train(optimizer, models, AT, resampler, ema, num_sweeps, data_paths, mnist_m
                     ema_file = open('results/ema-' + model_version + '.txt', 'a+')
                     print('step=%d, variance=%.4f, snr=%.4f' % (ema_iter, variance, snr), file=ema_file)
                     ema_file.close()
-                    
+                
                 optimizer.step()
                 if 'loss_phi' in metrics:
                     metrics['loss_phi'] += trace['loss_phi'][-1].item()
@@ -96,12 +96,15 @@ def init_models(frame_pixels, digit_pixels, num_hidden_digit, num_hidden_coor, z
         enc_digit.load_state_dict(weights['enc-digit'])
         dec_digit.load_state_dict(weights['dec-digit'])
     if lr is not None:
-        optimizer =  torch.optim.Adam(list(enc_coor.parameters())+
+#         optimizer =  torch.optim.Adam(list(enc_coor.parameters())+
+#                                         list(enc_digit.parameters())+
+#                                         list(dec_digit.parameters()),
+#                                         lr=lr,
+#                                         betas=(0.9, 0.99))
+        optimizer =  torch.optim.SGD(list(enc_coor.parameters())+
                                         list(enc_digit.parameters())+
                                         list(dec_digit.parameters()),
-                                        lr=lr,
-                                        betas=(0.9, 0.99))
-
+                                        lr=lr)
         return (enc_coor, dec_coor, enc_digit, dec_digit), optimizer
     else: 
         for p in enc_coor.parameters():
@@ -135,9 +138,9 @@ if __name__ == '__main__':
     parser.add_argument('--data_dir', default='../../data/bmnist/')
     parser.add_argument('--device', default=1, type=int)
     parser.add_argument('--num_epochs', default=200, type=int)
-    parser.add_argument('--batch_size', default=5, type=int)
+    parser.add_argument('--batch_size', default=10, type=int)
     parser.add_argument('--budget', default=100, type=int)
-    parser.add_argument('--num_sweeps', default=5, type=int)
+    parser.add_argument('--num_sweeps', default=1, type=int)
     parser.add_argument('--lr', default=1e-4, type=float)
     parser.add_argument('--resample_strategy', default='systematic', choices=['systematic', 'multinomial'])
     parser.add_argument('--num_digits', default=3, type=int)
