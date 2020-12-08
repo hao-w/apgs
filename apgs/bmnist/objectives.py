@@ -7,7 +7,7 @@ def resample_variables(resampler, z_where, z_what, log_weights):
     z_where = resampler.resample_5dims(var=z_where, ancestral_index=ancestral_index)
     z_what = resampler.resample_4dims(var=z_what, ancestral_index=ancestral_index)
     return z_where, z_what
-
+        
 def apg_objective(models, AT, frames, K, result_flags, num_sweeps, resampler, mnist_mean):
     """
     Amortized Population Gibbs objective in Bouncing MNIST problem

@@ -29,8 +29,8 @@ def train(optimizer, models, AT, resampler, ema, num_sweeps, data_paths, mnist_m
                         frames = frames.cuda()
                         mnist_mean = mnist_mean.cuda()
                 trace = apg_objective(models, AT, frames, K, result_flags, num_sweeps, resampler, mnist_mean)
-                loss_phi = trace['loss_phi'][-1]*5
-                loss_theta = trace['loss_theta'][-1]*5
+                loss_phi = trace['loss_phi'][-1]
+                loss_theta = trace['loss_theta'][-1]
                 loss_phi.backward(retain_graph=True)
                 loss_theta.backward()
                 if ema_iter == 0:

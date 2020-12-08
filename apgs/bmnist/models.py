@@ -8,9 +8,9 @@ class Enc_coor(nn.Module):
     """
     encoder of the digit positions
     """
-    def __init__(self, num_pixels, num_hidden, z_where_dim):
+    def __init__(self, num_pixels, num_hidden, z_where_dim, reparameterized=False):
         super(self.__class__, self).__init__()
-        self.enc_hidden = nn.Sequential(
+        self.enc_coor_hidden = nn.Sequential(
                             nn.Linear(num_pixels, num_hidden),
                             nn.ReLU())
         self.where_mean = nn.Sequential(
@@ -23,15 +23,18 @@ class Enc_coor(nn.Module):
                             nn.Linear(num_hidden, int(0.5*num_hidden)),
                             nn.ReLU(),
                             nn.Linear(int(0.5*num_hidden), z_where_dim))
-
+        self.reparameterized = reparameterized
 
     def forward(self, conved, sampled=True, z_where_old=None):
         q = probtorch.Trace()
-        hidden = self.enc_hidden(conved)
+        hidden = self.enc_coor_hidden(conved)
         q_mean = self.where_mean(hidden)
         q_std = self.where_log_std(hidden).exp()
         if sampled:
-            z_where = Normal(q_mean, q_std).sample()
+            if self.reparameterized:
+                z_where = Normal(q_mean, q_std).rsample()
+            else:
+                z_where = Normal(q_mean, q_std).sample()
             q.normal(loc=q_mean, scale=q_std, value=z_where, name='z_where')
         else:
             q.normal(loc=q_mean, scale=q_std, value=z_where_old, name='z_where')
@@ -42,25 +45,30 @@ class Enc_digit(nn.Module):
     """
     encoder of digit features
     """
-    def __init__(self, num_pixels, num_hidden, z_what_dim):
+    def __init__(self, num_pixels, num_hidden, z_what_dim, reparameterized=False):
         super(self.__class__, self).__init__()
-        self.enc_hidden = nn.Sequential(
+        self.enc_digit_hidden = nn.Sequential(
                         nn.Linear(num_pixels, num_hidden),
                         nn.ReLU(),
                         nn.Linear(num_hidden, int(0.5*num_hidden)),
                         nn.ReLU())
-        self.q_mean = nn.Sequential(
+        self.enc_digit_mean = nn.Sequential(
                         nn.Linear(int(0.5*num_hidden), z_what_dim))
-        self.q_log_std = nn.Sequential(
+        self.enc_digit_log_std = nn.Sequential(
                         nn.Linear(int(0.5*num_hidden), z_what_dim))
 
+        self.reparameterized = reparameterized
+        
     def forward(self, cropped, sampled=True, z_what_old=None):
         q = probtorch.Trace()
-        hidden = self.enc_hidden(cropped).mean(2)
-        q_mu = self.q_mean(hidden) ## because T is on the 3rd dim in cropped
-        q_std = self.q_log_std(hidden).exp()
+        hidden = self.enc_digit_hidden(cropped).mean(2)
+        q_mu = self.enc_digit_mean(hidden) ## because T is on the 3rd dim in cropped
+        q_std = self.enc_digit_log_std(hidden).exp()
         if sampled:
-            z_what = Normal(q_mu, q_std).sample() ## S * B * K * z_what_dim
+            if self.reparameterized:
+                z_what = Normal(q_mu, q_std).rsample()
+            else:
+                z_what = Normal(q_mu, q_std).sample() ## S * B * K * z_what_dim
             q.normal(loc=q_mu,
                      scale=q_std,
                      value=z_what,
@@ -119,7 +127,7 @@ class Dec_digit(nn.Module):
     """
     def __init__(self, num_pixels, num_hidden, z_what_dim, CUDA, device):
         super(self.__class__, self).__init__()
-        self.digit_mean = nn.Sequential(nn.Linear(z_what_dim, int(0.5*num_hidden)),
+        self.dec_digit_mean = nn.Sequential(nn.Linear(z_what_dim, int(0.5*num_hidden)),
                                     nn.ReLU(),
                                     nn.Linear(int(0.5*num_hidden), num_hidden),
                                     nn.ReLU(),
@@ -135,7 +143,7 @@ class Dec_digit(nn.Module):
                 self.prior_std = self.prior_std.cuda()
 
     def forward(self, frames, z_what, z_where=None, AT=None):
-        digit_mean = self.digit_mean(z_what)  # S * B * K * (28*28)
+        digit_mean = self.dec_digit_mean(z_what)  # S * B * K * (28*28)
         S, B, K, DP2 = digit_mean.shape
         DP = int(math.sqrt(DP2))
         digit_mean = digit_mean.view(S, B, K, DP, DP)

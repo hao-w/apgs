@@ -22,7 +22,7 @@ class EMA():
         self.shadow1[name] = new_first_moment
         self.shadow2[name] = new_second_moment
     
-    def snr(self, EPS=1e-9):
+    def snr(self, EPS=1e-12):
         N = 0.0
         Variance = 0.0
         SNR = 0.0
@@ -30,7 +30,9 @@ class EMA():
             second_moment = self.shadow2[name]
             N += torch.numel(first_moment)
             Variance += (second_moment - (first_moment**2)).sum()
-            SNR += (1.0 / (second_moment / (first_moment**2) - 1.0)).sum()
+            snr_raw = 1.0 / (second_moment / (first_moment**2) - 1.0)
+            SNR += snr_raw[~torch.isnan(snr_raw)].sum()
+#             print((first_moment**2).sum())
         return Variance / N, SNR / N
         
         
