@@ -6,7 +6,7 @@ from random import shuffle
 from apgs.bmnist.models import Enc_coor, Dec_coor, Enc_digit, Dec_digit
 from apgs.bmnist.objectives import apg_objective
 
-def train(optimizer, models, AT, resampler, ema, num_sweeps, data_paths, mnist_mean, K, num_epochs, sample_size, batch_size, CUDA, device, model_version):
+def train(optimizer, models, AT, resampler, ema, grad_use, num_sweeps, data_paths, mnist_mean, K, num_epochs, sample_size, batch_size, CUDA, device, model_version):
     """
     training function of apg samplers
     """
@@ -29,8 +29,18 @@ def train(optimizer, models, AT, resampler, ema, num_sweeps, data_paths, mnist_m
                         frames = frames.cuda()
                         mnist_mean = mnist_mean.cuda()
                 trace = apg_objective(models, AT, frames, K, result_flags, num_sweeps, resampler, mnist_mean)
-                loss_phi = trace['loss_phi'][-1]
-                loss_theta = trace['loss_theta'][-1]
+                if grad_use == 'full':
+                    loss_phi = trace['loss_phi'].sum()
+                    loss_theta = trace['loss_theta'].sum()
+                elif grad_use == 'first':
+                    loss_phi = trace['loss_phi'][0]
+                    loss_theta = trace['loss_theta'][0]
+                elif grad_use == 'last':
+                    loss_phi = trace['loss_phi'][-1]
+                    loss_theta = trace['loss_theta'][-1]
+                else:
+                    raise ValueError
+                
                 loss_phi.backward(retain_graph=True)
                 loss_theta.backward()
                 if ema_iter == 0:
@@ -96,12 +106,15 @@ def init_models(frame_pixels, digit_pixels, num_hidden_digit, num_hidden_coor, z
         enc_digit.load_state_dict(weights['enc-digit'])
         dec_digit.load_state_dict(weights['dec-digit'])
     if lr is not None:
-        optimizer =  torch.optim.Adam(list(enc_coor.parameters())+
+#         optimizer =  torch.optim.Adam(list(enc_coor.parameters())+
+#                                         list(enc_digit.parameters())+
+#                                         list(dec_digit.parameters()),
+#                                         lr=lr,
+#                                         betas=(0.9, 0.99))
+        optimizer =  torch.optim.SGD(list(enc_coor.parameters())+
                                         list(enc_digit.parameters())+
                                         list(dec_digit.parameters()),
-                                        lr=lr,
-                                        betas=(0.9, 0.99))
-
+                                        lr=lr)
         return (enc_coor, dec_coor, enc_digit, dec_digit), optimizer
     else: 
         for p in enc_coor.parameters():
@@ -130,7 +143,7 @@ if __name__ == '__main__':
     import argparse
     from apgs.resampler import Resampler
     from apgs.bmnist.affine_transformer import Affine_Transformer
-    from apgs.snr import EMA
+    from apgs.snr import EMA, set_seed
     parser = argparse.ArgumentParser('Bouncing MNIST')
     parser.add_argument('--data_dir', default='../../data/bmnist/')
     parser.add_argument('--device', default=1, type=int)
@@ -150,17 +163,19 @@ if __name__ == '__main__':
     parser.add_argument('--z_what_dim', default=10, type=int)
     parser.add_argument('--ema_beta1', default=0.99, type=float)
     parser.add_argument('--ema_beta2', default=0.99, type=float)
+    parser.add_argument('--grad_use', choices=['full', 'first', 'last'])
     args = parser.parse_args()
     sample_size = int(args.budget / args.num_sweeps)
+    set_seed(0) 
     CUDA = torch.cuda.is_available()
     device = torch.device('cuda:%d' % args.device)
     if args.num_sweeps == 1: ## rws method
         model_version = 'rws-bmnist-num_samples=%s' % (sample_size)
     elif args.num_sweeps > 1: ## apg sampler
-        model_version = 'apg-bmnist-num_sweeps=%s-num_samples=%s' % (args.num_sweeps, sample_size)
+        model_version = 'apg-%s-bmnist-num_sweeps=%s-num_samples=%s' % (args.grad_use, args.num_sweeps, sample_size)
     else:
         raise ValueError
-        
+      
     data_paths = []
     for file in os.listdir(args.data_dir + 'train/'):
         data_paths.append(os.path.join(args.data_dir, 'train', file))
@@ -172,4 +187,4 @@ if __name__ == '__main__':
     ema = EMA(args.ema_beta1, args.ema_beta2)
     print('Start training for bmnist tracking task..')
     print('version=' + model_version)  
-    train(optimizer, models, AT, resampler, ema, args.num_sweeps, data_paths, mnist_mean, args.num_digits, args.num_epochs, sample_size, args.batch_size, CUDA, device, model_version)        
+    train(optimizer, models, AT, resampler, ema, args.grad_use, args.num_sweeps, data_paths, mnist_mean, args.num_digits, args.num_epochs, sample_size, args.batch_size, CUDA, device, model_version)        

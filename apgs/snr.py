@@ -1,5 +1,15 @@
 import torch
 # from torch.autograd.functional import jacobian
+def set_seed(seed):
+    import torch
+    import numpy
+    import random
+    torch.manual_seed(seed)
+    numpy.random.seed(seed)
+    random.seed(seed)
+    torch.backends.cudnn.benchmark = True
+    # torch.backends.cudnn.deterministic = True
+    
 class EMA():
     """
     Compute the exponential moving average (EMA) of the gradient

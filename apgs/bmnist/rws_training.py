@@ -133,7 +133,7 @@ if __name__ == '__main__':
     import argparse
     from apgs.resampler import Resampler
     from apgs.bmnist.affine_transformer import Affine_Transformer
-    from apgs.snr import EMA
+    from apgs.snr import EMA, set_seed
     parser = argparse.ArgumentParser('Bouncing MNIST')
     parser.add_argument('--data_dir', default='../../data/bmnist/')
     parser.add_argument('--device', default=1, type=int)
@@ -155,6 +155,7 @@ if __name__ == '__main__':
     parser.add_argument('--ema_beta2', default=0.99, type=float)
     args = parser.parse_args()
     sample_size = int(args.budget / args.num_sweeps)
+    set_seed(0)
     CUDA = torch.cuda.is_available()
     device = torch.device('cuda:%d' % args.device)
     if args.num_sweeps == 1: ## rws method
