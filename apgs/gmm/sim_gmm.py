@@ -2,7 +2,7 @@ import os
 import torch
 import numpy as np
 import matplotlib.pyplot as plt
-from apgs.gmm.viz import plot_cov_ellipse
+from apgs.gmm.evaluation import plot_cov_ellipse
 from torch.distributions.gamma import Gamma
 from torch.distributions.normal import Normal
 from torch.distributions.one_hot_categorical import OneHotCategorical as cat
