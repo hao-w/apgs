@@ -45,7 +45,7 @@ def train(objective, optimizer, models, ema, grad_use, data, assignments, num_ep
                             if param.requires_grad:
                                 ema.update(name, param.grad.cpu())
             ema_iter += 1
-            if ema_iter % 100 == 0:
+            if ema_iter % 1000 == 0:
                 signal, variance, snr = ema.snr()
                 ema_file = open('results/ema-' + model_version + '.txt', 'a+')
                 print('step=%d, signal=%.4f, variance=%.4f, snr=%.4f' % (ema_iter, signal, variance, snr), file=ema_file)
@@ -197,20 +197,21 @@ if __name__ == '__main__':
     from apgs.snr import EMA, set_seed
     parser = argparse.ArgumentParser('GMM Clustering Task')
     parser.add_argument('--data_dir', default='../../data/gmm/')
-    parser.add_argument('--device', default=0, type=int)
-    parser.add_argument('--num_epochs', default=200, type=int)
+    parser.add_argument('--device', default=1, type=int)
+    parser.add_argument('--num_epochs', default=100, type=int)
     parser.add_argument('--batch_size', default=10, type=int)
     parser.add_argument('--budget', default=100, type=int)
     parser.add_argument('--num_sweeps', default=5, type=int)
-    parser.add_argument('--lr', default=1e-4, type=float)
+    parser.add_argument('--lr', default=5e-4, type=float)
     parser.add_argument('--resample_strategy', default='systematic', choices=['systematic', 'multinomial'])
     parser.add_argument('--block_strategy', default='decomposed', choices=['decomposed', 'joint'])
     parser.add_argument('--num_clusters', default=3, type=int)
     parser.add_argument('--data_dim', default=2, type=int)
-    parser.add_argument('--num_hidden', default=32, type=int)
+    parser.add_argument('--num_hidden', default=64, type=int)
     parser.add_argument('--ema_beta1', default=0.99, type=float)
     parser.add_argument('--ema_beta2', default=0.99, type=float)
     parser.add_argument('--grad_use', choices=['full', 'first', 'last'])
+    parser.add_argument('--run_index', type=int)
     args = parser.parse_args()
     sample_size = int(args.budget / args.num_sweeps)
     CUDA = torch.cuda.is_available()
@@ -220,14 +221,14 @@ if __name__ == '__main__':
     assignments = torch.from_numpy(np.load(args.data_dir + 'assignment.npy')).float()
     print('Start training for gmm clustering task..')
     if args.num_sweeps == 1: ## rws method
-        model_version = 'rws-gmm-num_samples=%s-lr=%s' % (sample_size, args.lr)
+        model_version = 'rws-gmm-num_samples=%s-lr=%s-run=%s' % (sample_size, args.lr, args.run_index)
         print('version='+ model_version)
         models, optimizer = init_rws_models(args.num_clusters, args.data_dim, args.num_hidden, CUDA, device, load_version=None, lr=args.lr)
         ema = EMA(args.ema_beta1, args.ema_beta2)
         train(rws_objective, optimizer, models, ema, args.grad_use, data, assignments, args.num_epochs, sample_size, args.batch_size, CUDA, device, num_sweeps=args.num_sweeps)
         
     elif args.num_sweeps > 1: ## apg sampler
-        model_version = 'apg-%s-gmm-block=%s-num_sweeps=%s-num_samples=%s-lr=%s' % (args.grad_use, args.block_strategy, args.num_sweeps, sample_size, args.lr)
+        model_version = 'apg-%s-gmm-block=%s-num_sweeps=%s-num_samples=%s-lr=%s-run=%s' % (args.grad_use, args.block_strategy, args.num_sweeps, sample_size, args.lr, args.run_index)
         print('version=' + model_version)
         models, optimizer = init_apg_models(args.num_clusters, args.data_dim, args.num_hidden, CUDA, device, load_version=None, lr=args.lr)
         ema = EMA(args.ema_beta1, args.ema_beta2)
