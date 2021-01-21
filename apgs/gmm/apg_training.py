@@ -45,7 +45,7 @@ def train(objective, optimizer, models, ema, grad_use, data, assignments, num_ep
                             if param.requires_grad:
                                 ema.update(name, param.grad.cpu())
             ema_iter += 1
-            if ema_iter % 1000 == 0:
+            if ema_iter % 2000 == 0:
                 signal, variance, snr = ema.snr()
                 ema_file = open('results/ema-' + model_version + '.txt', 'a+')
                 print('step=%d, signal=%.4f, variance=%.4f, snr=%.4f' % (ema_iter, signal, variance, snr), file=ema_file)
@@ -197,12 +197,12 @@ if __name__ == '__main__':
     from apgs.snr import EMA, set_seed
     parser = argparse.ArgumentParser('GMM Clustering Task')
     parser.add_argument('--data_dir', default='../../data/gmm/')
-    parser.add_argument('--device', default=1, type=int)
+    parser.add_argument('--device', default=0, type=int)
     parser.add_argument('--num_epochs', default=100, type=int)
     parser.add_argument('--batch_size', default=10, type=int)
     parser.add_argument('--budget', default=100, type=int)
     parser.add_argument('--num_sweeps', default=5, type=int)
-    parser.add_argument('--lr', default=5e-4, type=float)
+    parser.add_argument('--lr', default=2e-4, type=float)
     parser.add_argument('--resample_strategy', default='systematic', choices=['systematic', 'multinomial'])
     parser.add_argument('--block_strategy', default='decomposed', choices=['decomposed', 'joint'])
     parser.add_argument('--num_clusters', default=3, type=int)
