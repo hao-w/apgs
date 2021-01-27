@@ -1,24 +1,28 @@
 import torch
 import torch.nn.functional as F
 from torch.distributions.normal import Normal
+from torch.distributions.one_hot_categorical import OneHotCategorical as cat
+import probtorch
 
-def kls_eta(models, ob, z):
+def kls_eta(models, x, z):
     """
     compute the KL divergence KL(p(\eta | x, z)|| q(\eta | x, z))
     """
     (_, _, enc_apg_eta, generative) = models   
-    q_f_eta = enc_apg_eta(ob=ob, z=z, prior_ng=generative.prior_ng, sampled=True)
-    mu = q_f_eta['means'].value
-    tau = q_f_eta['precisions'].value
+    q_z = probtorch.Trace()
+    _ = q_z.variable(cat, probs=generative.prior_pi, value=z, name='states')
+    q = enc_apg_eta(q_z, x, prior_ng=generative.prior_ng)
+    mu = q['means'].value
+    tau = q['precisions'].value
     ## KLs for mu and sigma based on Normal-Gamma prior
-    q_alpha = q_f_eta['precisions'].dist.concentration
-    q_beta = q_f_eta['precisions'].dist.rate
-    q_mu = q_f_eta['means'].dist.loc
-    q_std = q_f_eta['means'].dist.scale
+    q_alpha = q['precisions'].dist.concentration
+    q_beta = q['precisions'].dist.rate
+    q_mu = q['means'].dist.loc
+    q_std = q['means'].dist.scale
     q_nu = 1. / (tau * (q_std**2)) # nu*tau = 1 / std**2
 
-    posterior_alpha, posterior_beta, posterior_mu, posterior_nu = posterior_eta(ob=ob,
-                                                                                z=z,
+    posterior_alpha, posterior_beta, posterior_mu, posterior_nu = posterior_eta(x,
+                                                                                z,
                                                                                 prior_alpha=generative.prior_alpha,
                                                                                 prior_beta=generative.prior_beta,
                                                                                 prior_mu=generative.prior_mu,
