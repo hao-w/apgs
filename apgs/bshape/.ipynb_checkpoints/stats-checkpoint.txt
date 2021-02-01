@@ -1,0 +1,6 @@
+method=BPG(L=100), log joint=-444.85
+method=RWS(L=100, K=1), log joint=-215.93
+method=HMC-RWS(L=100, K=10, LF=1), log joint=-206.17
+method=HMC-RWS(L=100, K=10, LF=5), log joint=-199.31
+method=HMC-RWS(L=100, K=10, LF=10), log joint=-192.30
+method=APG(L=100, K=10), log joint=-63.10
