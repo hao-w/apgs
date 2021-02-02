@@ -53,7 +53,7 @@ def train(optimizer, models, AT, resampler, num_sweeps, data_paths, shape_mean, 
             metrics_print = ",  ".join(['%s: %.4f' % (k, v/num_batches) for k, v in metrics.items()])
             if not os.path.exists('results/'):
                 os.makedirs('results/')
-            log_file = open('results/log-' + model_version + '.txt', 'a+')
+            log_file = open('results/log-' + model_version + '.txt', 'a+' if epoch==0 else 'w+')
             time_end = time.time()
             print("(%ds) Epoch=%d, Group=%d, " % (time_end - time_start, epoch, group) + metrics_print, file=log_file)
             log_file.close()
@@ -126,7 +126,7 @@ if __name__ == '__main__':
     parser.add_argument('--num_objects', default=2, type=int)
     parser.add_argument('--timesteps', default=10, type=int)
     parser.add_argument('--frame_pixels', default=40, type=int)
-    parser.add_argument('--mnist_pixels', default=10, type=int)
+    parser.add_argument('--shape_pixels', default=10, type=int)
     parser.add_argument('--num_hidden_digit', default=200, type=int)
     parser.add_argument('--num_hidden_coor', default=200, type=int)
     parser.add_argument('--z_where_dim', default=2, type=int)
@@ -146,12 +146,13 @@ if __name__ == '__main__':
     data_paths = []
     for file in os.listdir(args.data_dir + '%dobjects/train/' % args.num_objects):
         data_paths.append(os.path.join(args.data_dir, '%dobjects/train' % args.num_objects, file))
+        
     shape_mean = torch.from_numpy(np.load('shape_mean.npy')).float()
-    AT = Affine_Transformer(args.frame_pixels, args.mnist_pixels, CUDA, device)
+    
+    AT = Affine_Transformer(args.frame_pixels, args.shape_pixels, CUDA, device)
     resampler = Resampler(args.resample_strategy, sample_size, CUDA, device)
-    models, optimizer = init_models(args.frame_pixels, args.mnist_pixels, args.num_hidden_digit, args.num_hidden_coor, args.z_where_dim, args.z_what_dim, CUDA, device, load_version=None, lr=args.lr)
-#     print('Initialize EMA calculator..')
-#     ema = EMA(args.ema_beta1, args.ema_beta2)
+    
+    models, optimizer = init_models(args.frame_pixels, args.shape_pixels, args.num_hidden_digit, args.num_hidden_coor, args.z_where_dim, args.z_what_dim, CUDA, device, load_version=None, lr=args.lr)
     print('Start training for bshape tracking task..')
     print('version=' + model_version)  
     train(optimizer, models, AT, resampler, args.num_sweeps, data_paths, shape_mean, args.num_objects, args.num_epochs, sample_size, args.batch_size, CUDA, device, model_version)        

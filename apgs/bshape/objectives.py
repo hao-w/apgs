@@ -38,13 +38,13 @@ def apg_objective(models, AT, frames, K, result_flags, num_sweeps, resampler, mn
     trace = {'loss_phi' : [], 'loss_theta' : [], 'ess' : [], 'E_where' : [], 'E_what' : [], 'E_recon' : [], 'density' : []}
     S, B, T, FP, _ = frames.shape
     (enc_coor, dec_coor, enc_digit, dec_digit) = models
-    log_w, z_where, z_what, trace = oneshot(enc_coor, dec_coor, enc_digit, dec_digit, AT, frames, mnist_mean, trace, result_flags)
-    z_where, z_what = resample_variables(resampler, z_where, z_what, log_weights=log_w)
+    log_w_rws, z_where, z_what, trace = oneshot(enc_coor, dec_coor, enc_digit, dec_digit, AT, frames, mnist_mean, trace, result_flags)
+    z_where, z_what = resample_variables(resampler, z_where, z_what, log_weights=log_w_rws)
     for m in range(num_sweeps-1):
-#         if block == 'decomposed':
-        z_where, trace = apg_where(enc_coor, dec_coor, dec_digit, AT, resampler, frames, z_what, z_where, trace, result_flags)
-        log_w, z_what, trace = apg_what(enc_digit, dec_digit, AT, frames, z_where, z_what, trace, result_flags)
-        z_where, z_what = resample_variables(resampler, z_where, z_what, log_weights=log_w)
+        log_w_where, z_where, trace = apg_where(enc_coor, dec_coor, dec_digit, AT, resampler, frames, z_what, z_where, trace, result_flags)
+        z_where, z_what = resample_variables(resampler, z_where, z_what, log_weights=log_w_where)
+        log_w_what, z_what, trace = apg_what(enc_digit, dec_digit, AT, frames, z_where, z_what, trace, result_flags)
+        z_where, z_what = resample_variables(resampler, z_where, z_what, log_weights=log_w_what)
     if result_flags['loss_required']:
         trace['loss_phi'] = torch.cat(trace['loss_phi'], 0) 
         trace['loss_theta'] = torch.cat(trace['loss_theta'], 0) 
@@ -170,10 +170,11 @@ def apg_where(enc_coor, dec_coor, dec_digit, AT, resampler, frames, z_what, z_wh
     template = dec_digit(frames=None, z_what=z_what, z_where=None, AT=None)
     S, B, K, DP, DP = template.shape
     E_where = []
+    z_where = []
     LOSS_phi = []
     LOSS_theta = []
     ESS = []
-    log_prior = 0.0
+    
     for t in range(T):
         frame_t = frames[:,:,t, :,:]
         if t == 0:
@@ -185,9 +186,10 @@ def apg_where(enc_coor, dec_coor, dec_digit, AT, resampler, frames, z_what, z_wh
                                                                                             z_where_t_1=None,
                                                                                             z_where_old_t=z_where_old[:,:,t,:,:],
                                                                                             z_where_old_t_1=None)
+            
         else:
 
-            log_p_f, log_q_f, log_p_b, log_q_b, z_where_t, E_where_t = propose_one_movement(enc_coor=enc_coor,
+            log_p_f_t, log_q_f_t, log_p_b_t, log_q_b_t, z_where_t, E_where_t = propose_one_movement(enc_coor=enc_coor,
                                                                                             dec_coor=dec_coor,
                                                                                             AT=AT,
                                                                                             frame=frame_t,
@@ -195,35 +197,30 @@ def apg_where(enc_coor, dec_coor, dec_digit, AT, resampler, frames, z_what, z_wh
                                                                                             z_where_t_1=z_where_t,
                                                                                             z_where_old_t=z_where_old[:,:,t,:,:],
                                                                                             z_where_old_t_1=z_where_old[:,:,t-1,:,:])
-
-        log_w_f = log_p_f - log_q_f
-        log_w_b = log_p_b - log_q_b
-        if result_flags['density_required']:
-            log_prior = log_prior + log_p_f
-        if result_flags['mode_required']:
-            E_where.append(E_where_t.unsqueeze(2)) ## S * B * 1 * K * 2
-        _, ll_f, _ = dec_digit(frames=frame_t.unsqueeze(2), z_what=z_what, z_where=z_where_t.unsqueeze(2), AT=AT)
-        _, ll_b, _ = dec_digit(frames=frame_t.unsqueeze(2), z_what=z_what, z_where=z_where_old[:,:,t,:,:].unsqueeze(2), AT=AT)
-        log_w = (log_w_f - log_w_b  + ll_f.squeeze(-1) - ll_b.squeeze(-1)).detach()
-        w = F.softmax(log_w, 0).detach()
-        if t == 0:
-            z_where = z_where_t.unsqueeze(2) ## S * B * 1 * K * 2
-        else:
-            z_where = torch.cat((z_where, z_where_t.unsqueeze(2)), 2) ## S * B * t * K * 2
-        z_where, z_what = resample_variables(resampler, z_where, z_what, log_weights=log_w)
-        if result_flags['loss_required']
-            LOSS_phi.append((w * (- log_q_f)).sum(0).mean().unsqueeze(-1))
-            LOSS_theta.append((w * (- ll_f.squeeze(-1))).sum(0).mean().unsqueeze(-1))            
-    if result_flags['mode_required']:
-        E_where = torch.cat(E_where, 2)
-    if result_flags['loss_required']:
-        trace['loss_phi'].append(torch.cat(LOSS_phi, -1).sum(-1).unsqueeze(0))
-        trace['loss_theta'].append(torch.cat(LOSS_theta, -1).sum(-1).unsqueeze(0))
+            log_p_f += log_p_f_t 
+            log_q_f += log_q_f_t 
+            log_p_b += log_p_b_t 
+            log_q_b += log_q_b_t
+        E_where.append(E_where_t.unsqueeze(2)) ## S * B * 1 * K * 2
+        z_where.append(z_where_t.unsqueeze(2)) ## S * B * 1 * K * 2
+    z_where = torch.cat(z_where, 2)
+    E_where = torch.cat(E_where, 2)
+    log_w_f = log_p_f - log_q_f
+    log_w_b = log_p_b - log_q_b
     if result_flags['mode_required']:
         trace['E_where'].append(E_where.mean(0).unsqueeze(0).detach())
+    _, ll_f, _ = dec_digit(frames=frames, z_what=z_what, z_where=z_where, AT=AT)
+    _, ll_b, _ = dec_digit(frames=frames, z_what=z_what, z_where=z_where_old, AT=AT)
+    log_w = (log_w_f - log_w_b  + ll_f.sum(-1) - ll_b.sum(-1)).detach()
+    w = F.softmax(log_w, 0).detach()
+    if result_flags['loss_required']:
+        loss_phi = (w * (- log_q_f)).sum(0).mean()
+        loss_theta = (w * (- ll_f.sum(-1))).sum(0).mean()
+        trace['loss_phi'].append(loss_phi.unsqueeze(0))
+        trace['loss_theta'].append(loss_theta.unsqueeze(0))            
     if result_flags['density_required']:
-        trace['density'].append(log_prior.unsqueeze(0).detach())
-    return z_where, trace
+        trace['density'].append(log_p_f.unsqueeze(0).detach())
+    return log_w, z_where, trace
 
 
 def apg_what(enc_digit, dec_digit, AT, frames, z_where, z_what_old, trace, result_flags):
