@@ -31,10 +31,11 @@ def apg_objective(models, x, result_flags, num_sweeps, resampler):
     log_w, q_eta_z, metrics = oneshot(enc_rws_eta, enc_apg_z, generative, x, metrics, result_flags)
     q_eta_z = resample_variables(resampler, q_eta_z, log_weights=log_w)
     for m in range(num_sweeps-1):
-            log_w_eta, q_eta_z, metrics = apg_update_eta(enc_apg_eta, generative, q_eta_z, x, metrics, result_flags)       
-            q_eta_z = resample_variables(resampler, q_eta_z, log_weights=log_w_eta)
-            log_w_z, q_eta_z, metrics = apg_update_z(enc_apg_z, generative, q_eta_z, x, metrics, result_flags)
-            q_eta_z = resample_variables(resampler, q_eta_z, log_weights=log_w_z)
+        log_w_eta, q_eta_z, metrics = apg_update_eta(enc_apg_eta, generative, q_eta_z, x, metrics, result_flags)
+        
+        q_eta_z = resample_variables(resampler, q_eta_z, log_weights=log_w_eta)
+        log_w_z, q_eta_z, metrics = apg_update_z(enc_apg_z, generative, q_eta_z, x, metrics, result_flags)
+        q_eta_z = resample_variables(resampler, q_eta_z, log_weights=log_w_z)
     if result_flags['loss_required']:
         metrics['loss'] = torch.cat(metrics['loss'], 0)
     if result_flags['ess_required']:
@@ -71,7 +72,7 @@ def oneshot(enc_rws_eta, enc_rws_z, generative, x, metrics, result_flags):
     One-shot for eta and z, like a normal RWS
     """
     q_eta_z = enc_rws_eta(x, prior_ng=generative.prior_ng)
-    q_eta_z = enc_rws_z(q_eta_z, x)
+    q_eta_z = enc_rws_z(q_eta_z, x, extend_dir='forward')
     p = generative.forward(q_eta_z, x)
     log_p = p.log_joint(sample_dims=0, batch_dim=1, reparameterized=False) ## it is annoying to repeat these same arguments every time I call .log_joint
     log_q = q_eta_z.log_joint(sample_dims=0, batch_dim=1, reparameterized=False) 
@@ -101,13 +102,14 @@ def apg_update_eta(enc_apg_eta, generative, q_eta_z, x, metrics, result_flags):
     Given local variable z, update global variables eta := {mu, tau}.
     """
     # forward
-    q_eta_z_f = enc_apg_eta(q_eta_z, x, prior_ng=generative.prior_ng) ## forward kernel
+#     print(len(q_eta_z.keys()))
+    q_eta_z_f = enc_apg_eta(q_eta_z, x, prior_ng=generative.prior_ng, extend_dir='forward') ## forward kernel
     p_f = generative.forward(q_eta_z_f, x)
     log_q_f = q_eta_z_f.log_joint(sample_dims=0, batch_dim=1, reparameterized=False)
     log_p_f = p_f.log_joint(sample_dims=0, batch_dim=1, reparameterized=False)
     log_w_f = log_p_f - log_q_f
     ## backward
-    q_eta_z_b = enc_apg_eta(q_eta_z, x, prior_ng=generative.prior_ng)
+    q_eta_z_b = enc_apg_eta(q_eta_z, x, prior_ng=generative.prior_ng, extend_dir='backward')
     p_b = generative.forward(q_eta_z_b, x)
     log_q_b = q_eta_z_b.log_joint(sample_dims=0, batch_dim=1, reparameterized=False)
     log_p_b = p_b.log_joint(sample_dims=0, batch_dim=1, reparameterized=False)
@@ -135,13 +137,13 @@ def apg_update_z(enc_apg_z, generative, q_eta_z, x, metrics, result_flags):
     update local variable state i.e. z
     """
     # forward
-    q_eta_z_f = enc_apg_z(q_eta_z, x)
+    q_eta_z_f = enc_apg_z(q_eta_z, x, extend_dir='forward')
     p_f = generative.forward(q_eta_z_f, x)
     log_q_f = q_eta_z_f.log_joint(sample_dims=0, batch_dim=1, reparameterized=False)
     log_p_f = p_f.log_joint(sample_dims=0, batch_dim=1, reparameterized=False)
     log_w_f = log_p_f - log_q_f
     ## backward
-    q_eta_z_b = enc_apg_z(q_eta_z, x)
+    q_eta_z_b = enc_apg_z(q_eta_z, x, extend_dir='backward')
     p_b = generative.forward(q_eta_z_b, x)
     log_q_b = q_eta_z_b.log_joint(sample_dims=0, batch_dim=1, reparameterized=False)
     log_p_b = p_b.log_joint(sample_dims=0, batch_dim=1, reparameterized=False)

@@ -50,7 +50,7 @@ class Enc_apg_eta(nn.Module):
         self.apg_eta_ob = nn.Sequential(
             nn.Linear(K+D, D))
 
-    def forward(self, q_eta_z, x, prior_ng):
+    def forward(self, q_eta_z, x, prior_ng, extend_dir):
         (prior_alpha, prior_beta, prior_mu, prior_nu) = prior_ng
         try:
             z = q_eta_z['states'].value
@@ -62,7 +62,7 @@ class Enc_apg_eta(nn.Module):
         q_eta_z_new = probtorch.Trace()
         _= q_eta_z_new.variable(cat, probs=q_eta_z['states'].dist.probs, value=q_eta_z['states'].value, name='states')
             
-        if 'means' in q_eta_z.keys():
+        if extend_dir == 'backward':
             q_eta_z_new.gamma(q_alpha,
                                 q_beta,
                                 value=q_eta_z['precisions'].value,
@@ -71,7 +71,7 @@ class Enc_apg_eta(nn.Module):
                                  1. / (q_nu * q_eta_z['precisions'].value).sqrt(),
                                  value=q_eta_z['means'].value,
                                  name='means')
-        else:
+        elif extend_dir == 'forward':
             tau = Gamma(q_alpha, q_beta).sample()
             q_eta_z_new.gamma(q_alpha,
                                 q_beta,
@@ -82,6 +82,8 @@ class Enc_apg_eta(nn.Module):
                                  1. / (q_nu * tau).sqrt(),
                                  value=mu,
                                  name='means')
+        else:
+            raise ValueError
         return q_eta_z_new
 
 
@@ -96,7 +98,7 @@ class Enc_apg_z(nn.Module):
             nn.Tanh(),
             nn.Linear(num_hidden, 1))
 
-    def forward(self, q_eta_z, x):
+    def forward(self, q_eta_z, x, extend_dir):
         S, B, N, D = x.shape
         try:
             tau = q_eta_z['precisions'].value
@@ -126,11 +128,13 @@ class Enc_apg_z(nn.Module):
                            q_eta_z['means'].dist.scale,
                            value=q_eta_z['means'].value,
                            name='means')
-        if 'states' in q_eta_z.keys():
+        if extend_dir == 'backward':
             _ = q_eta_z_new.variable(cat, probs=q_probs, value=q_eta_z['states'].value, name='states')
-        else:
+        elif extend_dir == 'forward':
             z = cat(q_probs).sample()
             _ = q_eta_z_new.variable(cat, probs=q_probs, value=z, name='states')
+        else:
+            raise ValueError
         return q_eta_z_new
     
 class Generative():
