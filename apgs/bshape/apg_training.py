@@ -53,17 +53,20 @@ def train(optimizer, models, AT, resampler, num_sweeps, data_paths, shape_mean, 
             metrics_print = ",  ".join(['%s: %.4f' % (k, v/num_batches) for k, v in metrics.items()])
             if not os.path.exists('results/'):
                 os.makedirs('results/')
-            log_file = open('results/log-' + model_version + '.txt', 'a+' if epoch==0 else 'w+')
+            if epoch == 0 and group == 0:
+                log_file = open('results/log-' + model_version + '.txt', 'w+')
+            else:
+                log_file = open('results/log-' + model_version + '.txt', 'a+')
             time_end = time.time()
             print("(%ds) Epoch=%d, Group=%d, " % (time_end - time_start, epoch, group) + metrics_print, file=log_file)
             log_file.close()
             print("Epoch=%d, Group=%d completed in (%ds),  " % (epoch, group, time_end - time_start))
             
-def init_models(frame_pixels, digit_pixels, num_hidden_digit, num_hidden_coor, z_where_dim, z_what_dim, CUDA, device, load_version, lr):
-    enc_coor = Enc_coor(num_pixels=(frame_pixels-digit_pixels+1)**2, num_hidden=num_hidden_coor, z_where_dim=z_where_dim)
+def init_models(AT, frame_pixels, digit_pixels, num_hidden_digit, num_hidden_coor, z_where_dim, z_what_dim, CUDA, device, load_version, lr):
+    enc_coor = Enc_coor(num_pixels=(frame_pixels-digit_pixels+1)**2, num_hidden=num_hidden_coor, z_where_dim=z_where_dim, AT=AT)
     dec_coor = Dec_coor(z_where_dim=z_where_dim, CUDA=CUDA, device=device)
-    enc_digit = Enc_digit(num_pixels=digit_pixels**2, num_hidden=num_hidden_digit, z_what_dim=z_what_dim)
-    dec_digit = Dec_digit(num_pixels=digit_pixels**2, num_hidden=num_hidden_digit, z_what_dim=z_what_dim, CUDA=CUDA, device=device)
+    enc_digit = Enc_digit(num_pixels=digit_pixels**2, num_hidden=num_hidden_digit, z_what_dim=z_what_dim, AT=AT)
+    dec_digit = Dec_digit(num_pixels=digit_pixels**2, num_hidden=num_hidden_digit, z_what_dim=z_what_dim, AT=AT, CUDA=CUDA, device=device)
     if CUDA:
         with torch.cuda.device(device):
             enc_coor.cuda()
@@ -120,8 +123,8 @@ if __name__ == '__main__':
     parser.add_argument('--num_epochs', default=200, type=int)
     parser.add_argument('--batch_size', default=5, type=int)
     parser.add_argument('--budget', default=100, type=int)
-    parser.add_argument('--num_sweeps', default=5, type=int)
-    parser.add_argument('--lr', default=1e-4, type=float)
+    parser.add_argument('--num_sweeps', default=2, type=int)
+    parser.add_argument('--lr', default=5e-4, type=float)
     parser.add_argument('--resample_strategy', default='systematic', choices=['systematic', 'multinomial'])
     parser.add_argument('--num_objects', default=2, type=int)
     parser.add_argument('--timesteps', default=10, type=int)
@@ -152,7 +155,7 @@ if __name__ == '__main__':
     AT = Affine_Transformer(args.frame_pixels, args.shape_pixels, CUDA, device)
     resampler = Resampler(args.resample_strategy, sample_size, CUDA, device)
     
-    models, optimizer = init_models(args.frame_pixels, args.shape_pixels, args.num_hidden_digit, args.num_hidden_coor, args.z_where_dim, args.z_what_dim, CUDA, device, load_version=None, lr=args.lr)
+    models, optimizer = init_models(AT, args.frame_pixels, args.shape_pixels, args.num_hidden_digit, args.num_hidden_coor, args.z_where_dim, args.z_what_dim, CUDA, device, load_version=None, lr=args.lr)
     print('Start training for bshape tracking task..')
     print('version=' + model_version)  
     train(optimizer, models, AT, resampler, args.num_sweeps, data_paths, shape_mean, args.num_objects, args.num_epochs, sample_size, args.batch_size, CUDA, device, model_version)        
