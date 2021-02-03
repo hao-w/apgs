@@ -120,6 +120,15 @@ class Dec_coor():
                      name='z_where_%d' % (timestep+1))
         return p 
     
+    def log_prior(self, z_where):
+        T = z_where.shape[2]
+        for t in range(T):
+            if t == 0:
+                log_p = Normal(loc=self.prior_mu0, scale=self.prior_Sigma0).log_prob(z_where[:,:,t,:,:]).sum(-1).sum(-1)
+            else:
+                log_p += Normal(loc=z_where[:,:,t-1,:,:], scale=self.prior_Sigmat).log_prob(z_where[:,:,t,:,:]).sum(-1).sum(-1)
+
+        return log_p   
     
 class Enc_digit(nn.Module):
     """
@@ -226,12 +235,12 @@ class Dec_digit(nn.Module):
         else:
             raise ValueError
         
-
-# def MBern_log_prob(x_mean, x, EPS=1e-9):
-#     """
-#     the size is ... * H * W
-#     so I added two sum ops
-#     """
-#     return (torch.log(x_mean + EPS) * x +
-#                 torch.log(1 - x_mean + EPS) * (1 - x)).sum(-1).sum(-1)
-
+    def log_prior(self, frames, z_where, z_what):
+        digit_mean = self.dec_digit_mean(z_what)  # S * B * K * (28*28)
+        S, B, K, DP2 = digit_mean.shape
+        DP = int(math.sqrt(DP2))
+        digit_mean = digit_mean.view(S, B, K, DP, DP)
+        recon_frames = torch.clamp(self.AT.digit_to_frame(digit=digit_mean, z_where=z_where).sum(-3), min=0.0, max=1.0) # S * B * T * FP * FP
+        log_p = Normal(self.prior_mu,self.prior_st).log_prob(z_what).sum(-1).sum(-1)
+        log_p += Bernoulli(probs=recon_frames).log_prob(frames).sum(-1).sum(-1).sum(-1)
+        return log_p
