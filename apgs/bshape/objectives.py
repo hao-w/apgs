@@ -3,11 +3,15 @@ import torch.nn.functional as F
 from torch.distributions.normal import Normal
 import probtorch
 
-def resample_variables(resampler, z_where, z_what, log_weights):
+def resample_variables(resampler, q, log_weights):
     ancestral_index = resampler.sample_ancestral_index(log_weights)
-    z_where = resampler.resample_5dims(var=z_where, ancestral_index=ancestral_index)
-    z_what = resampler.resample_4dims(var=z_what, ancestral_index=ancestral_index)
-    return z_where, z_what
+    q_new = probtorch.Trace()
+    for key, node in q.items():
+        resampled_loc = resampler.resample_4dims(var=node.dist.loc, ancestral_index=ancestral_index)
+        resampled_scale = resampler.resample_4dims(var=node.dist.scale, ancestral_index=ancestral_index)
+        resampled_value = resampler.resample_4dims(var=node.value, ancestral_index=ancestral_index)
+        q_new.normal(loc=resampled_loc, scale=resampled_scale, value=resampled_value, name=key)
+    return q_new
         
 def apg_objective(models, AT, frames, K, result_flags, num_sweeps, resampler, mean_shape):
     """
@@ -15,14 +19,14 @@ def apg_objective(models, AT, frames, K, result_flags, num_sweeps, resampler, me
     """
     metrics = {'loss_phi' : [], 'loss_theta' : [], 'ess' : [], 'E_where' : [], 'E_recon' : [], 'density' : []}
     log_w, q, metrics = oneshot(models, frames, mean_shape, metrics, result_flags)
-#     z_where, z_what = resample_variables(resampler, q, log_weights=log_w)
+    q = resample_variables(resampler, q, log_weights=log_w)
     T = frames.shape[2]
     for m in range(num_sweeps-1):
         for t in range(T):
             log_w, q, metrics = apg_where_t(models, frames, q, t, metrics, result_flags)
-#             q = resample_variables(resampler, q, log_weights=log_w)
+            q = resample_variables(resampler, q, log_weights=log_w)
         log_w, q, metrics = apg_what(models, frames, q, metrics, result_flags)
-#         z_where, z_what = resample_variables(resampler, q, log_weights=log_w)
+        q = resample_variables(resampler, q, log_weights=log_w)
         
     if result_flags['loss_required']:
         metrics['loss_phi'] = torch.cat(metrics['loss_phi'], 0) 
