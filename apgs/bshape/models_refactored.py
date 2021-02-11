@@ -87,49 +87,6 @@ class Enc_coor(nn.Module):
             raise ValueError           
         return q_new       
 
-class Dec_coor():
-    """
-    generative model of digit positions
-    Real generative model for time dynamics
-    z_1 ~ N (0, Sigma_0) : S * B * D
-    z_t | z_t-1 ~ N (A z_t-1, Sigma_t)
-    where A is the transformation matrix
-    """
-    def __init__(self, z_where_dim, CUDA, device):
-        super(self.__class__, self)
-
-        self.prior_mu0 = torch.zeros(z_where_dim)
-        self.prior_Sigma0 = torch.ones(z_where_dim) * 1.0
-        self.prior_Sigmat = torch.ones(z_where_dim) * 0.2
-        if CUDA:
-            with torch.cuda.device(device):
-                self.prior_mu0  = self.prior_mu0.cuda()
-                self.prior_Sigma0 = self.prior_Sigma0.cuda()
-                self.prior_Sigmat = self.prior_Sigmat.cuda()
-                
-    def forward(self, q, p, timestep):
-        if timestep == 0:
-            p.normal(loc=self.prior_mu0, 
-                     scale=self.prior_Sigma0,
-                     value=q['z_where_%d' % (timestep+1)].value,
-                     name='z_where_%d' % (timestep+1))
-        else:
-            p.normal(loc=q['z_where_%d' % (timestep)].value, 
-                     scale=self.prior_Sigmat,
-                     value=q['z_where_%d' % (timestep+1)].value,
-                     name='z_where_%d' % (timestep+1))
-        return p 
-    
-    def log_prior(self, z_where):
-        T = z_where.shape[2]
-        for t in range(T):
-            if t == 0:
-                log_p = Normal(loc=self.prior_mu0, scale=self.prior_Sigma0).log_prob(z_where[:,:,t,:,:]).sum(-1).sum(-1)
-            else:
-                log_p += Normal(loc=z_where[:,:,t-1,:,:], scale=self.prior_Sigmat).log_prob(z_where[:,:,t,:,:]).sum(-1).sum(-1)
-
-        return log_p   
-    
 class Enc_digit(nn.Module):
     """
     encoder of digit features
@@ -176,14 +133,11 @@ class Enc_digit(nn.Module):
             raise ValueError
         return q_new
 
-    
- 
-        
-class Dec_digit(nn.Module):
+class Decoder(nn.Module):
     """
-    decoder of the digit features
+    decoder 
     """
-    def __init__(self, num_pixels, num_hidden, z_what_dim, AT, CUDA, device):
+    def __init__(self, num_pixels, num_hidden, z_where_dim, z_what_dim, AT, CUDA, device):
         super(self.__class__, self).__init__()
         self.dec_digit_mean = nn.Sequential(nn.Linear(z_what_dim, int(0.5*num_hidden)),
                                     nn.ReLU(),
@@ -191,56 +145,73 @@ class Dec_digit(nn.Module):
                                     nn.ReLU(),
                                     nn.Linear(num_hidden, num_pixels),
                                     nn.Sigmoid())
-
-        self.prior_mu = torch.zeros(z_what_dim)
-        self.prior_std = torch.ones(z_what_dim)
-
+        
+        self.prior_where0_mu = torch.zeros(z_where_dim)
+        self.prior_where0_Sigma = torch.ones(z_where_dim) * 1.0
+        self.prior_wheret_Sigma = torch.ones(z_where_dim) * 0.2
+        self.prior_what_mu = torch.zeros(z_what_dim)
+        self.prior_what_std = torch.ones(z_what_dim)
+        
         if CUDA:
             with torch.cuda.device(device):
-                self.prior_mu = self.prior_mu.cuda()
-                self.prior_std = self.prior_std.cuda()
+                self.prior_where0_mu  = self.prior_where0_mu.cuda()
+                self.prior_where0_Sigma = self.prior_where0_Sigma.cuda()
+                self.prior_wheret_Sigma = self.prior_wheret_Sigma.cuda()
+                self.prior_what_mu = self.prior_what_mu.cuda()
+                self.prior_what_std = self.prior_what_std.cuda()
         self.AT = AT
         
-    def forward(self, q, p, frames, recon_level, timestep=None):
+    def forward(self, q, frames, recon_level):
+        p = probtorch.Trace()
         digit_mean = self.dec_digit_mean(q['z_what'].value)  # S * B * K * (28*28)
-        
         S, B, K, DP2 = digit_mean.shape
         DP = int(math.sqrt(DP2))
         digit_mean = digit_mean.view(S, B, K, DP, DP)
+        
         if recon_level == 'object': ## return the recnostruction of objects
             return digit_mean.detach()
         
-        elif recon_level == 'frame':
-            _, _, FP, _ = frames.shape
-            z_where = q['z_where_%d' % (timestep+1)].value.unsqueeze(2)
-            recon_frames = torch.clamp(self.AT.digit_to_frame(digit=digit_mean, z_where=z_where).sum(-3), min=0.0, max=1.0).squeeze(2) # S * B * T * FP * FP
-            assert recon_frames.shape == frames.shape, 'recon_frames shape =%s, frames shape = %s' % (recon_frames.shape, frames.shape)
-            _ = p.variable(Bernoulli, probs=recon_frames, value=frames, name='recon')
-            return p
-        
         elif recon_level =='frames': # return the reconstruction of the entire frames
             _, _, T, FP, _ = frames.shape
-            z_where = []
+            z_wheres = []
+            # prior of z_where
             for t in range(T):
-                z_where.append(q['z_where_%d' % (t+1)].value.unsqueeze(2))
-            z_where = torch.cat(z_where, 2)
-            recon_frames = torch.clamp(self.AT.digit_to_frame(digit=digit_mean, z_where=z_where).sum(-3), min=0.0, max=1.0) # S * B * T * FP * FP
-            assert recon_frames.shape == (S, B, T, FP, FP), "ERROR! unexpected reconstruction shape"
-            p.normal(loc=self.prior_mu, 
-                     scale=self.prior_std,
+                if t == 0:
+                    p.normal(loc=self.prior_where0_mu, 
+                             scale=self.prior_where0_Sigma,
+                             value=q['z_where_%d' % (t+1)].value,
+                             name='z_where_%d' % (t+1))
+                else:
+                    p.normal(loc=q['z_where_%d' % (t)].value, 
+                             scale=self.prior_wheret_Sigma,
+                             value=q['z_where_%d' % (t+1)].value,
+                             name='z_where_%d' % (t+1))
+                z_wheres.append(q['z_where_%d' % (t+1)].value.unsqueeze(2))
+            # prior of z_what
+            p.normal(loc=self.prior_what_mu, 
+                     scale=self.prior_what_std,
                      value=q['z_what'].value,
                      name='z_what')
+            z_wheres = torch.cat(z_wheres, 2)
+            recon_frames = torch.clamp(self.AT.digit_to_frame(digit_mean, z_wheres).sum(-3), min=0.0, max=1.0) # S * B * T * FP * FP
             _= p.variable(Bernoulli, probs=recon_frames, value=frames, name='recon')
             return p
         else:
             raise ValueError
         
     def log_prior(self, frames, z_where, z_what):
+        T = z_where.shape[2]
+        for t in range(T):
+            if t == 0:
+                log_p = Normal(loc=self.prior_where0_mu, scale=self.prior_where0_Sigma).log_prob(z_where[:,:,t,:,:]).sum(-1).sum(-1)
+            else:
+                log_p += Normal(loc=z_where[:,:,t-1,:,:], scale=self.prior_wheret_Sigma).log_prob(z_where[:,:,t,:,:]).sum(-1).sum(-1)
+
         digit_mean = self.dec_digit_mean(z_what)  # S * B * K * (28*28)
         S, B, K, DP2 = digit_mean.shape
         DP = int(math.sqrt(DP2))
         digit_mean = digit_mean.view(S, B, K, DP, DP)
         recon_frames = torch.clamp(self.AT.digit_to_frame(digit=digit_mean, z_where=z_where).sum(-3), min=0.0, max=1.0) # S * B * T * FP * FP
-        log_p = Normal(self.prior_mu,self.prior_std).log_prob(z_what).sum(-1).sum(-1)
+        log_p = Normal(self.prior_what_mu,self.prior_what_std).log_prob(z_what).sum(-1).sum(-1)
         log_p += Bernoulli(probs=recon_frames).log_prob(frames).sum(-1).sum(-1).sum(-1)
         return log_p

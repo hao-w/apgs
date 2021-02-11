@@ -56,14 +56,10 @@ class HMC():
     
     
     def log_joint(self, ob, z_where, z_what):
-        for t in range(self.T):
-            if t == 0:
-                log_prior_where = self.dec_coor.log_prior(z_where_t=z_where[:,:,t,:,:])
-            else:
-                log_prior_where = log_prior_where + self.dec_coor.log_prior(z_where_t=z_where[:,:,t,:,:], z_where_t_1=z_where[:,:,t-1,:,:])
-            assert log_prior_where.shape == (self.S, self.B), 'ERROR!'
-        log_prior_what, ll, _ = self.dec_digit(frames=ob, z_what=z_what, z_where=z_where, AT=self.AT)
-        return log_prior_what.sum(-1) + log_prior_where + ll.sum(-1)
+        log_p = self.dec_coor.log_prior(z_where)
+        assert log_p.shape == (self.S, self.B), 'ERROR!'
+        log_p += self.dec_digit.log_prior(frames=ob, z_where=z_where, z_what=z_what)
+        return log_p
 
     def metrioplis(self, ob, z_where, z_what):
         r_where, r_what = self.init_sample()

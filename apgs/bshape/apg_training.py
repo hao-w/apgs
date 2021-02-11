@@ -3,7 +3,7 @@ import torch
 import time
 import numpy as np
 from random import shuffle
-from apgs.bshape.models import Enc_coor, Dec_coor, Enc_digit, Dec_digit
+from apgs.bshape.models_refactored import Enc_coor, Enc_digit, Decoder
 from apgs.bshape.objectives import apg_objective
 
 def train(optimizer, models, AT, resampler, num_sweeps, data_paths, shape_mean, K, num_epochs, sample_size, batch_size, CUDA, device, model_version):
@@ -64,46 +64,34 @@ def train(optimizer, models, AT, resampler, num_sweeps, data_paths, shape_mean, 
             
 def init_models(AT, frame_pixels, digit_pixels, num_hidden_digit, num_hidden_coor, z_where_dim, z_what_dim, CUDA, device, load_version, lr):
     enc_coor = Enc_coor(num_pixels=(frame_pixels-digit_pixels+1)**2, num_hidden=num_hidden_coor, z_where_dim=z_where_dim, AT=AT)
-    dec_coor = Dec_coor(z_where_dim=z_where_dim, CUDA=CUDA, device=device)
     enc_digit = Enc_digit(num_pixels=digit_pixels**2, num_hidden=num_hidden_digit, z_what_dim=z_what_dim, AT=AT)
-    dec_digit = Dec_digit(num_pixels=digit_pixels**2, num_hidden=num_hidden_digit, z_what_dim=z_what_dim, AT=AT, CUDA=CUDA, device=device)
+    decoder = Decoder(num_pixels=digit_pixels**2, num_hidden=num_hidden_digit, z_where_dim=z_where_dim, z_what_dim=z_what_dim, AT=AT, CUDA=CUDA, device=device)
     if CUDA:
         with torch.cuda.device(device):
             enc_coor.cuda()
             enc_digit.cuda()
-            dec_digit.cuda()
+            decoder.cuda()
             
     if load_version is not None: 
         weights = torch.load("weights/cp-%s" % load_version)
         enc_coor.load_state_dict(weights['enc-coor'])
         enc_digit.load_state_dict(weights['enc-digit'])
-        dec_digit.load_state_dict(weights['dec-digit'])
+        decoder.load_state_dict(weights['dec'])
     if lr is not None:
         optimizer =  torch.optim.Adam(list(enc_coor.parameters())+
                                         list(enc_digit.parameters())+
-                                        list(dec_digit.parameters()),
+                                        list(decoder.parameters()),
                                         lr=lr,
                                         betas=(0.9, 0.99))
-#         optimizer =  torch.optim.SGD(list(enc_coor.parameters())+
-#                                         list(enc_digit.parameters())+
-#                                         list(dec_digit.parameters()),
-#                                         lr=lr)
-        return (enc_coor, dec_coor, enc_digit, dec_digit), optimizer
-#     else: 
-#         for p in enc_coor.parameters():
-#             p.requires_grad = False
-#         for p in enc_digit.parameters():
-#             p.requires_grad = False
-#         for p in dec_digit.parameters():
-#             p.requires_grad = False
-    return (enc_coor, dec_coor, enc_digit, dec_digit)
+        return (enc_coor, enc_digit, decoder), optimizer
+    return (enc_coor, enc_digit, decoder)
 
 def save_models(models, save_version):
-    (enc_coor, dec_coor, enc_digit, dec_digit) = models
+    (enc_coor, enc_digit, decoder) = models
     checkpoint = {
         'enc-coor' : enc_coor.state_dict(),
         'enc-digit' : enc_digit.state_dict(),
-        'dec-digit' : dec_digit.state_dict()
+        'dec' : decoder.state_dict()
     }
     if not os.path.exists('weights/'):
         os.makedirs('weights/')
@@ -123,7 +111,7 @@ if __name__ == '__main__':
     parser.add_argument('--num_epochs', default=200, type=int)
     parser.add_argument('--batch_size', default=5, type=int)
     parser.add_argument('--budget', default=100, type=int)
-    parser.add_argument('--num_sweeps', default=2, type=int)
+    parser.add_argument('--num_sweeps', default=5, type=int)
     parser.add_argument('--lr', default=5e-4, type=float)
     parser.add_argument('--resample_strategy', default='systematic', choices=['systematic', 'multinomial'])
     parser.add_argument('--num_objects', default=2, type=int)

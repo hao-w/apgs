@@ -42,16 +42,14 @@ def apg_objective(models, AT, frames, K, result_flags, num_sweeps, resampler, me
 
 
 def oneshot(models, frames, conv_kernel, metrics, result_flags):
-    (enc_coor, dec_coor, enc_digit, dec_digit) = models
+    (enc_coor, enc_digit, decoder) = models
     T = frames.shape[2]
     S, B, K, DP, DP = conv_kernel.shape
     q = probtorch.Trace()
-    p = probtorch.Trace()
     for t in range(T):
         q = enc_coor(q, frames, t, conv_kernel, extend_dir='forward')
-        p = dec_coor.forward(q, p, t)
     q = enc_digit(q, frames, extend_dir='forward')  
-    p = dec_digit(q, p, frames, recon_level='frames')
+    p = decoder(q, frames, recon_level='frames')
     log_q = q.log_joint(sample_dims=0, batch_dim=1, reparameterized=False)
     log_p = p.log_joint(sample_dims=0, batch_dim=1, reparameterized=False)
     log_w = (log_p - log_q).detach()
@@ -68,7 +66,7 @@ def oneshot(models, frames, conv_kernel, metrics, result_flags):
         E_where = []
         for t in range(T):
             E_where.append(q['z_where_%d' % (t+1)].dist.loc.unsqueeze(2))
-        E_where = torch.cat(z_where, 2)
+        E_where = torch.cat(E_where, 2)
         metrics['E_where'].append(E_where.mean(0).unsqueeze(0).cpu().detach()) # 1 * B * T * K * 2
         metrics['E_recon'].append(p['recon'].dist.probs.mean(0).unsqueeze(0).cpu().detach()) # 1 * B * T * FP * FP
     if result_flags['density_required']:
@@ -77,29 +75,17 @@ def oneshot(models, frames, conv_kernel, metrics, result_flags):
 
 def apg_where_t(models, frames, q, timestep, metrics, result_flags):
     T = frames.shape[2]
-    (enc_coor, dec_coor, enc_digit, dec_digit) = models
-    conv_kernel = dec_digit(q=q, p=None, frames=frames, recon_level='object')
+    (enc_coor, enc_digit, decoder) = models
+    conv_kernel = decoder(q, frames, recon_level='object')
     # forward
     q_f = enc_coor(q, frames, timestep, conv_kernel, extend_dir='forward')
-    p_f = probtorch.Trace()
-    p_f = dec_coor.forward(q_f, p_f, timestep)
-    if timestep < (T-1):
-        p_f = dec_coor.forward(q_f, p_f, timestep+1)
-    if timestep > 0:
-        p_f = dec_coor.forward(q_f, p_f, timestep-1)
-    p_f = dec_digit(q_f, p_f, frames[:,:,timestep,:,:], recon_level='frame', timestep=timestep)
+    p_f = decoder(q_f, frames, recon_level='frames')
     log_p_f = p_f.log_joint(sample_dims=0, batch_dim=1, reparameterized=False)
     log_q_f = q_f['z_where_%d' % (timestep+1)].log_prob.sum(-1).sum(-1) ## equivanlent to call .log_joint, but not sure which one is computationally efficient
     log_w_f = log_p_f - log_q_f
     # backward
     q_b = enc_coor(q, frames, timestep, conv_kernel, extend_dir='backward')
-    p_b = probtorch.Trace()
-    p_b = dec_coor.forward(q_b, p_b, timestep)
-    if timestep < (T-1):
-        p_b = dec_coor.forward(q_b, p_b, timestep+1)
-    if timestep > 0:
-        p_b = dec_coor.forward(q_b, p_b, timestep-1)
-    p_b = dec_digit(q_b, p_b, frames[:,:,timestep,:,:], recon_level='frame', timestep=timestep)
+    p_b = decoder(q_b, frames, recon_level='frames')
     log_p_b = p_b.log_joint(sample_dims=0, batch_dim=1, reparameterized=False)
     log_q_b = q_b['z_where_%d' % (timestep+1)].log_prob.sum(-1).sum(-1) ## equivanlent to call .log_joint, but not sure which one is computationally efficient
     log_w_b = log_p_b - log_q_b
@@ -108,23 +94,19 @@ def apg_where_t(models, frames, q, timestep, metrics, result_flags):
     if result_flags['loss_required']:
         metrics['loss_phi'].append((w * (- log_q_f)).sum(0).mean().unsqueeze(0))
         metrics['loss_theta'].append((w * (- log_p_f)).sum(0).mean().unsqueeze(0))
-#     if result_flags['density_required']:
-#         trace['density'].append(log_prior.unsqueeze(0).detach())
     return log_w, q_f, metrics
 
 
 def apg_what(models, frames, q, metrics, result_flags):
     T = frames.shape[2]
-    (enc_coor, dec_coor, enc_digit, dec_digit) = models
+    (enc_coor, enc_digit, decoder) = models
     q_f = enc_digit(q, frames, extend_dir='forward')  
-    p_f = probtorch.Trace()
-    p_f = dec_digit(q_f, p_f, frames, recon_level='frames')
+    p_f = decoder(q_f, frames, recon_level='frames')
     log_p_f = p_f.log_joint(sample_dims=0, batch_dim=1, reparameterized=False)
     log_q_f = q_f['z_what'].log_prob.sum(-1).sum(-1)
     log_w_f = log_p_f - log_q_f
     q_b = enc_digit(q, frames, extend_dir='backward')  
-    p_b = probtorch.Trace()
-    p_b = dec_digit(q_b, p_b, frames, recon_level='frames')
+    p_b = decoder(q_b, frames, recon_level='frames')
     log_p_b = p_b.log_joint(sample_dims=0, batch_dim=1, reparameterized=False)
     log_q_b = q_b['z_what'].log_prob.sum(-1).sum(-1)
     log_w_b = log_p_b - log_q_b
@@ -143,25 +125,26 @@ def apg_what(models, frames, q, metrics, result_flags):
         E_where = []
         for t in range(T):
             E_where.append(q['z_where_%d' % (t+1)].dist.loc.unsqueeze(2))
-        E_where = torch.cat(z_where, 2)
+        E_where = torch.cat(E_where, 2)
         metrics['E_where'].append(E_where.mean(0).unsqueeze(0).cpu().detach())
-        metrics['E_recon'].append(p['recon'].dist.probs.mean(0).unsqueeze(0).detach())
+        metrics['E_recon'].append(p_f['recon'].dist.probs.mean(0).unsqueeze(0).detach().cpu())
     if result_flags['density_required']:
-        log_joint = log_p_f.detach()
-        for t in range(T):
-            p_f = dec_coor.forward(q_f, p_f, t)
-        metrics['density'].append(p_f.log_joint(sample_dims=0, batch_dim=1, reparameterized=False).unsqueeze(0).detach())
+        metrics['density'].append(log_p_f.detach().unsqueeze(0))
     return log_w, q_f, metrics
 
 
-def hmc_objective(models, AT, frames, result_flags, hmc_sampler, mnist_mean):
+def hmc_objective(models, AT, frames, result_flags, hmc_sampler, mean_shape):
     """
     HMC objective
     """
     metrics = {'density' : []} 
     S, B, T, FP, _ = frames.shape
-    (enc_coor, dec_coor, enc_digit, dec_digit) = models
-    log_w, z_where, z_what, metrics = oneshot(enc_coor, dec_coor, enc_digit, dec_digit, AT, frames, mnist_mean, metrics, result_flags)
+    log_w, q, metrics = oneshot(models, frames, mean_shape, metrics, result_flags)
+    z_where = []
+    for t in range(frames.shape[2]):
+        z_where.append(q['z_where_%d' % (t+1)].value.unsqueeze(2))
+    z_where = torch.cat(z_where, 2)
+    z_what = q['z_what'].value
     metrics = hmc_sampler.hmc_sampling(frames, z_where, z_what, metrics)
     metrics['density'] = torch.cat(metrics['density'], 0)
     return metrics

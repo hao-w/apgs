@@ -23,7 +23,8 @@ def set_seed(seed):
     
 def density_all_instances(models, AT, data_paths, sample_size, K, z_where_dim, z_what_dim, num_sweeps, lf_step_size, lf_num_steps, bpg_factor, CUDA, device, batch_size=10):
     densities = dict()
-    shuffle(data_paths)
+    ess = dict()
+#     shuffle(data_paths)
     data = torch.from_numpy(np.load(data_paths[0])).float()
     num_batches = 5 # int(data.shape[0] / batch_size)
     mnist_mean = torch.from_numpy(np.load('shape_mean.npy')).float()
@@ -39,13 +40,16 @@ def density_all_instances(models, AT, data_paths, sample_size, K, z_where_dim, z
         resampler = Resampler('systematic', S, CUDA, device)
         resampler_bpg = Resampler('systematic', S*bpg_factor, CUDA, device)
         result_flags = {'loss_required' : False, 'ess_required' : False, 'mode_required' : False, 'density_required' : True}
-#         for lf in lf_num_steps:
-#             hmc_sampler = HMC(models, AT, S, B, T, K, z_where_dim, z_what_dim, num_sweeps, lf_step_size, lf_step_size, lf, CUDA, device)
-#             trace_hmc = hmc_objective(models, AT, x, result_flags, hmc_sampler, mnist_mean) 
-#             if 'HMC-RWS(L=%d, LF=%d)' % (S, lf) in densities:
-#                 densities['HMC-RWS(L=%d, K=%d, LF=%d)' % (S, K, lf)].append(trace_hmc['density'].mean(-1).mean(-1).cpu().numpy()[-1])
-#             else:
-#                 densities['HMC-RWS(L=%d, K=%d, LF=%d)' % (S, K, lf)] = [trace_hmc['density'].mean(-1).mean(-1).cpu().numpy()[-1]]
+        for lf in lf_num_steps:
+            hmc_sampler = HMC(models, AT, S, B, T, K, z_where_dim, z_what_dim, num_sweeps, lf_step_size, lf_step_size, lf, CUDA, device)
+            trace_hmc = hmc_objective(models, AT, x, result_flags, hmc_sampler, mnist_mean) 
+            if 'HMC-RWS(L=%d, LF=%d)' % (S, lf) in densities:
+                densities['HMC-RWS(L=%d, K=%d, LF=%d)' % (S, num_sweeps, lf)].append(trace_hmc['density'][-1].mean(-1).mean(-1).cpu().numpy())
+#                 ess['HMC-RWS(L=%d, K=%d, LF=%d)' % (S, K, lf)].append(trace_hmc['ess'][-1].mean(-1).cpu().numpy())
+            else:
+                densities['HMC-RWS(L=%d, K=%d, LF=%d)' % (S, num_sweeps, lf)] = [trace_hmc['density'][-1].mean(-1).mean(-1).cpu().numpy()]
+#                 ess['HMC-RWS(L=%d, K=%d, LF=%d)' % (S, K, lf)] = [trace_hmc['ess'][-1].mean(-1).cpu().numpy()]
+                
 #         x_bpg = x.repeat(bpg_factor, 1, 1, 1, 1)
 #         mnist_mean_bpg = mnist_mean.repeat(bpg_factor, 1, 1, 1, 1)
 #         trace_bpg = bpg_objective(models, AT, x_bpg, result_flags, num_sweeps, resampler_bpg, mnist_mean_bpg)
@@ -53,22 +57,26 @@ def density_all_instances(models, AT, data_paths, sample_size, K, z_where_dim, z
 #             densities['BPG(L=%d)' % (S*bpg_factor)].append(trace_bpg['density'].mean(-1).mean(-1).cpu().numpy()[-1])
 #         else:
 #             densities['BPG(L=%d)' % (S*bpg_factor)] = [trace_bpg['density'].mean(-1).mean(-1).cpu().numpy()[-1]]
-        trace_apg = apg_objective(models, AT, x, K, result_flags, num_sweeps, resampler, mnist_mean)
-        if 'APG(L=%d, K=%d)' % (S, num_sweeps) in densities:
-            densities['APG(L=%d, K=%d)' % (S, num_sweeps)].append(trace_apg['density'].mean(-1).mean(-1).cpu().numpy()[-1])
-        else:
-            densities['APG(L=%d, K=%d)' % (S, num_sweeps)] = [trace_apg['density'].mean(-1).mean(-1).cpu().numpy()[-1]]
+#             ess['BPG(L=%d)' % (S*bpg_factor)] = [trace_apg['ess'][-1].mean(-1).cpu().numpy()]
+#         trace_apg = apg_objective(models, AT, x, K, result_flags, num_sweeps, resampler, mnist_mean)
+#         if 'APG(L=%d, K=%d)' % (S, num_sweeps) in densities:
+#             densities['APG(L=%d, K=%d)' % (S, num_sweeps)].append(trace_apg['density'][-1].mean(-1).mean(-1).cpu().numpy())
+#             ess['APG(L=%d, K=%d)' % (S, num_sweeps)].append(trace_apg['ess'][-1].mean(-1).cpu().numpy())
+#         else:
+#             densities['APG(L=%d, K=%d)' % (S, num_sweeps)] = [trace_apg['density'][-1].mean(-1).mean(-1).cpu().numpy()]
+#             ess['APG(L=%d, K=%d)' % (S, num_sweeps)] = [trace_apg['ess'][-1].mean(-1).cpu().numpy()]
         time_end = time.time()
         print('%d / %d completed in (%ds)' % (b+1, num_batches, time_end-time_start))
     for key in densities.keys():
         densities[key] = np.array(densities[key]).mean()
+#         ess[key] =np.array(ess[key]).mean()
         print('method=%s, log joint=%.2f' % (key, densities[key]))
 
 
-def viz_samples(frames, metrics, num_sweeps, K, fs=2, title_fontsize=12, lw=2, colors=['#AA3377', '#EE7733', '#009988', '#0077BB', '#BBBBBB', '#EE3377', '#DDCC77']):
+def viz_samples(frames, metrics, num_sweeps, K, fs=2, title_fontsize=12, lw=2, colors=['#AA3377', '#EE7733', '#009988', '#0077BB', '#BBBBBB', '#EE3377', '#DDCC77'], save=False):
     B, T, FP, _ = frames.shape
-    recons = metrics['E_recon'][-1].squeeze(0).cpu() # B * T * 96 *96
-    z_wheres = metrics['E_where'][-1].squeeze(0).cpu().clone()
+    recons = metrics['E_recon'][-1].cpu() # B * T * 96 *96
+    z_wheres = metrics['E_where'][-1].cpu().clone()
     z_wheres[:,:,:,1] =  z_wheres[:,:,:,1] * (-1)
     c_pixels = z_wheres
     c_pixels = (c_pixels + 1.0) * (FP - 10) / 2. # B * T * K * D
@@ -77,7 +85,7 @@ def viz_samples(frames, metrics, num_sweeps, K, fs=2, title_fontsize=12, lw=2, c
         num_rows =  2
         c_pixel, recon = c_pixels[b].numpy(), recons[b].numpy()
         gs = gridspec.GridSpec(num_rows, num_cols)
-        gs.update(left=0.05 , bottom=0.05, right=0.95, top=0.95, wspace=0.05, hspace=0.2)
+        gs.update(left=0.05 , bottom=0.05, right=0.95, top=0.95, wspace=0.05, hspace=0.05)
         fig = plt.figure(figsize=(fs * num_cols, fs * num_rows))
         for c in range(num_cols):
             ax_infer = fig.add_subplot(gs[0, c])
@@ -91,9 +99,11 @@ def viz_samples(frames, metrics, num_sweeps, K, fs=2, title_fontsize=12, lw=2, c
             ax_recon.imshow(recon[c], cmap='gray', vmin=0.0, vmax=1.0)
             ax_recon.set_xticks([])
             ax_recon.set_yticks([])
-            if c == 0:
-                ax_infer.set_title('Inferred Positions')
-                ax_recon.set_title('Reconstruction')
+#             if c == 0:
+#                 ax_infer.set_title('Inferred Positions')
+#                 ax_recon.set_title('Reconstruction')
+    if save:
+        plt.savefig('combinators_apg_samples.svg', dpi=300)
 
 def plot_convergence(densities, fs=6, fs_title=14, lw=3, opacity=0.1, colors = ['#0077BB', '#009988', '#EE7733', '#AA3377', '#555555', '#999933']):
     fig = plt.figure(figsize=(fs*2.5,fs)) 
